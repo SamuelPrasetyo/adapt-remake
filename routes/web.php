@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DepartemenController;
 use App\Http\Controllers\DivisiController;
 use App\Http\Controllers\LoginController;
 use Illuminate\Support\Facades\Route;
@@ -31,4 +32,15 @@ Route::controller(LoginController::class)->group(function () {
 
 Route::controller(DivisiController::class)->group(function () {
     Route::get('/divisi', 'index')->name('divisi.index');
+    Route::post('/divisi/store', 'store')->name('divisi.store');
+    Route::post('/divisi/upload', 'upload')->name('divisi.upload');
+    Route::put('/divisi/update/{id}', 'update')->name('divisi.update');
+    Route::delete('/divisi/delete/{id}', 'destroy')->name('divisi.delete');
+});
+Route::controller(DepartemenController::class)->group(function () {
+    Route::get('/departemen', 'index')->name('departemen.index');
+    Route::post('/departemen/store', 'store')->name('departemen.store');
+    Route::post('/departemen/upload', 'upload')->name('departemen.upload');
+    Route::put('/departemen/update/{id}', 'update')->name('departemen.update');
+    Route::delete('/departemen/delete/{id}', 'destroy')->name('departemen.delete');
 });

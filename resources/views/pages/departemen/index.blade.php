@@ -25,20 +25,22 @@
                                                 <th style="text-align: center;">No</th>
                                                 <th style="text-align: center;">ID</th>
                                                 <th style="text-align: center;">Nama</th>
+                                                <th style="text-align: center;">Divisi</th>
                                                 <th style="text-align: center;">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             @php $no = 1; @endphp
-                                            @foreach($divisis as $divisi)
+                                            @foreach($departemens as $departemen)
                                             <tr>
                                                 <td style="text-align: center;font-size:14px">{{$no++}}</td>
-                                                <td style="text-align: center;font-size:14px">{{$divisi->id}}</td>
-                                                <td style="text-align: center;font-size:14px">{{$divisi->nama}}</td>
+                                                <td style="text-align: center;font-size:14px">{{$departemen->id}}</td>
+                                                <td style="text-align: center;font-size:14px">{{$departemen->nama}}</td>
+                                                <td style="text-align: center;font-size:14px">{{$departemen->nama_divisi}}</td>
                                                 <td class="text-center">
                                                     <button class="btn btn-sm btn-primary" data-bs-toggle="modal"
-                                                        data-bs-target="#edit-data{{$divisi->id}}">Edit</button>
-                                                    <form action="{{ route('divisi.delete', $divisi->id) }}" method="POST" class="d-inline">
+                                                        data-bs-target="#edit-data{{$departemen->id}}">Edit</button>
+                                                    <form action="{{ route('departemen.delete', $departemen->id) }}" method="POST" class="d-inline">
                                                         @method('delete')
                                                         @csrf
                                                         <input name="_method" type="hidden" value="DELETE">
@@ -61,13 +63,22 @@
                                         <h5 class="modal-title" id="exampleModalLabel">Tambah Data</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                     </div>
-                                    <form action="{{route('divisi.store')}}" method="POST">
+                                    <form action="{{route('departemen.store')}}" method="POST">
                                         @csrf
                                         <div class="modal-body">
+                                            <label class="mb-2">Nama Departemen: </label>
+                                            <div class="form-group">
+                                                <input type="text" placeholder="nama departemen"
+                                                    class="form-control" name="nama">
+                                            </div>
                                             <label class="mb-2">Nama Divisi: </label>
                                             <div class="form-group">
-                                                <input type="text" placeholder="nama divisi"
-                                                    class="form-control" name="nama">
+                                                <select class="form-control" name="id_divisi" id="">
+                                                    <option value="">--Pilih nama divisi--</option>
+                                                    @foreach($divisis as $divisi)
+                                                    <option value="{{$divisi->id}}">{{$divisi->nama}}</option>
+                                                    @endforeach
+                                                </select>
                                             </div>
                                         </div>
                                         <div class="modal-footer">
@@ -84,22 +95,31 @@
                             </div>
                         </div>
                         <!-- Modal Edit -->
-                        @foreach($divisis as $divisi)
-                        <div class="modal fade" id="edit-data{{$divisi->id}}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                        @foreach($departemens as $departemen)
+                        <div class="modal fade" id="edit-data{{$departemen->id}}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
                             <div class="modal-dialog">
                                 <div class="modal-content">
                                     <div class="modal-header">
                                         <h5 class="modal-title" id="exampleModalLabel">Tambah Data</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                     </div>
-                                    <form action="{{route('divisi.update',$divisi->id)}}" method="POST">
+                                    <form action="{{route('departemen.update',$departemen->id)}}" method="POST">
                                         @csrf
                                         @method('put')
                                         <div class="modal-body">
+                                            <label class="mb-2">Nama Departemen: </label>
+                                            <div class="form-group">
+                                                <input type="text" placeholder="nama departemen"
+                                                    class="form-control" name="nama" value="{{ old('nama') ? old('nama') : $departemen->nama }}">
+                                            </div>
                                             <label class="mb-2">Nama Divisi: </label>
                                             <div class="form-group">
-                                                <input type="text" placeholder="nama divisi"
-                                                    class="form-control" name="nama" value="{{ old('nama') ? old('nama') : $divisi->nama }}">
+                                                <select class="form-control" name="id_divisi" id="">
+                                                    <option value="">--Pilih nama divisi--</option>
+                                                    @foreach($divisis as $divisi)
+                                                    <option value="{{$divisi->id}}" {{$departemen->id_divisi==$divisi->id ? 'selected' : ''}}>{{ $divisi->nama }}</option>
+                                                    @endforeach
+                                                </select>
                                             </div>
                                         </div>
                                         <div class="modal-footer">
@@ -124,7 +144,7 @@
                                         <h5 class="modal-title" id="exampleModalLabel">Upload Data</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                     </div>
-                                    <form action="{{route('divisi.upload')}}" method="POST" enctype="multipart/form-data">
+                                    <form action="{{route('departemen.upload')}}" method="POST" enctype="multipart/form-data">
                                         @csrf
                                         <div class="modal-body">
                                             <label class="mb-2">File Excel: </label>
@@ -166,10 +186,10 @@
                 topStart: {
                     buttons: [{
                         extend: 'excel',
-                        title:'Data Divisi',
-                        titleAttr:'Data Divisi',
+                        title:'Data Departemen',
+                        titleAttr:'Data Departemen',
                         exportOptions: {
-                            columns: [0, 1, 2]
+                            columns: [2,3]
                         }
                     }]
                 }

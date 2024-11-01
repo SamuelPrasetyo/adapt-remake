@@ -86,13 +86,13 @@
                         <form id="formAuthentication" class="mb-3" action="{{route('login.store')}}" method="POST">
                             @csrf
                             <div class="mb-3">
-                                <label for="email" class="form-label">Email</label>
+                                <label for="nik" class="form-label">Nomor Induk Karyawan</label>
                                 <input
                                     type="text"
                                     class="form-control"
-                                    id="email"
-                                    name="email"
-                                    placeholder="Enter your email"
+                                    id="nik"
+                                    name="nik"
+                                    placeholder="Enter your nik"
                                     autofocus />
                             </div>
                             <div class="mb-3 form-password-toggle">

@@ -37,7 +37,7 @@ class LoginController extends Controller
     public function store(Request $request)
     {
         $credentials = $request->validate([
-            'email' => ['required'],
+            'nik' => ['required'],
             'password' => ['required']
         ]);
 
@@ -46,7 +46,7 @@ class LoginController extends Controller
             return redirect('/dashboard');
         }
 
-        return redirect()->back()->with(['loginError' => 'Email / Password Salah']);
+        return redirect()->back()->with(['loginError' => 'NIK / Password Salah']);
     }
 
     /**
