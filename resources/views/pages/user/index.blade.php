@@ -10,16 +10,12 @@
                             <div class="card-body">
                                 <div class="row">
                                     <div class="col">
-                                        <h5 class="card-title mb-1 text-nowrap">List Departemen</h5>
+                                        <h5 class="card-title mb-1 text-nowrap">List User</h5>
                                     </div>
                                     <div class="col d-flex justify-content-end mb-3">
                                         <!-- Button trigger modal -->
                                         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">
                                             Tambah
-                                        </button>
-                                        &nbsp;
-                                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#upload">
-                                            Upload
                                         </button>
                                     </div>
                                 </div>
@@ -28,30 +24,36 @@
                                         <thead>
                                             <tr>
                                                 <th style="text-align: center;">No</th>
-                                                <th style="text-align: center;">ID</th>
+                                                <th style="text-align: center;">NIK</th>
                                                 <th style="text-align: center;">Nama</th>
-                                                <th style="text-align: center;">Divisi</th>
+                                                <th style="text-align: center;">Type</th>
                                                 <th style="text-align: center;">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             @php $no = 1; @endphp
-                                            @foreach($departemens as $departemen)
+                                            @foreach($users as $user)
                                             <tr>
                                                 <td style="text-align: center;font-size:14px">{{$no++}}</td>
-                                                <td style="text-align: center;font-size:14px">{{$departemen->id}}</td>
-                                                <td style="text-align: center;font-size:14px">{{$departemen->nama}}</td>
-                                                <td style="text-align: center;font-size:14px">{{$departemen->nama_divisi}}</td>
+                                                <td style="text-align: center;font-size:14px">{{$user->nik}}</td>
+                                                <td style="text-align: center;font-size:14px">{{$user->name}}</td>
+                                                <td style="text-align: center;font-size:14px">{{$user->type}}</td>
+                                                @if(Auth::user()->id != $user->id && Auth::user()->type == 'Admin')
                                                 <td class="text-center">
-                                                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal"
-                                                        data-bs-target="#edit-data{{$departemen->id}}">Edit</button>
-                                                    <!-- <form action="{{ route('departemen.delete', $departemen->id) }}" method="POST" class="d-inline">
+                                                    <!-- <button class="btn btn-sm btn-primary" data-bs-toggle="modal"
+                                                        data-bs-target="#edit-data{{$user->id}}">Edit</button> -->
+                                                    <form action="{{ route('user.delete', $user->id) }}" method="POST" class="d-inline">
                                                         @method('delete')
                                                         @csrf
                                                         <input name="_method" type="hidden" value="DELETE">
                                                         <button type="submit" class="btn btn-sm btn-danger show_confirm" data-toggle="tooltip" title='Delete'>Delete</button>
-                                                    </form> -->
+                                                    </form>
                                                 </td>
+                                                @else
+                                                <td class="text-center">
+                                                    <i class="menu-icon tf-icons bx bxs-circle"></i>
+                                                </td>
+                                                @endif
                                             </tr>
                                             @endforeach
                                         </tbody>
@@ -68,23 +70,62 @@
                                         <h5 class="modal-title" id="exampleModalLabel">Tambah Data</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                     </div>
-                                    <form action="{{route('departemen.store')}}" method="POST">
+                                    <form action="{{route('user.store')}}" method="POST">
                                         @csrf
                                         <div class="modal-body">
-                                            <label class="mb-2">Nama Departemen: </label>
-                                            <div class="form-group">
-                                                <input type="text" placeholder="nama departemen"
-                                                    class="form-control" name="nama">
+                                            <label class="mb-2">NIK: </label>
+                                            <div class="row mb-1">
+                                                <div class="col-3">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="radio" name="flexRadioDefault" id="flexRadioDefault2" checked>
+                                                        <label class="form-check-label" for="flexRadioDefault2">
+                                                            Kader
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-3">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="radio" name="flexRadioDefault" id="flexRadioDefault1">
+                                                        <label class="form-check-label" for="flexRadioDefault1">
+                                                            Mentor
+                                                        </label>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <label class="mb-2">Nama Divisi: </label>
                                             <div class="form-group">
-                                                <select class="form-control" name="id_divisi" id="">
-                                                    <option value="">--Pilih nama divisi--</option>
-                                                    @foreach($divisis as $divisi)
-                                                    <option value="{{$divisi->id}}">{{$divisi->nama}}</option>
+                                                <input id="nik-mentor" type="text" placeholder="nomor induk karyawan"
+                                                    class="form-control d-none" name="nik_mentor">
+                                                <select name="nik_kader" id="nik-kader" class="form-control">
+                                                    <option value="">--Pilih Kader--</option>
+                                                    @foreach($kaders as $kader)
+                                                    <option value="{{$kader->nik}}">{{$kader->nik . ' - '. $kader->nama}}</option>
                                                     @endforeach
                                                 </select>
                                             </div>
+                                            <label class="mb-2">Nama: </label>
+                                            <div class="form-group">
+                                                <input type="text" placeholder="nama user"
+                                                    class="form-control" name="name">
+                                            </div>
+                                            <label class="mb-2">Kata sandi: </label>
+                                            <div class="form-group">
+                                                <input type="password" placeholder="kata sandi"
+                                                    class="form-control" name="password">
+                                            </div>
+                                            <label class="mb-2">Konfirmasi Kata sandi: </label>
+                                            <div class="form-group">
+                                                <input type="password" placeholder="kata sandi"
+                                                    class="form-control" name="password2">
+                                            </div>
+                                            <input type="text" id="user-type" hidden name="type">
+                                            <!-- <label class="mb-2">Type: </label> -->
+                                            <!-- <div class="form-group">
+                                                <select class="form-control" name="password">
+                                                    <option value="">--Pilih Tipe User--</option>
+                                                    <option value="Mentor">Mentor</option>
+                                                    <option value="Kader">Kader</option>
+                                                </select>
+                                            </div> -->
                                         </div>
                                         <div class="modal-footer">
                                             <button type="button" class="btn btn-light-secondary"
@@ -100,31 +141,22 @@
                             </div>
                         </div>
                         <!-- Modal Edit -->
-                        @foreach($departemens as $departemen)
-                        <div class="modal fade" id="edit-data{{$departemen->id}}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                        @foreach($users as $user)
+                        <div class="modal fade" id="edit-data{{$user->id}}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
                             <div class="modal-dialog">
                                 <div class="modal-content">
                                     <div class="modal-header">
                                         <h5 class="modal-title" id="exampleModalLabel">Tambah Data</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                     </div>
-                                    <form action="{{route('departemen.update',$departemen->id)}}" method="POST">
+                                    <form action="{{route('user.update',$user->id)}}" method="POST">
                                         @csrf
                                         @method('put')
                                         <div class="modal-body">
-                                            <label class="mb-2">Nama Departemen: </label>
-                                            <div class="form-group">
-                                                <input type="text" placeholder="nama departemen"
-                                                    class="form-control" name="nama" value="{{ old('nama') ? old('nama') : $departemen->nama }}">
-                                            </div>
                                             <label class="mb-2">Nama Divisi: </label>
                                             <div class="form-group">
-                                                <select class="form-control" name="id_divisi" id="">
-                                                    <option value="">--Pilih nama divisi--</option>
-                                                    @foreach($divisis as $divisi)
-                                                    <option value="{{$divisi->id}}" {{$departemen->id_divisi==$divisi->id ? 'selected' : ''}}>{{ $divisi->nama }}</option>
-                                                    @endforeach
-                                                </select>
+                                                <input type="text" placeholder="nama user"
+                                                    class="form-control" name="nama" value="{{ old('nama') ? old('nama') : $user->name }}">
                                             </div>
                                         </div>
                                         <div class="modal-footer">
@@ -141,36 +173,6 @@
                             </div>
                         </div>
                         @endforeach
-                        <!-- Modal Upload-->
-                        <div class="modal fade" id="upload" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                            <div class="modal-dialog">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title" id="exampleModalLabel">Upload Data</h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                    </div>
-                                    <form action="{{route('departemen.upload')}}" method="POST" enctype="multipart/form-data">
-                                        @csrf
-                                        <div class="modal-body">
-                                            <label class="mb-2">File Excel: </label>
-                                            <div class="form-group">
-                                                <input type="file"
-                                                    class="form-control" name="file">
-                                            </div>
-                                        </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn btn-light-secondary"
-                                                data-bs-dismiss="modal">
-                                                <i class="bx bx-x d-block d-sm-none"></i>
-                                                <span class="d-none d-sm-block">Close</span>
-                                            </button>
-                                            <button class="btn btn-primary ml-1" type="submit">Submit
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -191,19 +193,35 @@
                 topStart: {
                     buttons: [{
                         extend: 'excel',
-                        title: 'Data Departemen',
-                        titleAttr: 'Data Departemen',
+                        title: 'Data User',
+                        titleAttr: 'Data User',
                         exportOptions: {
-                            columns: [2, 3]
+                            columns: [0, 1, 2]
                         }
                     }]
                 }
             },
-            columnDefs: [{
-                target: 1,
-                visible: false
-            }]
         });
+
+        var mentor = $("#flexRadioDefault1 input[type='radio']:checked");
+        $('#flexRadioDefault1').change(function() {
+            var value = $(this).val();
+            if (value == 'on') {
+                $('#nik-mentor').removeClass('d-none');
+                $('#nik-kader').addClass('d-none');
+                $('#user-type').val('Mentor');
+            }
+        });
+        var kader = $("#flexRadioDefault2 input[type='radio']:checked");
+        $('#flexRadioDefault2').change(function() {
+            var value = $(this).val();
+            if (value == 'on') {
+                $('#nik-mentor').addClass('d-none');
+                $('#nik-kader').removeClass('d-none');
+                $('#user-type').val('Kader');
+            }
+        });
+
 
     });
     $('.show_confirm').click(function(event) {

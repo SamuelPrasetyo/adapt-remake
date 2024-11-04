@@ -2,15 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Imports\DivisiImport;
-use App\Models\Divisi;
+use App\Models\Kader;
+use App\Models\User;
 use Illuminate\Http\Request;
 use RealRashid\SweetAlert\Facades\Alert;
 use Illuminate\Support\Str;
-use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\Hash;
 
-class DivisiController extends Controller
+class UserController extends Controller
 {
+
     public function __construct() {
         $this->middleware('auth');
     }
@@ -21,8 +22,9 @@ class DivisiController extends Controller
      */
     public function index()
     {
-        $divisis = Divisi::orderBy('nama', 'asc')->get();
-        return view('pages.divisi.index', compact('divisis'));
+        $users = User::orderBy('name', 'asc')->get();
+        $kaders = Kader::orderBy('nik','asc')->get();
+        return view('pages.user.index', compact('users','kaders'));
     }
 
     /**
@@ -43,32 +45,29 @@ class DivisiController extends Controller
      */
     public function store(Request $request)
     {
-        Divisi::insert([
+        $data = [
             'id'            => Str::uuid(),
-            'nama'          => $request->nama,
+            'name'          => $request->name,
+            'nik'           => $request->nik_mentor ?? $request->nik_kader,
+            'password'      => Hash::make($request->password),
+            'type'          => $request->type,
             'created_at'    => now(),
             'updated_at'    => now()
-        ]);
+        ];
+
+        User::insert($data);
 
         Alert::success('Success', 'Data berhasil ditambahkan!');
-        return redirect()->route('divisi.index');
-    }
-    public function upload(Request $request)
-    {
-
-        Excel::import(new DivisiImport(), $request->file('file')->store('temp'));
-
-        Alert::success('Success', 'Data berhasil diupload!');
-        return redirect()->route('divisi.index');
+        return redirect()->route('user.index');
     }
 
     /**
      * Display the specified resource.
      *
-     * @param  \App\Models\Divisi  $divisi
+     * @param  \App\Models\User  $user
      * @return \Illuminate\Http\Response
      */
-    public function show(Divisi $divisi)
+    public function show(User $user)
     {
         //
     }
@@ -76,10 +75,10 @@ class DivisiController extends Controller
     /**
      * Show the form for editing the specified resource.
      *
-     * @param  \App\Models\Divisi  $divisi
+     * @param  \App\Models\User  $user
      * @return \Illuminate\Http\Response
      */
-    public function edit(Divisi $divisi)
+    public function edit(User $user)
     {
         //
     }
@@ -88,32 +87,23 @@ class DivisiController extends Controller
      * Update the specified resource in storage.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\Divisi  $divisi
+     * @param  \App\Models\User  $user
      * @return \Illuminate\Http\Response
      */
     public function update(Request $request, $id)
     {
-        $divisi = Divisi::where('id', $id)->first();
-        Divisi::where('id', $id)
-            ->update([
-                'nama' => $request->nama ?? $divisi->nama,
-                'updated_at'    => now(),
-            ]);
-
-        Alert::success('Success', 'Data berhasil diupdate!');
-        return redirect()->route('divisi.index');
     }
 
     /**
      * Remove the specified resource from storage.
      *
-     * @param  \App\Models\Divisi  $divisi
+     * @param  \App\Models\User  $user
      * @return \Illuminate\Http\Response
      */
     public function destroy($id)
     {
-        Divisi::where('id', $id)->delete();
+        User::where('id', $id)->delete();
         Alert::success('Success', 'Data berhasil dihapus!');
-        return redirect()->route('divisi.index');
+        return redirect()->route('user.index');
     }
 }

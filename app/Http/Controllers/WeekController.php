@@ -2,14 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Imports\DivisiImport;
-use App\Models\Divisi;
+use App\Models\Week;
 use Illuminate\Http\Request;
 use RealRashid\SweetAlert\Facades\Alert;
-use Illuminate\Support\Str;
-use Maatwebsite\Excel\Facades\Excel;
 
-class DivisiController extends Controller
+class WeekController extends Controller
 {
     public function __construct() {
         $this->middleware('auth');
@@ -21,8 +18,8 @@ class DivisiController extends Controller
      */
     public function index()
     {
-        $divisis = Divisi::orderBy('nama', 'asc')->get();
-        return view('pages.divisi.index', compact('divisis'));
+        $weeks = Week::orderBy('angka_week', 'asc')->get();
+        return view('pages.week.index', compact('weeks'));
     }
 
     /**
@@ -43,32 +40,24 @@ class DivisiController extends Controller
      */
     public function store(Request $request)
     {
-        Divisi::insert([
-            'id'            => Str::uuid(),
-            'nama'          => $request->nama,
+        $data = [
+            'angka_week'    => $request->angka_week,
             'created_at'    => now(),
             'updated_at'    => now()
-        ]);
+        ];
+        Week::insert($data);
 
         Alert::success('Success', 'Data berhasil ditambahkan!');
-        return redirect()->route('divisi.index');
-    }
-    public function upload(Request $request)
-    {
-
-        Excel::import(new DivisiImport(), $request->file('file')->store('temp'));
-
-        Alert::success('Success', 'Data berhasil diupload!');
-        return redirect()->route('divisi.index');
+        return redirect()->route('week.index');
     }
 
     /**
      * Display the specified resource.
      *
-     * @param  \App\Models\Divisi  $divisi
+     * @param  \App\Models\Week  $week
      * @return \Illuminate\Http\Response
      */
-    public function show(Divisi $divisi)
+    public function show(Week $week)
     {
         //
     }
@@ -76,10 +65,10 @@ class DivisiController extends Controller
     /**
      * Show the form for editing the specified resource.
      *
-     * @param  \App\Models\Divisi  $divisi
+     * @param  \App\Models\Week  $week
      * @return \Illuminate\Http\Response
      */
-    public function edit(Divisi $divisi)
+    public function edit(Week $week)
     {
         //
     }
@@ -88,32 +77,32 @@ class DivisiController extends Controller
      * Update the specified resource in storage.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\Divisi  $divisi
+     * @param  \App\Models\Week  $week
      * @return \Illuminate\Http\Response
      */
     public function update(Request $request, $id)
     {
-        $divisi = Divisi::where('id', $id)->first();
-        Divisi::where('id', $id)
+        $week = Week::where('id_week', $id)->first();
+        Week::where('id_week', $id)
             ->update([
-                'nama' => $request->nama ?? $divisi->nama,
+                'angka_week'    => $request->angka_week ?? $week->angka_week,
                 'updated_at'    => now(),
             ]);
 
         Alert::success('Success', 'Data berhasil diupdate!');
-        return redirect()->route('divisi.index');
+        return redirect()->route('week.index');
     }
 
     /**
      * Remove the specified resource from storage.
      *
-     * @param  \App\Models\Divisi  $divisi
+     * @param  \App\Models\Week  $week
      * @return \Illuminate\Http\Response
      */
     public function destroy($id)
     {
-        Divisi::where('id', $id)->delete();
+        Week::where('id_week', $id)->delete();
         Alert::success('Success', 'Data berhasil dihapus!');
-        return redirect()->route('divisi.index');
+        return redirect()->route('week.index');
     }
 }

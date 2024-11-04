@@ -2,14 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Kader;
+use App\Models\PertanyaanMentor;
 use Illuminate\Http\Request;
 
-class KaderController extends Controller
+class PertanyaanMentorController extends Controller
 {
-    public function __construct() {
-        $this->middleware('auth');
-    }
     /**
      * Display a listing of the resource.
      *
@@ -44,10 +41,10 @@ class KaderController extends Controller
     /**
      * Display the specified resource.
      *
-     * @param  \App\Models\Kader  $kader
+     * @param  \App\Models\PertanyaanMentor  $pertanyaanMentor
      * @return \Illuminate\Http\Response
      */
-    public function show(Kader $kader)
+    public function show(PertanyaanMentor $pertanyaanMentor)
     {
         //
     }
@@ -55,10 +52,10 @@ class KaderController extends Controller
     /**
      * Show the form for editing the specified resource.
      *
-     * @param  \App\Models\Kader  $kader
+     * @param  \App\Models\PertanyaanMentor  $pertanyaanMentor
      * @return \Illuminate\Http\Response
      */
-    public function edit(Kader $kader)
+    public function edit(PertanyaanMentor $pertanyaanMentor)
     {
         //
     }
@@ -67,10 +64,10 @@ class KaderController extends Controller
      * Update the specified resource in storage.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\Kader  $kader
+     * @param  \App\Models\PertanyaanMentor  $pertanyaanMentor
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, Kader $kader)
+    public function update(Request $request, PertanyaanMentor $pertanyaanMentor)
     {
         //
     }
@@ -78,10 +75,10 @@ class KaderController extends Controller
     /**
      * Remove the specified resource from storage.
      *
-     * @param  \App\Models\Kader  $kader
+     * @param  \App\Models\PertanyaanMentor  $pertanyaanMentor
      * @return \Illuminate\Http\Response
      */
-    public function destroy(Kader $kader)
+    public function destroy(PertanyaanMentor $pertanyaanMentor)
     {
         //
     }

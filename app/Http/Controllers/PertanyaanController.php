@@ -2,14 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Imports\DivisiImport;
-use App\Models\Divisi;
+use App\Models\Pertanyaan;
 use Illuminate\Http\Request;
 use RealRashid\SweetAlert\Facades\Alert;
-use Illuminate\Support\Str;
-use Maatwebsite\Excel\Facades\Excel;
 
-class DivisiController extends Controller
+class PertanyaanController extends Controller
 {
     public function __construct() {
         $this->middleware('auth');
@@ -21,8 +18,8 @@ class DivisiController extends Controller
      */
     public function index()
     {
-        $divisis = Divisi::orderBy('nama', 'asc')->get();
-        return view('pages.divisi.index', compact('divisis'));
+        $pertanyaans = Pertanyaan::orderBy('nama_pertanyaan','asc')->get();
+        return view('pages.pertanyaan.index', compact('pertanyaans'));
     }
 
     /**
@@ -43,32 +40,24 @@ class DivisiController extends Controller
      */
     public function store(Request $request)
     {
-        Divisi::insert([
-            'id'            => Str::uuid(),
-            'nama'          => $request->nama,
+        $data = [
+            'nama_pertanyaan'    => $request->nama_pertanyaan,
             'created_at'    => now(),
             'updated_at'    => now()
-        ]);
+        ];
+        Pertanyaan::insert($data);
 
         Alert::success('Success', 'Data berhasil ditambahkan!');
-        return redirect()->route('divisi.index');
-    }
-    public function upload(Request $request)
-    {
-
-        Excel::import(new DivisiImport(), $request->file('file')->store('temp'));
-
-        Alert::success('Success', 'Data berhasil diupload!');
-        return redirect()->route('divisi.index');
+        return redirect()->route('pertanyaan.index');
     }
 
     /**
      * Display the specified resource.
      *
-     * @param  \App\Models\Divisi  $divisi
+     * @param  \App\Models\Pertanyaan  $pertanyaan
      * @return \Illuminate\Http\Response
      */
-    public function show(Divisi $divisi)
+    public function show(Pertanyaan $pertanyaan)
     {
         //
     }
@@ -76,10 +65,10 @@ class DivisiController extends Controller
     /**
      * Show the form for editing the specified resource.
      *
-     * @param  \App\Models\Divisi  $divisi
+     * @param  \App\Models\Pertanyaan  $pertanyaan
      * @return \Illuminate\Http\Response
      */
-    public function edit(Divisi $divisi)
+    public function edit(Pertanyaan $pertanyaan)
     {
         //
     }
@@ -88,32 +77,33 @@ class DivisiController extends Controller
      * Update the specified resource in storage.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\Divisi  $divisi
+     * @param  \App\Models\Pertanyaan  $pertanyaan
      * @return \Illuminate\Http\Response
      */
     public function update(Request $request, $id)
     {
-        $divisi = Divisi::where('id', $id)->first();
-        Divisi::where('id', $id)
+        $pertanyaan = Pertanyaan::where('id_pertanyaan', $id)->first();
+        Pertanyaan::where('id_pertanyaan', $id)
             ->update([
-                'nama' => $request->nama ?? $divisi->nama,
-                'updated_at'    => now(),
+                'nama_pertanyaan'   => $request->nama_pertanyaan ?? $pertanyaan->nama_pertanyaan,
+                'type'              => $request->type ?? $pertanyaan->nama_pertanyaan,
+                'updated_at'        => now(),
             ]);
 
         Alert::success('Success', 'Data berhasil diupdate!');
-        return redirect()->route('divisi.index');
+        return redirect()->route('pertanyaan.index');
     }
 
     /**
      * Remove the specified resource from storage.
      *
-     * @param  \App\Models\Divisi  $divisi
+     * @param  \App\Models\Pertanyaan  $pertanyaan
      * @return \Illuminate\Http\Response
      */
     public function destroy($id)
     {
-        Divisi::where('id', $id)->delete();
+        Pertanyaan::where('id_pertanyaan', $id)->delete();
         Alert::success('Success', 'Data berhasil dihapus!');
-        return redirect()->route('divisi.index');
+        return redirect()->route('pertanyaan.index');
     }
 }

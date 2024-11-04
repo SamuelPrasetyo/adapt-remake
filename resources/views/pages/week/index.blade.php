@@ -10,17 +10,13 @@
                             <div class="card-body">
                                 <div class="row">
                                     <div class="col">
-                                        <h5 class="card-title mb-1 text-nowrap">List Departemen</h5>
+                                        <h5 class="card-title mb-1 text-nowrap">List Week</h5>
                                     </div>
                                     <div class="col d-flex justify-content-end mb-3">
                                         <!-- Button trigger modal -->
-                                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">
+                                        <!-- <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">
                                             Tambah
-                                        </button>
-                                        &nbsp;
-                                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#upload">
-                                            Upload
-                                        </button>
+                                        </button> -->
                                     </div>
                                 </div>
                                 <div class="table table-striped">
@@ -28,24 +24,20 @@
                                         <thead>
                                             <tr>
                                                 <th style="text-align: center;">No</th>
-                                                <th style="text-align: center;">ID</th>
-                                                <th style="text-align: center;">Nama</th>
-                                                <th style="text-align: center;">Divisi</th>
+                                                <th style="text-align: center;">Angka Week</th>
                                                 <th style="text-align: center;">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             @php $no = 1; @endphp
-                                            @foreach($departemens as $departemen)
+                                            @foreach($weeks as $week)
                                             <tr>
                                                 <td style="text-align: center;font-size:14px">{{$no++}}</td>
-                                                <td style="text-align: center;font-size:14px">{{$departemen->id}}</td>
-                                                <td style="text-align: center;font-size:14px">{{$departemen->nama}}</td>
-                                                <td style="text-align: center;font-size:14px">{{$departemen->nama_divisi}}</td>
+                                                <td style="text-align: center;font-size:14px">{{$week->angka_week}}</td>
                                                 <td class="text-center">
                                                     <button class="btn btn-sm btn-primary" data-bs-toggle="modal"
-                                                        data-bs-target="#edit-data{{$departemen->id}}">Edit</button>
-                                                    <!-- <form action="{{ route('departemen.delete', $departemen->id) }}" method="POST" class="d-inline">
+                                                        data-bs-target="#edit-data{{$week->id_week}}">Edit</button>
+                                                    <!-- <form action="{{ route('week.delete', $week->id_week) }}" method="POST" class="d-inline">
                                                         @method('delete')
                                                         @csrf
                                                         <input name="_method" type="hidden" value="DELETE">
@@ -68,22 +60,13 @@
                                         <h5 class="modal-title" id="exampleModalLabel">Tambah Data</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                     </div>
-                                    <form action="{{route('departemen.store')}}" method="POST">
+                                    <form action="{{route('week.store')}}" method="POST">
                                         @csrf
                                         <div class="modal-body">
-                                            <label class="mb-2">Nama Departemen: </label>
+                                            <label class="mb-2">Angka Nilai: </label>
                                             <div class="form-group">
-                                                <input type="text" placeholder="nama departemen"
-                                                    class="form-control" name="nama">
-                                            </div>
-                                            <label class="mb-2">Nama Divisi: </label>
-                                            <div class="form-group">
-                                                <select class="form-control" name="id_divisi" id="">
-                                                    <option value="">--Pilih nama divisi--</option>
-                                                    @foreach($divisis as $divisi)
-                                                    <option value="{{$divisi->id}}">{{$divisi->nama}}</option>
-                                                    @endforeach
-                                                </select>
+                                                <input type="text" placeholder="nama week"
+                                                    class="form-control" name="angka_week">
                                             </div>
                                         </div>
                                         <div class="modal-footer">
@@ -100,31 +83,22 @@
                             </div>
                         </div>
                         <!-- Modal Edit -->
-                        @foreach($departemens as $departemen)
-                        <div class="modal fade" id="edit-data{{$departemen->id}}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                        @foreach($weeks as $week)
+                        <div class="modal fade" id="edit-data{{$week->id_week}}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
                             <div class="modal-dialog">
                                 <div class="modal-content">
                                     <div class="modal-header">
                                         <h5 class="modal-title" id="exampleModalLabel">Tambah Data</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                     </div>
-                                    <form action="{{route('departemen.update',$departemen->id)}}" method="POST">
+                                    <form action="{{route('week.update',$week->id_week)}}" method="POST">
                                         @csrf
                                         @method('put')
                                         <div class="modal-body">
-                                            <label class="mb-2">Nama Departemen: </label>
+                                            <label class="mb-2">Angka Nilai: </label>
                                             <div class="form-group">
-                                                <input type="text" placeholder="nama departemen"
-                                                    class="form-control" name="nama" value="{{ old('nama') ? old('nama') : $departemen->nama }}">
-                                            </div>
-                                            <label class="mb-2">Nama Divisi: </label>
-                                            <div class="form-group">
-                                                <select class="form-control" name="id_divisi" id="">
-                                                    <option value="">--Pilih nama divisi--</option>
-                                                    @foreach($divisis as $divisi)
-                                                    <option value="{{$divisi->id}}" {{$departemen->id_divisi==$divisi->id ? 'selected' : ''}}>{{ $divisi->nama }}</option>
-                                                    @endforeach
-                                                </select>
+                                                <input type="text" placeholder="nama week"
+                                                    class="form-control" name="angka_week" value="{{ old('angka_week') ? old('angka_week') : $week->angka_week }}">
                                             </div>
                                         </div>
                                         <div class="modal-footer">
@@ -141,36 +115,6 @@
                             </div>
                         </div>
                         @endforeach
-                        <!-- Modal Upload-->
-                        <div class="modal fade" id="upload" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                            <div class="modal-dialog">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title" id="exampleModalLabel">Upload Data</h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                    </div>
-                                    <form action="{{route('departemen.upload')}}" method="POST" enctype="multipart/form-data">
-                                        @csrf
-                                        <div class="modal-body">
-                                            <label class="mb-2">File Excel: </label>
-                                            <div class="form-group">
-                                                <input type="file"
-                                                    class="form-control" name="file">
-                                            </div>
-                                        </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn btn-light-secondary"
-                                                data-bs-dismiss="modal">
-                                                <i class="bx bx-x d-block d-sm-none"></i>
-                                                <span class="d-none d-sm-block">Close</span>
-                                            </button>
-                                            <button class="btn btn-primary ml-1" type="submit">Submit
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -187,22 +131,6 @@
             paging: true,
             aaSorting: [],
             "lengthMenu": [10, 25, 50, 100, ],
-            layout: {
-                topStart: {
-                    buttons: [{
-                        extend: 'excel',
-                        title: 'Data Departemen',
-                        titleAttr: 'Data Departemen',
-                        exportOptions: {
-                            columns: [2, 3]
-                        }
-                    }]
-                }
-            },
-            columnDefs: [{
-                target: 1,
-                visible: false
-            }]
         });
 
     });

@@ -22,7 +22,7 @@ class DepartemenImport implements ToModel, WithHeadingRow
     public function model(array $row)
     {
         $departemen = Departemen::where('nama',$row['nama'])->first();
-        $divisi = Divisi::where('nama',$row['divisi'])->first();
+        $divisi = Divisi::where('nama',strtoupper($row['divisi']))->first();
         if(!$departemen) {
             return new Departemen([
                 'id'            => Str::uuid(),

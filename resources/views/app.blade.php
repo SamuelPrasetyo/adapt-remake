@@ -26,7 +26,7 @@
     name="viewport"
     content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
 
-  <title>Dashboard Management Trainee MAI</title>
+  <title>ADAPT MAI</title>
 
   <meta name="description" content="" />
 
@@ -83,6 +83,7 @@
             </a>
           </div>
           <div class="navbar-nav-right d-flex align-items-center" id="navbar-collapse">
+          <span class="fw-bold text-uppercase">Armada Dashboard for Assessment and Performance Tracking</span>
             <ul class="navbar-nav flex-row align-items-center ms-auto">
               <!-- User -->
               <li class="nav-item navbar-dropdown dropdown-user dropdown">
@@ -142,8 +143,8 @@
           <!-- / Content -->
           <!-- Footer -->
           <footer class="content-footer footer bg-footer-theme">
-            <div class="container-xxl d-flex flex-wrap justify-content-center py-2 flex-md-row flex-column">
-              <div class="mb-2 mb-md-0">
+            <div class="container-xxl d-flex flex-wrap justify-content-center flex-md-row flex-column">
+              <div class="mb-2 pb-0 mt-2">
                 2024 © IT Mekar Armada Investama
               </div>
             </div>
@@ -206,16 +207,33 @@
 <script>
   $(document).ready(function() {
     var url = window.location.href.split("/");
-    console.log(url[3]);
     switch (url[3]) {
       case 'dashboard':
         $("#dashboard").addClass('active');
         break;
+      case 'user':
+        $("#user").addClass('active');
+        $("#master").addClass('active open');
+        break;
       case 'divisi':
         $("#divisi").addClass('active');
+        $("#master").addClass('active open');
         break;
       case 'departemen':
         $("#departemen").addClass('active');
+        $("#master").addClass('active open');
+        break;
+      case 'batch':
+        $("#batch").addClass('active');
+        $("#master").addClass('active open');
+        break;
+      case 'nilai':
+        $("#nilai").addClass('active');
+        $("#master").addClass('active open');
+        break;
+      case 'pertanyaan':
+        $("#pertanyaan").addClass('active');
+        $("#master").addClass('active open');
         break;
       default:
         break;

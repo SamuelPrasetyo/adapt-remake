@@ -8,15 +8,20 @@
                     <div class="col-sm-12">
                         <div class="card">
                             <div class="card-body">
-                                <div class="d-flex justify-content-end mb-3">
-                                    <!-- Button trigger modal -->
-                                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">
-                                        Tambah
-                                    </button>
-                                    &nbsp;
-                                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#upload">
-                                        Upload
-                                    </button>
+                                <div class="row">
+                                    <div class="col">
+                                        <h5 class="card-title mb-1 text-nowrap">List Divisi</h5>
+                                    </div>
+                                    <div class="col d-flex justify-content-end mb-3">
+                                        <!-- Button trigger modal -->
+                                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">
+                                            Tambah
+                                        </button>
+                                        &nbsp;
+                                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#upload">
+                                            Upload
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="table table-striped">
                                     <table id="example" class="datatables-basic table border-top table-striped">
@@ -38,12 +43,12 @@
                                                 <td class="text-center">
                                                     <button class="btn btn-sm btn-primary" data-bs-toggle="modal"
                                                         data-bs-target="#edit-data{{$divisi->id}}">Edit</button>
-                                                    <form action="{{ route('divisi.delete', $divisi->id) }}" method="POST" class="d-inline">
+                                                    <!-- <form action="{{ route('divisi.delete', $divisi->id) }}" method="POST" class="d-inline">
                                                         @method('delete')
                                                         @csrf
                                                         <input name="_method" type="hidden" value="DELETE">
                                                         <button type="submit" class="btn btn-sm btn-danger show_confirm" data-toggle="tooltip" title='Delete'>Delete</button>
-                                                    </form>
+                                                    </form> -->
                                                 </td>
                                             </tr>
                                             @endforeach
@@ -166,20 +171,18 @@
                 topStart: {
                     buttons: [{
                         extend: 'excel',
-                        title:'Data Divisi',
-                        titleAttr:'Data Divisi',
+                        title: 'Data Divisi',
+                        titleAttr: 'Data Divisi',
                         exportOptions: {
                             columns: [0, 1, 2]
                         }
                     }]
                 }
             },
-            columnDefs: [
-                {
-                    target: 1,
-                    visible: false
-                }
-            ]
+            columnDefs: [{
+                target: 1,
+                visible: false
+            }]
         });
 
     });
