@@ -31,7 +31,7 @@
   <meta name="description" content="" />
 
   <!-- Favicon -->
-  <link rel="icon" type="image/x-icon" href="{{asset('/assets/img/logo.png')}}" />
+  <link rel="icon" type="image/x-icon" href="{{ asset('/assets/img/logo.png') }}" />
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -62,7 +62,7 @@
   <!--? Config:  Mandatory theme config file contain global vars & default theme options, Set your preferred theme option in this file.  -->
   <script src="../assets/js/config.js"></script>
 </head>
-@if(Auth::user() != null)
+@if (Auth::user() != null)
 <body>
   <!-- Layout wrapper -->
   <div class="layout-wrapper layout-content-navbar">
@@ -89,7 +89,7 @@
               <li class="nav-item navbar-dropdown dropdown-user dropdown">
                 <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown">
                   <div class="avatar avatar-online">
-                    <img src="{{asset('/assets/img/avatar.jpg')}}" alt class="w-px-40 h-auto rounded-circle" />
+                    <img src="{{ asset('/assets/img/avatar.jpg') }}" alt class="w-px-40 h-auto rounded-circle" />
                   </div>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end">
@@ -98,12 +98,12 @@
                       <div class="d-flex">
                         <div class="flex-shrink-0 me-3">
                           <div class="avatar avatar-online">
-                            <img src="{{asset('/assets/img/avatar.jpg')}}" alt class="w-px-40 h-auto rounded-circle" />
+                            <img src="{{ asset('/assets/img/avatar.jpg') }}" alt class="w-px-40 h-auto rounded-circle" />
                           </div>
                         </div>
                         <div class="flex-grow-1">
-                          <span class="fw-semibold d-block">{{Auth::user()->name}}</span>
-                          <small class="text-muted">{{Auth::user()->type}}</small>
+                          <span class="fw-semibold d-block">{{ Auth::user()->name }}</span>
+                          <small class="text-muted">{{ Auth::user()->type }}</small>
                         </div>
                       </div>
                     </a>
@@ -198,45 +198,45 @@
 </body>
 @else
 <script>
-  window.location = "{{ route('login.index') }}";
+    window.location = "{{ route('login.index') }}";
 </script>
-<?php exit; ?>
+<?php exit(); ?>
 @endif
 
 </html>
 <script>
-  $(document).ready(function() {
-    var url = window.location.href.split("/");
-    switch (url[3]) {
-      case 'dashboard':
-        $("#dashboard").addClass('active');
-        break;
-      case 'user':
-        $("#user").addClass('active');
-        $("#master").addClass('active open');
-        break;
-      case 'divisi':
-        $("#divisi").addClass('active');
-        $("#master").addClass('active open');
-        break;
-      case 'departemen':
-        $("#departemen").addClass('active');
-        $("#master").addClass('active open');
-        break;
-      case 'batch':
-        $("#batch").addClass('active');
-        $("#master").addClass('active open');
-        break;
-      case 'nilai':
-        $("#nilai").addClass('active');
-        $("#master").addClass('active open');
-        break;
-      case 'pertanyaan':
-        $("#pertanyaan").addClass('active');
-        $("#master").addClass('active open');
-        break;
-      default:
-        break;
-    }
-  });
+    $(document).ready(function() {
+        var url = window.location.href.split("/");
+        switch (url[3]) {
+            case 'dashboard':
+                $("#dashboard").addClass('active');
+                break;
+            case 'user':
+                $("#user").addClass('active');
+                $("#master").addClass('active open');
+                break;
+            case 'divisi':
+                $("#divisi").addClass('active');
+                $("#master").addClass('active open');
+                break;
+            case 'departemen':
+                $("#departemen").addClass('active');
+                $("#master").addClass('active open');
+                break;
+            case 'batch':
+                $("#batch").addClass('active');
+                $("#master").addClass('active open');
+                break;
+            case 'nilai':
+                $("#nilai").addClass('active');
+                $("#master").addClass('active open');
+                break;
+            case 'pertanyaan':
+                $("#pertanyaan").addClass('active');
+                $("#master").addClass('active open');
+                break;
+            default:
+                break;
+        }
+    });
 </script>
