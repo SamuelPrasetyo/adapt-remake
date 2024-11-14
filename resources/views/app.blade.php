@@ -41,28 +41,30 @@
     rel="stylesheet" />
 
   <!-- Icons. Uncomment required icon fonts -->
-  <link rel="stylesheet" href="../assets/vendor/fonts/boxicons.css" />
+  <link rel="stylesheet" href="{{('/assets/vendor/fonts/boxicons.css')}}" />
 
   <!-- Core CSS -->
-  <link rel="stylesheet" href="../assets/vendor/css/core.css" class="template-customizer-core-css" />
-  <link rel="stylesheet" href="../assets/vendor/css/theme-default.css" class="template-customizer-theme-css" />
-  <link rel="stylesheet" href="../assets/css/demo.css" />
+  <link rel="stylesheet" href="{{('/assets/vendor/css/core.css')}}" class="template-customizer-core-css" />
+  <link rel="stylesheet" href="{{('/assets/vendor/css/theme-default.css')}}" class="template-customizer-theme-css" />
+  <link rel="stylesheet" href="{{('/assets/css/demo.css')}}" />
 
   <!-- Vendors CSS -->
-  <link rel="stylesheet" href="../assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css" />
+  <link rel="stylesheet" href="{{('/assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css')}}" />
 
-  <link rel="stylesheet" href="../assets/vendor/libs/apex-charts/apex-charts.css" />
+  <link rel="stylesheet" href="{{('/assets/vendor/libs/apex-charts/apex-charts.css')}}" />
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet" />
 
   <!-- Page CSS -->
 
   <!-- Helpers -->
-  <script src="../assets/vendor/js/helpers.js"></script>
+  <script src="{{('/assets/vendor/js/helpers.js')}}"></script>
 
   <!--! Template customizer & Theme config files MUST be included after core stylesheets and helpers.js in the <head> section -->
   <!--? Config:  Mandatory theme config file contain global vars & default theme options, Set your preferred theme option in this file.  -->
-  <script src="../assets/js/config.js"></script>
+  <script src="{{('/assets/js/config.js')}}"></script>
 </head>
 @if(Auth::user() != null)
+
 <body>
   <!-- Layout wrapper -->
   <div class="layout-wrapper layout-content-navbar">
@@ -83,7 +85,7 @@
             </a>
           </div>
           <div class="navbar-nav-right d-flex align-items-center" id="navbar-collapse">
-          <span class="fw-bold text-uppercase">Armada Dashboard for Assessment and Performance Tracking</span>
+            <span class="fw-bold text-uppercase">Armada Dashboard for Assessment and Performance Tracking</span>
             <ul class="navbar-nav flex-row align-items-center ms-auto">
               <!-- User -->
               <li class="nav-item navbar-dropdown dropdown-user dropdown">
@@ -112,7 +114,7 @@
                     <div class="dropdown-divider"></div>
                   </li>
                   <li>
-                    <a class="dropdown-item" href="#">
+                    <a style="cursor:pointer" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#changepassword">
                       <i class="bx bx-key me-2"></i>
                       <span class="align-middle">Change Password</span>
                     </a>
@@ -139,6 +141,61 @@
         <div class="content-wrapper">
           <!-- Content -->
           @yield('content')
+          <!-- Toast Notification Area -->
+          <div id="toast-container" class="position-fixed top-0 end-0 p-3" style="z-index: 9999;">
+            @if (session()->has('errors'))
+            <div class="toast show bg-danger" role="alert" aria-live="assertive" aria-atomic="true">
+              <div class="toast-header bg-white">
+                <strong class="me-auto text-danger">Failed</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+              </div>
+              <div class="toast-body">
+                {{ session('errors') }}
+              </div>
+            </div>
+            @endif
+          </div>
+          <!-- Modal -->
+          <div class="modal fade" id="changepassword" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+
+                  <h5 class="modal-title" id="exampleModalLabel">Change Password</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="{{route('user.change_password',Auth::user()->id)}}" method="POST">
+                  @csrf
+                  <div class="modal-body">
+                    <label class="mb-2">Kata sandi lama: </label>
+                    <div class="form-group">
+                      <input type="password" placeholder="kata sandi lama"
+                        class="form-control" name="password_lama">
+                    </div>
+                    <label class="mb-2">Kata sandi baru: </label>
+                    <div class="form-group">
+                      <input type="password" placeholder="kata sandi baru"
+                        class="form-control" name="password">
+                    </div>
+                    <label class="mb-2">Konfirmasi Kata sandi: </label>
+                    <div class="form-group">
+                      <input type="password" placeholder="kata sandi"
+                        class="form-control" name="password2">
+                    </div>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-light-secondary"
+                      data-bs-dismiss="modal">
+                      <i class="bx bx-x d-block d-sm-none"></i>
+                      <span class="d-none d-sm-block">Close</span>
+                    </button>
+                    <button class="btn btn-primary ml-1" type="submit">Submit
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
           @include('sweetalert::alert')
           <!-- / Content -->
           <!-- Footer -->
@@ -159,22 +216,22 @@
 
         <!-- Core JS -->
         <!-- build:js assets/vendor/js/core.js -->
-        <script src="../assets/vendor/libs/jquery/jquery.js"></script>
-        <script src="../assets/vendor/libs/popper/popper.js"></script>
-        <script src="../assets/vendor/js/bootstrap.js"></script>
-        <script src="../assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js"></script>
+        <script src="{{('/assets/vendor/libs/jquery/jquery.js')}}"></script>
+        <script src="{{('/assets/vendor/libs/popper/popper.js')}}"></script>
+        <script src="{{('/assets/vendor/js/bootstrap.js')}}"></script>
+        <script src="{{('/assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js')}}"></script>
 
-        <script src="../assets/vendor/js/menu.js"></script>
+        <script src="{{('/assets/vendor/js/menu.js')}}"></script>
         <!-- endbuild -->
 
         <!-- Vendors JS -->
-        <script src="../assets/vendor/libs/apex-charts/apexcharts.js"></script>
+        <script src="{{('/assets/vendor/libs/apex-charts/apexcharts.js')}}"></script>
 
         <!-- Main JS -->
-        <script src="../assets/js/main.js"></script>
+        <script src="{{('/assets/js/main.js')}}"></script>
 
         <!-- Page JS -->
-        <script src="../assets/js/dashboards-analytics.js"></script>
+        <script src="{{('/assets/js/dashboards-analytics.js')}}"></script>
 
         <!-- Place this tag in your head or just before your close body tag. -->
         <script async defer src="https://buttons.github.io/buttons.js"></script>
@@ -190,11 +247,16 @@
         <script type="text/javascript" src="https://cdn.datatables.net/2.0.8/js/dataTables.js"></script>
         <script type="text/javascript" src="https://cdn.datatables.net/2.0.8/js/dataTables.bootstrap5.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert/2.1.0/sweetalert.min.js"></script>
-        
+
         <script type="text/javascript" src="https://cdn.datatables.net/buttons/3.1.1/js/dataTables.buttons.js"></script>
         <script type="text/javascript" src="https://cdn.datatables.net/buttons/3.1.1/js/buttons.dataTables.js"></script>
         <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
         <script type="text/javascript" src="https://cdn.datatables.net/buttons/3.1.1/js/buttons.html5.min.js"></script>
+
+        <script src="https://cdn.ckeditor.com/ckeditor5/40.0.0/classic/ckeditor.js"></script>
+        <!-- <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script> -->
+        <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
+
 </body>
 @else
 <script>
@@ -234,6 +296,22 @@
       case 'pertanyaan':
         $("#pertanyaan").addClass('active');
         $("#master").addClass('active open');
+        break;
+      case 'week':
+        $("#week").addClass('active');
+        $("#master").addClass('active open');
+        break;
+      case 'kader':
+        $("#kader").addClass('active');
+        $("#master").addClass('active open');
+        break;
+      case 'jawaban':
+        $("#jawaban").addClass('active');
+        $("#modul").addClass('active open');
+        break;
+      case 'feedback':
+        $("#feedback").addClass('active');
+        $("#modul").addClass('active open');
         break;
       default:
         break;
