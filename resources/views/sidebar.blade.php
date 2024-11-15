@@ -19,9 +19,10 @@
                 <div data-i18n="Analytics">Dashboard</div>
             </a>
         </li>
+        @canany('isAdmin')
         <li class="menu-item" id="master">
             <a href="javascript:void(0);" class="menu-link menu-toggle">
-                <i class="menu-icon tf-icons bx bx-layout"></i>
+                <i class="menu-icon tf-icons bx bx-grid"></i>
                 <div data-i18n="Layouts">Master</div>
             </a>
             <ul class="menu-sub">
@@ -40,35 +41,71 @@
                 <li class="menu-item" id="departemen">
                     <a href="{{route('departemen.index')}}" class="menu-link">
                         <i class="menu-icon tf-icons bx bxs-building"></i>
-                        <div data-i18n="Departemen">Departemen</div>
+                        <div>Departemen</div>
                     </a>
                 </li>
                 <li class="menu-item" id="batch">
                     <a href="{{route('batch.index')}}" class="menu-link">
                         <i class="menu-icon tf-icons bx bxs-collection"></i>
-                        <div data-i18n="Departemen">Batch</div>
+                        <div>Batch</div>
                     </a>
                 </li>
                 <li class="menu-item" id="nilai">
                     <a href="{{route('nilai.index')}}" class="menu-link">
                         <i class="menu-icon tf-icons bx bxs-cube-alt"></i>
-                        <div data-i18n="Departemen">Nilai</div>
+                        <div>Nilai</div>
                     </a>
                 </li>
                 <li class="menu-item" id="pertanyaan">
                     <a href="{{route('pertanyaan.index')}}" class="menu-link">
                         <i class="menu-icon tf-icons bx bxs-file"></i>
-                        <div data-i18n="Departemen">Pertanyaan</div>
+                        <div>Pertanyaan</div>
                     </a>
                 </li>
                 <li class="menu-item" id="week">
                     <a href="{{route('week.index')}}" class="menu-link">
                         <i class="menu-icon tf-icons bx bxs-time"></i>
-                        <div data-i18n="Departemen">Week</div>
+                        <div>Week</div>
+                    </a>
+                </li>
+                <li class="menu-item" id="kader">
+                    <a href="{{route('kader.index')}}" class="menu-link">
+                        <i class="menu-icon tf-icons bx bxs-detail"></i>
+                        <div>Kader</div>
                     </a>
                 </li>
             </ul>
         </li>
-
+        @endcanany
+        <li class="menu-item" id="modul">
+            <a href="javascript:void(0);" class="menu-link menu-toggle">
+                <i class="menu-icon tf-icons bx bx-layout"></i>
+                <div data-i18n="Layouts">Modul</div>
+            </a>
+            <ul class="menu-sub">
+                @canany('isAdmin')
+                <li class="menu-item" id="jawaban">
+                    <a href="{{route('jawaban.index')}}" class="menu-link">
+                        <i class="menu-icon tf-icons bx bxs-file"></i>
+                        <div data-i18n="Jawaban">Jawaban</div>
+                    </a>
+                </li>
+                <li class="menu-item" id="learning_growth">
+                    <a href="{{route('learning.growth')}}" class="menu-link">
+                        <i class="menu-icon tf-icons bx bxs-file"></i>
+                        <div data-i18n="learning_growth">learning Growth</div>
+                    </a>
+                </li>
+                @endcanany
+                @canany(['isMentor','isKader'])
+                <li class="menu-item" id="feedback">
+                    <a href="{{route('feedback.index')}}" class="menu-link">
+                        <i class="menu-icon tf-icons bx bxs-archive-in"></i>
+                        <div data-i18n="Feedback">Feedback</div>
+                    </a>
+                </li>
+                @endcanany
+            </ul>
+        </li>
     </ul>
 </aside>

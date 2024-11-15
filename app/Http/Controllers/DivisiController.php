@@ -53,7 +53,7 @@ class DivisiController extends Controller
         Alert::success('Success', 'Data berhasil ditambahkan!');
         return redirect()->route('divisi.index');
     }
-    public function upload(Request $request)
+    public function import(Request $request)
     {
 
         Excel::import(new DivisiImport(), $request->file('file')->store('temp'));

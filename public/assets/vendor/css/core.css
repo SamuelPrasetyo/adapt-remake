@@ -151,8 +151,8 @@ abbr[data-bs-original-title] {
   /* -webkit-text-decoration: underline dotted;
           text-decoration: underline dotted; */
   cursor: help;
-  -webkit-text-decoration-skip-ink: none;
-          text-decoration-skip-ink: none;
+  /* -webkit-text-decoration-skip-ink: none;
+          text-decoration-skip-ink: none; */
 }
 
 address {
@@ -447,7 +447,7 @@ legend + * {
   font: inherit;
 }
 
-::-webkit-file-upload-button {
+::-webkit-file-import-button {
   font: inherit;
   -webkit-appearance: button;
 }
@@ -2249,7 +2249,7 @@ progress {
 .form-control:hover:not(:disabled):not([readonly])::file-selector-button {
   background-color: #f2f2f2;
 }
-.form-control::-webkit-file-upload-button {
+.form-control::-webkit-file-import-button {
   padding: 0.4375rem 0.875rem;
   margin: -0.4375rem -0.875rem;
   -webkit-margin-end: 0.875rem;
@@ -2266,12 +2266,12 @@ progress {
   transition: all 0.2s ease-in-out;
 }
 @media (prefers-reduced-motion: reduce) {
-  .form-control::-webkit-file-upload-button {
+  .form-control::-webkit-file-import-button {
     -webkit-transition: none;
     transition: none;
   }
 }
-.form-control:hover:not(:disabled):not([readonly])::-webkit-file-upload-button {
+.form-control:hover:not(:disabled):not([readonly])::-webkit-file-import-button {
   background-color: #f2f2f2;
 }
 
@@ -2303,7 +2303,7 @@ progress {
   -webkit-margin-end: 0.625rem;
           margin-inline-end: 0.625rem;
 }
-.form-control-sm::-webkit-file-upload-button {
+.form-control-sm::-webkit-file-import-button {
   padding: 0.25rem 0.625rem;
   margin: -0.25rem -0.625rem;
   -webkit-margin-end: 0.625rem;
@@ -2322,7 +2322,7 @@ progress {
   -webkit-margin-end: 1.25rem;
           margin-inline-end: 1.25rem;
 }
-.form-control-lg::-webkit-file-upload-button {
+.form-control-lg::-webkit-file-import-button {
   padding: 0.75rem 1.25rem;
   margin: -0.75rem -1.25rem;
   -webkit-margin-end: 1.25rem;
@@ -4515,6 +4515,10 @@ textarea.form-control-lg {
   border-bottom-width: 0;
 }
 
+#btn-close2{
+  padding:5px;
+}
+
 .btn-close {
   box-sizing: content-box;
   width: 0.8em;
@@ -4596,6 +4600,9 @@ textarea.form-control-lg {
 .toast-body {
   padding: 1.25rem;
   word-wrap: break-word;
+}
+.select2-container--default .select2-dropdown {
+  z-index: 9999 !important; /* Make sure it's above the modal */
 }
 
 .modal {

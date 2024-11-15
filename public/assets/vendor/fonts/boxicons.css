@@ -1676,7 +1676,7 @@
   content: "\ea3f";
 }
 
-.bxs-cloud-upload:before {
+.bxs-cloud-import:before {
   content: "\ea40";
 }
 
@@ -4276,7 +4276,7 @@
   content: "\ecc9";
 }
 
-.bx-cloud-upload:before {
+.bx-cloud-import:before {
   content: "\ecca";
 }
 
@@ -6264,9 +6264,9 @@
   content: "\eeba";
 }
 
-.bx-underline:before {
+/* .bx-underline:before {
   content: "\eebb";
-}
+} */
 
 .bx-undo:before {
   content: "\eebc";
@@ -6292,7 +6292,7 @@
   content: "\eec1";
 }
 
-.bx-upload:before {
+.bx-import:before {
   content: "\eec2";
 }
 

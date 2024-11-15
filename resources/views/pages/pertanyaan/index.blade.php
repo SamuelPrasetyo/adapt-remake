@@ -33,18 +33,12 @@
                                             @php $no = 1; @endphp
                                             @foreach($pertanyaans as $pertanyaan)
                                             <tr>
-                                                <td style="text-align: center;font-size:14px">{{$no++}}</td>
-                                                <td style="text-align: center;font-size:14px">{{$pertanyaan->nama_pertanyaan}}</td>
-                                                <td style="text-align: center;font-size:14px">{{$pertanyaan->type}}</td>
-                                                <td class="text-center">
+                                                <td style="text-align: left;font-size:14px">{{$no++}}</td>
+                                                <td style="text-align: left;font-size:14px">{{strip_tags($pertanyaan->nama_pertanyaan)}}</td>
+                                                <td style="text-align: left;font-size:14px">{{$pertanyaan->type}}</td>
+                                                <td class="text-left">
                                                     <button class="btn btn-sm btn-primary" data-bs-toggle="modal"
                                                         data-bs-target="#edit-data{{$pertanyaan->id_pertanyaan}}">Edit</button>
-                                                    <!-- <form action="{{ route('pertanyaan.delete', $pertanyaan->id_pertanyaan) }}" method="POST" class="d-inline">
-                                                        @method('delete')
-                                                        @csrf
-                                                        <input name="_method" type="hidden" value="DELETE">
-                                                        <button type="submit" class="btn btn-sm btn-danger show_confirm" data-toggle="tooltip" title='Delete'>Delete</button>
-                                                    </form> -->
                                                 </td>
                                             </tr>
                                             @endforeach
@@ -53,14 +47,45 @@
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Modal Edit -->
-                        @foreach($pertanyaans as $pertanyaan)
-                        <div class="modal fade" id="edit-data{{$pertanyaan->id_pertanyaan}}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                        <!-- Modal -->
+                        <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
                             <div class="modal-dialog">
                                 <div class="modal-content">
                                     <div class="modal-header">
                                         <h5 class="modal-title" id="exampleModalLabel">Tambah Data</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <form action="{{route('divisi.store')}}" method="POST">
+                                        @csrf
+                                        <div class="modal-body">
+                                            <label class="mb-2">Nama Divisi: </label>
+                                            <div class="form-group">
+                                                <input type="text" placeholder="nama divisi"
+                                                    class="form-control" name="nama">
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-light-secondary"
+                                                data-bs-dismiss="modal">
+                                                <i class="bx bx-x d-block d-sm-none"></i>
+                                                <span class="d-none d-sm-block">Close</span>
+                                            </button>
+                                            <button class="btn btn-primary ml-1" type="submit">Submit
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Modal Edit -->
+                        @php $no=1; @endphp
+                        @foreach($pertanyaans as $pertanyaan)
+                        <div class="modal fade modalss" id="edit-data{{$pertanyaan->id_pertanyaan}}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="exampleModalLabel">Edit Data</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                     </div>
                                     <form action="{{route('pertanyaan.update',$pertanyaan->id_pertanyaan)}}" method="POST">
@@ -70,8 +95,9 @@
                                             <label class="mb-2">Nama Pertanyaan: </label>
                                             <div class="form-group">
                                                 <textarea type="text" placeholder="nama pertanyaan"
-                                                    class="form-control" name="nama_pertanyaan" value="{{$pertanyaan->nama_pertanyaan }}">{{$pertanyaan->nama_pertanyaan }}</textarea>
+                                                    class="form-control" id="ck{{$pertanyaan->id_pertanyaan}}" name="nama_pertanyaan" value="{{$pertanyaan->nama_pertanyaan }}">{{$pertanyaan->nama_pertanyaan }}</textarea>
                                             </div>
+                                            @if(!str_contains($pertanyaan->type,'Subject'))
                                             <label class="mb-2">Type: </label>
                                             <div class="form-group">
                                                 <select class="form-control" name="type" id="">
@@ -80,6 +106,7 @@
                                                     <option value="Kader" {{$pertanyaan->type=='Kader' ? 'selected' : ''}}>Kader</option>
                                                 </select>
                                             </div>
+                                            @endif
                                         </div>
                                         <div class="modal-footer">
                                             <button type="button" class="btn btn-light-secondary"
@@ -104,6 +131,7 @@
 @endsection
 @section('addon-script')
 <script type="text/javascript">
+    var i = 0;
     $(document).ready(function() {
         $('#example').DataTable({
             // scrollY:        "100%",
@@ -111,6 +139,43 @@
             paging: true,
             aaSorting: [],
             "lengthMenu": [10, 25, 50, 100, ],
+        });
+        var editors = {};
+        $('.modalss').on('shown.bs.modal', function() {
+            var modalId = $(this).attr('id'); // Get the modal ID (edit-data + id)
+            var pertanyaanId = modalId.replace('edit-data', ''); // Extract the pertanyaan id
+
+            // Destroy the previous instance if it exists
+            if (editors[pertanyaanId]) {
+                editors[pertanyaanId].destroy().catch(error => {
+                    console.error('Error destroying CKEditor:', error);
+                });
+            }
+
+            // Initialize CKEditor for the specific textarea inside this modal
+            ClassicEditor
+                .create(document.querySelector('#ck' + pertanyaanId))
+                .then(editor => {
+                    // Store the editor instance for later destruction
+                    editors[pertanyaanId] = editor;
+                })
+                .catch(error => {
+                    console.error(error);
+                });
+        });
+
+        // Ensure CKEditor is destroyed when modal is hidden to prevent memory leaks
+        $('.modalss').on('hidden.bs.modal', function() {
+            var modalId = $(this).attr('id');
+            var pertanyaanId = modalId.replace('edit-data', '');
+
+            // Destroy the CKEditor instance when the modal is closed
+            if (editors[pertanyaanId]) {
+                editors[pertanyaanId].destroy().catch(error => {
+                    console.error('Error destroying CKEditor:', error);
+                });
+                delete editors[pertanyaanId]; // Clean up the reference
+            }
         });
 
     });

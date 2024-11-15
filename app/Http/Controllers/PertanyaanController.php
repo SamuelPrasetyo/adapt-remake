@@ -18,7 +18,7 @@ class PertanyaanController extends Controller
      */
     public function index()
     {
-        $pertanyaans = Pertanyaan::orderBy('nama_pertanyaan','asc')->get();
+        $pertanyaans = Pertanyaan::orderBy('type','asc')->orderBy('id_pertanyaan','asc')->get();
         return view('pages.pertanyaan.index', compact('pertanyaans'));
     }
 
@@ -86,7 +86,7 @@ class PertanyaanController extends Controller
         Pertanyaan::where('id_pertanyaan', $id)
             ->update([
                 'nama_pertanyaan'   => $request->nama_pertanyaan ?? $pertanyaan->nama_pertanyaan,
-                'type'              => $request->type ?? $pertanyaan->nama_pertanyaan,
+                'type'              => $request->type ?? $pertanyaan->type,
                 'updated_at'        => now(),
             ]);
 

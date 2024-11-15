@@ -4,9 +4,12 @@ use App\Http\Controllers\BatchController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DepartemenController;
 use App\Http\Controllers\DivisiController;
+use App\Http\Controllers\JawabanController;
+use App\Http\Controllers\KaderController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\NilaiController;
 use App\Http\Controllers\PertanyaanController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WeekController;
 use Illuminate\Support\Facades\Route;
@@ -25,57 +28,84 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('app');
 });
-Route::middleware(['can:isAdmin'])->group(function () {
-    Route::get('/dashboard', [DashboardController::class,'index'])->name('dashboard.index');
-});
-
 Route::controller(LoginController::class)->group(function () {
     Route::get('/login', 'index')->name('login.index');
     Route::post('/login/store', 'store')->name('login.store');
     Route::post('/logout', 'logout')->name('logout');
 });
+Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
+Route::middleware(['can:isAdmin'])->group(function () {
 
-Route::controller(DivisiController::class)->group(function () {
-    Route::get('/divisi', 'index')->name('divisi.index');
-    Route::post('/divisi/store', 'store')->name('divisi.store');
-    Route::post('/divisi/upload', 'upload')->name('divisi.upload');
-    Route::put('/divisi/update/{id}', 'update')->name('divisi.update');
-    Route::delete('/divisi/delete/{id}', 'destroy')->name('divisi.delete');
+    Route::controller(DivisiController::class)->group(function () {
+        Route::get('/divisi', 'index')->name('divisi.index');
+        Route::post('/divisi/store', 'store')->name('divisi.store');
+        Route::post('/divisi/import', 'import')->name('divisi.import');
+        Route::put('/divisi/update/{id}', 'update')->name('divisi.update');
+        Route::delete('/divisi/delete/{id}', 'destroy')->name('divisi.delete');
+    });
+    Route::controller(DepartemenController::class)->group(function () {
+        Route::get('/departemen', 'index')->name('departemen.index');
+        Route::post('/departemen/store', 'store')->name('departemen.store');
+        Route::post('/departemen/import', 'import')->name('departemen.import');
+        Route::put('/departemen/update/{id}', 'update')->name('departemen.update');
+        Route::delete('/departemen/delete/{id}', 'destroy')->name('departemen.delete');
+    });
+    Route::controller(UserController::class)->group(function () {
+        Route::get('/user', 'index')->name('user.index');
+        Route::post('/user/store', 'store')->name('user.store');
+        Route::post('/user/change_password/{id}', 'change_password')->name('user.change_password');
+        Route::put('/user/update/{id}', 'update')->name('user.update');
+        Route::delete('/user/delete/{id}', 'destroy')->name('user.delete');
+    });
+    Route::controller(BatchController::class)->group(function () {
+        Route::get('/batch', 'index')->name('batch.index');
+        Route::post('/batch/store', 'store')->name('batch.store');
+        Route::put('/batch/update/{id}', 'update')->name('batch.update');
+        Route::delete('/batch/delete/{id}', 'destroy')->name('batch.delete');
+    });
+    Route::controller(NilaiController::class)->group(function () {
+        Route::get('/nilai', 'index')->name('nilai.index');
+        Route::post('/nilai/store', 'store')->name('nilai.store');
+        Route::put('/nilai/update/{id}', 'update')->name('nilai.update');
+        Route::delete('/nilai/delete/{id}', 'destroy')->name('nilai.delete');
+    });
+    Route::controller(PertanyaanController::class)->group(function () {
+        Route::get('/pertanyaan', 'index')->name('pertanyaan.index');
+        Route::post('/pertanyaan/store', 'store')->name('pertanyaan.store');
+        Route::put('/pertanyaan/update/{id}', 'update')->name('pertanyaan.update');
+        Route::delete('/pertanyaan/delete/{id}', 'destroy')->name('pertanyaan.delete');
+    });
+    Route::controller(WeekController::class)->group(function () {
+        Route::get('/week', 'index')->name('week.index');
+        Route::post('/week/store', 'store')->name('week.store');
+        Route::put('/week/update/{id}', 'update')->name('week.update');
+        Route::delete('/week/delete/{id}', 'destroy')->name('week.delete');
+    });
+    Route::controller(KaderController::class)->group(function () {
+        Route::get('/kader', 'index')->name('kader.index');
+        Route::post('/kader/store', 'store')->name('kader.store');
+        Route::put('/kader/update/{id}', 'update')->name('kader.update');
+        Route::delete('/kader/delete/{id}', 'destroy')->name('kader.delete');
+        Route::post('/kader/import', 'import')->name('kader.import');
+    });
+
+    Route::controller(JawabanController::class)->group(function () {
+        Route::get('/jawaban', 'index')->name('jawaban.index');         
+        Route::put('/jawaban/update/{id}', 'update')->name('jawaban.update');         
+        Route::get('/jawaban_user/{week}', 'feedback_user')->name('feedback.user');
+        Route::post('/jawaban/store', 'store')->name('jawaban.store');
+        Route::put('/jawaban/update/{id}', 'update')->name('jawaban.update');
+        Route::get('/detail/{week}', 'detail')->name('jawaban.detail');
+    });
+
+    Route::controller(ReportController::class)->group(function () {
+        Route::get('/learning-growth','learning_growth')->name('learning.growth');
+    });
 });
-Route::controller(DepartemenController::class)->group(function () {
-    Route::get('/departemen', 'index')->name('departemen.index');
-    Route::post('/departemen/store', 'store')->name('departemen.store');
-    Route::post('/departemen/upload', 'upload')->name('departemen.upload');
-    Route::put('/departemen/update/{id}', 'update')->name('departemen.update');
-    Route::delete('/departemen/delete/{id}', 'destroy')->name('departemen.delete');
-});
-Route::controller(UserController::class)->group(function () {
-    Route::get('/user', 'index')->name('user.index');
-    Route::post('/user/store', 'store')->name('user.store');
-    Route::put('/user/update/{id}', 'update')->name('user.update');
-    Route::delete('/user/delete/{id}', 'destroy')->name('user.delete');
-});
-Route::controller(BatchController::class)->group(function () {
-    Route::get('/batch', 'index')->name('batch.index');
-    Route::post('/batch/store', 'store')->name('batch.store');
-    Route::put('/batch/update/{id}', 'update')->name('batch.update');
-    Route::delete('/batch/delete/{id}', 'destroy')->name('batch.delete');
-});
-Route::controller(NilaiController::class)->group(function () {
-    Route::get('/nilai', 'index')->name('nilai.index');
-    Route::post('/nilai/store', 'store')->name('nilai.store');
-    Route::put('/nilai/update/{id}', 'update')->name('nilai.update');
-    Route::delete('/nilai/delete/{id}', 'destroy')->name('nilai.delete');
-});
-Route::controller(PertanyaanController::class)->group(function () {
-    Route::get('/pertanyaan', 'index')->name('pertanyaan.index');
-    Route::post('/pertanyaan/store', 'store')->name('pertanyaan.store');
-    Route::put('/pertanyaan/update/{id}', 'update')->name('pertanyaan.update');
-    Route::delete('/pertanyaan/delete/{id}', 'destroy')->name('pertanyaan.delete');
-});
-Route::controller(WeekController::class)->group(function () {
-    Route::get('/week', 'index')->name('week.index');
-    Route::post('/week/store', 'store')->name('week.store');
-    Route::put('/week/update/{id}', 'update')->name('week.update');
-    Route::delete('/week/delete/{id}', 'destroy')->name('week.delete');
+
+
+Route::controller(JawabanController::class)->group(function () {
+    Route::get('/feedback', 'feedback')->name('feedback.index');
+    Route::post('/feedback/store', 'feedback_store')->name('feedback.store');
+    Route::post('/feedback_kader/store', 'feedback_kader_store')->name('feedback_kader.store');
 });

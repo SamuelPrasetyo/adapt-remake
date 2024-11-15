@@ -75,10 +75,16 @@
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
                 @endif
+                @if (session()->has('changes'))
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    {{ session('changes') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                @endif
                 <div class="card">
                     <div class="card-body">
                         <div class="app-brand justify-content-center mb-3">
-                            <img src="{{asset('/assets/img/logomai.png')}}" width="140" height="70" alt="">
+                            <img src="{{asset('/assets/img/logomai.png')}}" width="140" height="80" alt="">
                         </div>
                         <!-- /Logo -->
                         <h3 class="mb-2 text-center fw-bold" style="color:#3e464d">LOGIN</h3>

@@ -27,6 +27,7 @@
                                                 <th style="text-align: center;">NIK</th>
                                                 <th style="text-align: center;">Nama</th>
                                                 <th style="text-align: center;">Type</th>
+                                                <th style="text-align: center;">Bisnis Unit</th>
                                                 <th style="text-align: center;">Action</th>
                                             </tr>
                                         </thead>
@@ -38,6 +39,7 @@
                                                 <td style="text-align: center;font-size:14px">{{$user->nik}}</td>
                                                 <td style="text-align: center;font-size:14px">{{$user->name}}</td>
                                                 <td style="text-align: center;font-size:14px">{{$user->type}}</td>
+                                                <td style="text-align: center;font-size:14px">{{$user->bu}}</td>
                                                 @if(Auth::user()->id != $user->id && Auth::user()->type == 'Admin')
                                                 <td class="text-center">
                                                     <!-- <button class="btn btn-sm btn-primary" data-bs-toggle="modal"
@@ -73,39 +75,51 @@
                                     <form action="{{route('user.store')}}" method="POST">
                                         @csrf
                                         <div class="modal-body">
-                                            <label class="mb-2">NIK: </label>
                                             <div class="row mb-1">
                                                 <div class="col-3">
                                                     <div class="form-check">
-                                                        <input class="form-check-input" type="radio" name="flexRadioDefault" id="flexRadioDefault2" checked>
-                                                        <label class="form-check-label" for="flexRadioDefault2">
+                                                        <input class="form-check-input" type="radio" name="flexRadioDefault" id="radio1" checked>
+                                                        <label class="form-check-label" for="radio1">
                                                             Kader
                                                         </label>
                                                     </div>
                                                 </div>
                                                 <div class="col-3">
                                                     <div class="form-check">
-                                                        <input class="form-check-input" type="radio" name="flexRadioDefault" id="flexRadioDefault1">
-                                                        <label class="form-check-label" for="flexRadioDefault1">
+                                                        <input class="form-check-input" type="radio" name="flexRadioDefault" id="radio2">
+                                                        <label class="form-check-label" for="radio2">
                                                             Mentor
                                                         </label>
                                                     </div>
                                                 </div>
                                             </div>
                                             <div class="form-group">
-                                                <input id="nik-mentor" type="text" placeholder="nomor induk karyawan"
-                                                    class="form-control d-none" name="nik_mentor">
-                                                <select name="nik_kader" id="nik-kader" class="form-control">
+                                                <label class="mb-2">NIK: </label>
+
+                                                <select name="nik_kader" id="input1" class="form-control">
                                                     <option value="">--Pilih Kader--</option>
                                                     @foreach($kaders as $kader)
                                                     <option value="{{$kader->nik}}">{{$kader->nik . ' - '. $kader->nama}}</option>
                                                     @endforeach
                                                 </select>
+                                                <input id="input2" type="text" placeholder="nomor induk karyawan"
+                                                    class="form-control" style="display:none;" name="nik_mentor">
                                             </div>
-                                            <label class="mb-2">Nama: </label>
-                                            <div class="form-group">
-                                                <input type="text" placeholder="nama user"
-                                                    class="form-control" name="name">
+                                            <div class="form-group" id="input3" style="display:none;">
+                                                <label class="mb-2">Bisnis Unit: </label>
+                                                <select name="company_code" class="form-control">
+                                                    <option value="">--Pilih Bisnis Unit--</option>
+                                                    @foreach($companys as $company)
+                                                    <option value="{{$company->company_code}}">{{$company->company_name}}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div class="form-group" id="input4" style="display:none;">
+                                                <label class="mb-2">Nama: </label>
+                                                <div class="form-group">
+                                                    <input type="text" placeholder="nama user"
+                                                        class="form-control" name="name">
+                                                </div>
                                             </div>
                                             <label class="mb-2">Kata sandi: </label>
                                             <div class="form-group">
@@ -182,6 +196,24 @@
 @endsection
 @section('addon-script')
 <script type="text/javascript">
+    document.getElementById('radio1').addEventListener('change', function() {
+        if (this.checked) {
+            document.getElementById('input1').style.display = 'block';
+            document.getElementById('input2').style.display = 'none';
+            document.getElementById('input3').style.display = 'none';
+            document.getElementById('input4').style.display = 'none';
+        }
+    });
+
+    document.getElementById('radio2').addEventListener('change', function() {
+        if (this.checked) {
+            document.getElementById('input2').style.display = 'block';
+            document.getElementById('input3').style.display = 'block';
+            document.getElementById('input4').style.display = 'block';
+            document.getElementById('input1').style.display = 'none';
+        }
+    });
+
     $(document).ready(function() {
         $('#example').DataTable({
             // scrollY:        "100%",
@@ -201,25 +233,6 @@
                     }]
                 }
             },
-        });
-
-        var mentor = $("#flexRadioDefault1 input[type='radio']:checked");
-        $('#flexRadioDefault1').change(function() {
-            var value = $(this).val();
-            if (value == 'on') {
-                $('#nik-mentor').removeClass('d-none');
-                $('#nik-kader').addClass('d-none');
-                $('#user-type').val('Mentor');
-            }
-        });
-        var kader = $("#flexRadioDefault2 input[type='radio']:checked");
-        $('#flexRadioDefault2').change(function() {
-            var value = $(this).val();
-            if (value == 'on') {
-                $('#nik-mentor').addClass('d-none');
-                $('#nik-kader').removeClass('d-none');
-                $('#user-type').val('Kader');
-            }
         });
 
 

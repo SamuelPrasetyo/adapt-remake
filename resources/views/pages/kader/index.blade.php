@@ -10,13 +10,13 @@
                             <div class="card-body">
                                 <div class="row">
                                     <div class="col">
-                                        <h5 class="card-title mb-1 text-nowrap">List Divisi</h5>
+                                        <h5 class="card-title mb-1 text-nowrap">List Kader</h5>
                                     </div>
                                     <div class="col d-flex justify-content-end mb-3">
                                         <!-- Button trigger modal -->
-                                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">
+                                        <!-- <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">
                                             Tambah
-                                        </button>
+                                        </button> -->
                                         &nbsp;
                                         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#import">
                                             Import
@@ -28,27 +28,31 @@
                                         <thead>
                                             <tr>
                                                 <th style="text-align: center;">No</th>
-                                                <th style="text-align: center;">ID</th>
-                                                <th style="text-align: center;">Nama</th>
+                                                <th style="text-align: center;">NIK</th>
+                                                <th style="text-align: center;">Nama Kader</th>
+                                                <th style="text-align: center;">Departemen</th>
+                                                <th style="text-align: center;">Divisi</th>
+                                                <th style="text-align: center;">Bisnis Unit</th>
+                                                <th style="text-align: center;">Batch</th>
+                                                <th style="text-align: center;">Tahun</th>
                                                 <th style="text-align: center;">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             @php $no = 1; @endphp
-                                            @foreach($divisis as $divisi)
+                                            @foreach($kaders as $kader)
                                             <tr>
                                                 <td style="text-align: center;font-size:14px">{{$no++}}</td>
-                                                <td style="text-align: center;font-size:14px">{{$divisi->id}}</td>
-                                                <td style="text-align: center;font-size:14px">{{$divisi->nama}}</td>
+                                                <td style="text-align: center;font-size:14px">{{$kader->nik}}</td>
+                                                <td style="text-align: center;font-size:14px">{{$kader->nama}}</td>
+                                                <td style="text-align: center;font-size:14px">{{$kader->dept_name}}</td>
+                                                <td style="text-align: center;font-size:14px">{{$kader->divisi_name}}</td>
+                                                <td style="text-align: center;font-size:14px">{{$kader->bu}}</td>
+                                                <td style="text-align: center;font-size:14px">{{$kader->batch_name}}</td>
+                                                <td style="text-align: center;font-size:14px">{{$kader->tahun_batch}}</td>
                                                 <td class="text-center">
                                                     <button class="btn btn-sm btn-primary" data-bs-toggle="modal"
-                                                        data-bs-target="#edit-data{{$divisi->id}}">Edit</button>
-                                                    <!-- <form action="{{ route('divisi.delete', $divisi->id) }}" method="POST" class="d-inline">
-                                                        @method('delete')
-                                                        @csrf
-                                                        <input name="_method" type="hidden" value="DELETE">
-                                                        <button type="submit" class="btn btn-sm btn-danger show_confirm" data-toggle="tooltip" title='Delete'>Delete</button>
-                                                    </form> -->
+                                                        data-bs-target="#edit-data{{$kader->id}}">Edit</button>
                                                 </td>
                                             </tr>
                                             @endforeach
@@ -59,20 +63,20 @@
                         </div>
 
                         <!-- Modal -->
-                        <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                        <!-- <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
                             <div class="modal-dialog">
                                 <div class="modal-content">
                                     <div class="modal-header">
                                         <h5 class="modal-title" id="exampleModalLabel">Tambah Data</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                     </div>
-                                    <form action="{{route('divisi.store')}}" method="POST">
+                                    <form action="{{route('kader.store')}}" method="POST">
                                         @csrf
                                         <div class="modal-body">
-                                            <label class="mb-2">Nama Divisi: </label>
+                                            <label class="mb-2">Nama Nilai: </label>
                                             <div class="form-group">
-                                                <input type="text" placeholder="nama divisi"
-                                                    class="form-control" name="nama">
+                                                <input type="text" placeholder="nama kader"
+                                                    class="form-control" name="angka_kader">
                                             </div>
                                         </div>
                                         <div class="modal-footer">
@@ -87,24 +91,80 @@
                                     </form>
                                 </div>
                             </div>
-                        </div>
+                        </div> -->
                         <!-- Modal Edit -->
-                        @foreach($divisis as $divisi)
-                        <div class="modal fade" id="edit-data{{$divisi->id}}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                        @foreach($kaders as $kader)
+                        <div class="modal fade" id="edit-data{{$kader->id}}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
                             <div class="modal-dialog">
                                 <div class="modal-content">
                                     <div class="modal-header">
-                                        <h5 class="modal-title" id="exampleModalLabel">Edit Data</h5>
+                                        <h5 class="modal-title" id="exampleModalLabel">Update Data</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                     </div>
-                                    <form action="{{route('divisi.update',$divisi->id)}}" method="POST">
+                                    <form action="{{route('kader.update',$kader->id)}}" method="POST">
                                         @csrf
                                         @method('put')
                                         <div class="modal-body">
-                                            <label class="mb-2">Nama Divisi: </label>
+                                            <label class="mb-2">Nama Kader: </label>
                                             <div class="form-group">
-                                                <input type="text" placeholder="nama divisi"
-                                                    class="form-control" name="nama" value="{{ old('nama') ? old('nama') : $divisi->nama }}">
+                                                <input type="text"
+                                                    class="form-control" name="nama" value="{{ old('nama') ? old('nama') : $kader->nama }}">
+                                            </div>
+                                            <label class="mb-2">NIK: </label>
+                                            <div class="form-group">
+                                                <input type="text"
+                                                    class="form-control" value="{{ old('nik') ? old('nik') : $kader->nik }}">
+                                            </div>
+                                            <label class="mb-2">Jenis Kelamin: </label>
+                                            <div class="form-group">
+                                                <input type="text"
+                                                    class="form-control" name="jenis_kelamin" value="{{ old('jenis_kelamin') ? old('jenis_kelamin') : $kader->jenis_kelamin }}">
+                                            </div>
+                                            <label class="mb-2">IQ: </label>
+                                            <div class="form-group">
+                                                <input type="text"
+                                                    class="form-control" name="iq" value="{{ old('iq') ? old('iq') : $kader->iq }}">
+                                            </div>
+                                            <label class="mb-2">IPK: </label>
+                                            <div class="form-group">
+                                                <input type="text"
+                                                    class="form-control" name="ipk" value="{{ old('ipk') ? old('ipk') : $kader->ipk }}">
+                                            </div>
+                                            <label class="mb-2">Batch: </label>
+                                            <div class="form-group">
+                                                <select class="form-control" name="id_batch" id="">
+                                                    <option value="">--Pilih batch--</option>
+                                                    @foreach($batchs as $batch)
+                                                    <option value="{{$batch->id_batch}}" {{$kader->id_batch==$batch->id_batch ? 'selected' : ''}}>{{ $batch->nama_batch }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <label class="mb-2">Bisnis Unit: </label>
+                                            <div class="form-group">
+                                                <select class="form-control" name="company_code" id="">
+                                                    <option value="">--Pilih nama bisnis unit--</option>
+                                                    @foreach($companys as $company)
+                                                    <option value="{{$company->company_code}}" {{$kader->company_code==$company->company_code ? 'selected' : ''}}>{{ $company->company_shortname }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <label class="mb-2">Divisi: </label>
+                                            <div class="form-group">
+                                                <select class="form-control" name="id_divisi" id="">
+                                                    <option value="">--Pilih nama divisi--</option>
+                                                    @foreach($divisis as $divisi)
+                                                    <option value="{{$divisi->id}}" {{$kader->id_divisi==$divisi->id ? 'selected' : ''}}>{{ $divisi->nama }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <label class="mb-2">Departemen: </label>
+                                            <div class="form-group">
+                                                <select class="form-control" name="id_departemen" id="">
+                                                    <option value="">--Pilih nama departemen--</option>
+                                                    @foreach($departemens as $departemen)
+                                                    <option value="{{$departemen->id}}" {{$kader->id_departemen==$departemen->id ? 'selected' : ''}}>{{ $departemen->nama }}</option>
+                                                    @endforeach
+                                                </select>
                                             </div>
                                         </div>
                                         <div class="modal-footer">
@@ -129,7 +189,7 @@
                                         <h5 class="modal-title" id="exampleModalLabel">Import Data</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                     </div>
-                                    <form action="{{route('divisi.import')}}" method="POST" enctype="multipart/form-data">
+                                    <form action="{{route('kader.import')}}" method="POST" enctype="multipart/form-data">
                                         @csrf
                                         <div class="modal-body">
                                             <label class="mb-2">File Excel: </label>
@@ -167,22 +227,6 @@
             paging: true,
             aaSorting: [],
             "lengthMenu": [10, 25, 50, 100, ],
-            layout: {
-                topStart: {
-                    buttons: [{
-                        extend: 'excel',
-                        title: 'Data Divisi',
-                        titleAttr: 'Data Divisi',
-                        exportOptions: {
-                            columns: [0, 1, 2]
-                        }
-                    }]
-                }
-            },
-            columnDefs: [{
-                target: 1,
-                visible: false
-            }]
         });
 
     });

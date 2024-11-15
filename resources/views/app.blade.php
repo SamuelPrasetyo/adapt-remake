@@ -62,8 +62,16 @@
   <!--! Template customizer & Theme config files MUST be included after core stylesheets and helpers.js in the <head> section -->
   <!--? Config:  Mandatory theme config file contain global vars & default theme options, Set your preferred theme option in this file.  -->
   <script src="{{asset('/assets/js/config.js')}}"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 @if(Auth::user() != null)
+<style>
+  canvas {
+    max-width: 600px;
+    /* margin: auto; */
+    display: block;
+  }
+</style>
 
 <body>
   <!-- Layout wrapper -->

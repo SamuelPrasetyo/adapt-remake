@@ -2,17 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Company;
 use App\Models\Kader;
 use App\Models\User;
 use Illuminate\Http\Request;
 use RealRashid\SweetAlert\Facades\Alert;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 
 class UserController extends Controller
 {
 
-    public function __construct() {
+    public function __construct()
+    {
         $this->middleware('auth');
     }
     /**
@@ -22,9 +25,23 @@ class UserController extends Controller
      */
     public function index()
     {
-        $users = User::orderBy('name', 'asc')->get();
-        $kaders = Kader::orderBy('nik','asc')->get();
-        return view('pages.user.index', compact('users','kaders'));
+        $users = User::select(
+            'users.id',
+            'users.nik',
+            'users.name',
+            'users.type',
+            'company.company_shortname as bu'
+        )
+            ->leftJoin('company', function ($join) {
+                $join->on(function ($join2) {
+                    $join2->on('users.company_code', 'company.company_code');
+                });
+            })
+            ->orderBy('name', 'asc')
+            ->get();
+        $kaders = Kader::orderBy('nik', 'asc')->get();
+        $companys = Company::get();
+        return view('pages.user.index', compact('users', 'kaders', 'companys'));
     }
 
     /**
@@ -45,12 +62,23 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
+        $nama = $request->nama;
+        $company_code = $request->company_code;
+        if ($request->nik_kader != null) {
+            $kader = Kader::select('kader.nama', 'company.company_code')
+                ->join('company', 'kader.company_code', 'company.company_code')
+                ->where('kader.nik', $request->nik_kader)
+                ->first();
+            $nama = $kader->nama;
+            $company_code = $kader->company_code;
+        }
         $data = [
             'id'            => Str::uuid(),
-            'name'          => $request->name,
+            'name'          => $nama,
             'nik'           => $request->nik_mentor ?? $request->nik_kader,
             'password'      => Hash::make($request->password),
-            'type'          => $request->type,
+            'type'          => $request->nik_kader != null ? 'Kader' : 'Mentor',
+            'company_code'  => $company_code,
             'created_at'    => now(),
             'updated_at'    => now()
         ];
@@ -90,9 +118,7 @@ class UserController extends Controller
      * @param  \App\Models\User  $user
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, $id)
-    {
-    }
+    public function update(Request $request, $id) {}
 
     /**
      * Remove the specified resource from storage.
@@ -105,5 +131,31 @@ class UserController extends Controller
         User::where('id', $id)->delete();
         Alert::success('Success', 'Data berhasil dihapus!');
         return redirect()->route('user.index');
+    }
+
+    public function change_password(Request $request, $id)
+    {
+        if (password_verify($request->password_lama, Auth::user()->password)) {
+            if ($request->password == $request->password2) {
+                $data = [
+                    'password'           => Hash::make($request->password),
+                    'updated_at'         => now()
+                ];
+                User::where('id', $id)->update($data);
+
+                Alert::success('Success', 'Password Berhasil Diubah');
+                Auth::logout();
+                request()->session()->invalidate();
+                request()->session()->regenerateToken();
+
+                return redirect()->route('login.index')->with(['changes' => 'Password berhasil diubah']);
+            } else {
+                session()->flash('errors', 'Konfirmasi Password tidak cocok');
+                return redirect()->back();
+            }
+        } else {
+            session()->flash('errors', 'Password lama tidak cocok');
+            return redirect()->back();
+        }
     }
 }

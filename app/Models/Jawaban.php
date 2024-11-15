@@ -5,12 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Kader extends Model
+class Jawaban extends Model
 {
     use HasFactory;
-    protected $table = 'kader';
+    protected $table = 'jawaban';
     protected $guarded = [];
-    public $incrementing = false;
-    protected $primaryKey = ['id','nik'];
-    protected $keyType = 'uuid';
 }

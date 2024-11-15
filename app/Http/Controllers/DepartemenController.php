@@ -59,7 +59,7 @@ class DepartemenController extends Controller
         Alert::success('Success', 'Data berhasil ditambahkan!');
         return redirect()->route('departemen.index');
     }
-    public function upload(Request $request)
+    public function import(Request $request)
     {
 
         Excel::import(new DepartemenImport(), $request->file('file')->store('temp'));

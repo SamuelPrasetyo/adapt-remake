@@ -18,8 +18,8 @@
                                             Tambah
                                         </button>
                                         &nbsp;
-                                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#upload">
-                                            Upload
+                                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#import">
+                                            Import
                                         </button>
                                     </div>
                                 </div>
@@ -105,7 +105,7 @@
                             <div class="modal-dialog">
                                 <div class="modal-content">
                                     <div class="modal-header">
-                                        <h5 class="modal-title" id="exampleModalLabel">Tambah Data</h5>
+                                        <h5 class="modal-title" id="exampleModalLabel">Edit Data</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                     </div>
                                     <form action="{{route('departemen.update',$departemen->id)}}" method="POST">
@@ -141,15 +141,15 @@
                             </div>
                         </div>
                         @endforeach
-                        <!-- Modal Upload-->
-                        <div class="modal fade" id="upload" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                        <!-- Modal Import-->
+                        <div class="modal fade" id="import" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
                             <div class="modal-dialog">
                                 <div class="modal-content">
                                     <div class="modal-header">
-                                        <h5 class="modal-title" id="exampleModalLabel">Upload Data</h5>
+                                        <h5 class="modal-title" id="exampleModalLabel">Import Data</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                     </div>
-                                    <form action="{{route('departemen.upload')}}" method="POST" enctype="multipart/form-data">
+                                    <form action="{{route('departemen.import')}}" method="POST" enctype="multipart/form-data">
                                         @csrf
                                         <div class="modal-body">
                                             <label class="mb-2">File Excel: </label>
