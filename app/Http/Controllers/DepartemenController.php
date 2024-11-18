@@ -102,7 +102,7 @@ class DepartemenController extends Controller
         $departemen = Departemen::where('id', $id)->first();
         Departemen::where('id', $id)
             ->update([
-                'nama'          => $request->nama ?? $departemen->nama,
+                'nama'          =>strtoupper($request->nama) ?? strtoupper($departemen->nama),
                 'id_divisi'     => $request->id_divisi ?? $departemen->id_divisi,
                 'updated_at'    => now(),
             ]);

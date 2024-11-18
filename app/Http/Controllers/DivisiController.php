@@ -96,7 +96,7 @@ class DivisiController extends Controller
         $divisi = Divisi::where('id', $id)->first();
         Divisi::where('id', $id)
             ->update([
-                'nama' => $request->nama ?? $divisi->nama,
+                'nama' => strtoupper($request->nama) ?? strtoupper($divisi->nama),
                 'updated_at'    => now(),
             ]);
 
