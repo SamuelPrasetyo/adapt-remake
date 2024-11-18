@@ -50,7 +50,7 @@ class DepartemenController extends Controller
     {
         Departemen::insert([
             'id'            => Str::uuid(),
-            'nama'          => $request->nama,
+            'nama'          => strtoupper($request->nama),
             'id_divisi'     => $request->id_divisi,
             'created_at'    => now(),
             'updated_at'    => now()
