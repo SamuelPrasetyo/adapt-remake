@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Company;
 use App\Models\Jawaban;
 use App\Models\Kader;
@@ -94,97 +95,26 @@ class JawabanController extends Controller
     public function feedback_store(Request $request)
     {
         try {
-            $jawaban_mentor['1'] = '';
-            if (isset($request->pertanyaan1_mentor_1)) {
-                $jawaban_mentor['1'] = '1';
-            } elseif (isset($request->pertanyaan1_mentor_2)) {
-                $jawaban_mentor['1'] = '2';
-            } elseif (isset($request->pertanyaan1_mentor_3)) {
-                $jawaban_mentor['1'] = '3';
-            } elseif (isset($request->pertanyaan1_mentor_4)) {
-                $jawaban_mentor['1'] = '4';
-            } elseif (isset($request->pertanyaan1_mentor_5)) {
-                $jawaban_mentor['1'] = '5';
-            } elseif (isset($request->pertanyaan1_mentor_7)) {
-                $jawaban_mentor['1'] = '7';
-            } elseif (isset($request->pertanyaan1_mentor_8)) {
-                $jawaban_mentor['1'] = '8';
-            } elseif (isset($request->pertanyaan1_mentor_9)) {
-                $jawaban_mentor['1'] = '9';
-            } elseif (isset($request->pertanyaan1_mentor_10)) {
-                $jawaban_mentor['1'] = '10';
-            }
+            $jawaban_mentor['1'] = $request->pertanyaan1_mentor;
 
-            $jawaban_mentor['2'] = '';
-            if (isset($request->pertanyaan2_mentor_1)) {
-                $jawaban_mentor['2'] = '1';
-            } elseif (isset($request->pertanyaan2_mentor_2)) {
-                $jawaban_mentor['2'] = '2';
-            } elseif (isset($request->pertanyaan2_mentor_3)) {
-                $jawaban_mentor['2'] = '3';
-            } elseif (isset($request->pertanyaan2_mentor_4)) {
-                $jawaban_mentor['2'] = '4';
-            } elseif (isset($request->pertanyaan2_mentor_5)) {
-                $jawaban_mentor['2'] = '5';
-            } elseif (isset($request->pertanyaan2_mentor_7)) {
-                $jawaban_mentor['2'] = '7';
-            } elseif (isset($request->pertanyaan2_mentor_8)) {
-                $jawaban_mentor['2'] = '8';
-            } elseif (isset($request->pertanyaan2_mentor_9)) {
-                $jawaban_mentor['2'] = '9';
-            } elseif (isset($request->pertanyaan2_mentor_10)) {
-                $jawaban_mentor['2'] = '10';
-            }
+            $jawaban_mentor['2'] = $request->pertanyaan2_mentor;
 
-            $jawaban_mentor['3'] = '';
-            if (isset($request->pertanyaan3_mentor_1)) {
-                $jawaban_mentor['3'] = '1';
-            } elseif (isset($request->pertanyaan3_mentor_2)) {
-                $jawaban_mentor['3'] = '2';
-            } elseif (isset($request->pertanyaan3_mentor_3)) {
-                $jawaban_mentor['3'] = '3';
-            } elseif (isset($request->pertanyaan3_mentor_4)) {
-                $jawaban_mentor['3'] = '4';
-            } elseif (isset($request->pertanyaan3_mentor_5)) {
-                $jawaban_mentor['3'] = '5';
-            } elseif (isset($request->pertanyaan3_mentor_7)) {
-                $jawaban_mentor['3'] = '7';
-            } elseif (isset($request->pertanyaan3_mentor_8)) {
-                $jawaban_mentor['3'] = '8';
-            } elseif (isset($request->pertanyaan3_mentor_9)) {
-                $jawaban_mentor['3'] = '9';
-            } elseif (isset($request->pertanyaan3_mentor_10)) {
-                $jawaban_mentor['3'] = '10';
-            }
+            $jawaban_mentor['3'] = $request->pertanyaan3_mentor;
 
-            $jawaban_mentor['4'] = '';
-            if (isset($request->pertanyaan4_mentor_1)) {
-                $jawaban_mentor['4'] = '1';
-            } elseif (isset($request->pertanyaan4_mentor_2)) {
-                $jawaban_mentor['4'] = '2';
-            } elseif (isset($request->pertanyaan4_mentor_3)) {
-                $jawaban_mentor['4'] = '3';
-            } elseif (isset($request->pertanyaan4_mentor_4)) {
-                $jawaban_mentor['4'] = '4';
-            } elseif (isset($request->pertanyaan4_mentor_5)) {
-                $jawaban_mentor['4'] = '5';
-            } elseif (isset($request->pertanyaan4_mentor_7)) {
-                $jawaban_mentor['4'] = '7';
-            } elseif (isset($request->pertanyaan4_mentor_8)) {
-                $jawaban_mentor['4'] = '8';
-            } elseif (isset($request->pertanyaan4_mentor_9)) {
-                $jawaban_mentor['4'] = '9';
-            } elseif (isset($request->pertanyaan4_mentor_10)) {
-                $jawaban_mentor['4'] = '10';
-            }
-
+            $jawaban_mentor['4'] = $request->pertanyaan4_mentor;
             $count_pertanyaan = Pertanyaan::where('type', 'Mentor')->get()->count();
-            // dd($request);
-            for ($i = 1; $i <= $count_pertanyaan; $i++) {
+            for ($i = 1; $i < $count_pertanyaan; $i++) {
+
+                $jawaban = '';
+                if ($i < 5) {
+                    $jawaban = $jawaban_mentor[$i];
+                } else {
+                    $jawaban = $request->pertanyaan_mentor[$i];
+                }
                 $data[$i] = [
                     'id_week'       => $request->id_week,
                     'id_pertanyaan' => $request->id_pertanyaan . $i,
-                    'jawaban'       => $i <= 4 ? $jawaban_mentor[$i] : $request->pertanyaan_mentor[$i],
+                    'jawaban'       => $jawaban,
                     'nama_mentor'   => $request->nama_mentor,
                     'nik_kader'     => $request->nik_kader,
                     'created_at'    => now(),
@@ -193,6 +123,8 @@ class JawabanController extends Controller
                 ];
                 Jawaban::create($data[$i]);
             }
+
+            ActivityLog::activity_log('Mentor mengisi feedback');
             Alert::success('Success', 'Feedback berhasil disubmit!');
             return redirect()->route('feedback.index');
         } catch (\Throwable $th) {
@@ -204,42 +136,43 @@ class JawabanController extends Controller
 
     public function feedback_kader_store(Request $request)
     {
-        // try {
-        // dd($request);
-        $bu = Company::where('company_code', $this->user->company_code)->first();
-        $week = Week::where('id_week', $request->id_week)->first();
-        $name = str_replace(' ', '_', $this->user->name);
-        $file = $request->file('jawaban_kader')[4]->getClientOriginalName();
-        $file = explode('.', $file);
-        $ext_name = end($file);
-        $nama_file =  $name . '_' . $bu->company_shortname . '_' . $week->angka_week . '.' . $ext_name;
-        $count_pertanyaan = Pertanyaan::where('type', 'Kader')->get()->count();
+        try {
+            // dd($request);
+            $bu = Company::where('company_code', $this->user->company_code)->first();
+            $week = Week::where('id_week', $request->id_week)->first();
+            $name = str_replace(' ', '_', $this->user->name);
+            $file = $request->file('jawaban_kader')[4]->getClientOriginalName();
+            $file = explode('.', $file);
+            $ext_name = end($file);
+            $nama_file =  $name . '_' . $bu->company_shortname . '_' . $week->angka_week . '.' . $ext_name;
+            $count_pertanyaan = Pertanyaan::where('type', 'Kader')->get()->count();
 
-        for ($i = 1; $i <= $count_pertanyaan; $i++) {
-            // dd($request['id_pertanyaan'.$i]);
-            if ($i == 4) {
-                $request->file('jawaban_kader')[$i]->move(public_path('assets/file'), $nama_file);
+            for ($i = 1; $i <= $count_pertanyaan; $i++) {
+                // dd($request['id_pertanyaan'.$i]);
+                if ($i == 4) {
+                    $request->file('jawaban_kader')[$i]->move(public_path('assets/file'), $nama_file);
+                }
+                $data[$i] = [
+                    'id_week'       => $request->id_week,
+                    'id_pertanyaan' => $request['id_pertanyaan' . $i],
+                    'jawaban'       => $i < 4 ? $request->jawaban_kader[$i] : $nama_file,
+                    'nama_mentor'   => $request->nama_mentor ?? null,
+                    'nik_kader'     => $request->nik_kader ?? Auth::user()->nik,
+                    'created_at'    => now(),
+                    'updated_at'    => now(),
+                    'created_by'    => Auth::user()->id
+                ];
+
+                Jawaban::create($data[$i]);
             }
-            $data[$i] = [
-                'id_week'       => $request->id_week,
-                'id_pertanyaan' => $request['id_pertanyaan' . $i],
-                'jawaban'       => $i < 4 ? $request->jawaban_kader[$i] : $nama_file,
-                'nama_mentor'   => $request->nama_mentor ?? null,
-                'nik_kader'     => $request->nik_kader ?? Auth::user()->nik,
-                'created_at'    => now(),
-                'updated_at'    => now(),
-                'created_by'    => Auth::user()->id
-            ];
-
-            Jawaban::create($data[$i]);
+            ActivityLog::activity_log('Kader mengisi feedback');
+            Alert::success('Success', 'Feedback berhasil disubmit!');
+            return redirect()->route('feedback.index');
+        } catch (\Throwable $th) {
+            log::info($th);
+            Alert::warning('Failed', 'Feedback gagal disubmit!');
+            return redirect()->route('feedback.index');
         }
-        Alert::success('Success', 'Feedback berhasil disubmit!');
-        return redirect()->route('feedback.index');
-        // } catch (\Throwable $th) {
-        //     log::info($th);
-        //     Alert::warning('Failed', 'Feedback gagal disubmit!');
-        //     return redirect()->route('feedback.index');
-        // }
     }
 
     public function detail($param)

@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Imports\DepartemenImport;
+use App\Models\ActivityLog;
 use App\Models\Departemen;
 use App\Models\Divisi;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use RealRashid\SweetAlert\Facades\Alert;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
@@ -53,9 +55,9 @@ class DepartemenController extends Controller
             'nama'          => strtoupper($request->nama),
             'id_divisi'     => $request->id_divisi,
             'created_at'    => now(),
-            'updated_at'    => now()
+            'created_by'    => Auth::user()->id
         ]);
-
+        ActivityLog::activity_log('Menambah data Departemen');
         Alert::success('Success', 'Data berhasil ditambahkan!');
         return redirect()->route('departemen.index');
     }
@@ -63,7 +65,7 @@ class DepartemenController extends Controller
     {
 
         Excel::import(new DepartemenImport(), $request->file('file')->store('temp'));
-
+        ActivityLog::activity_log('Mengimport data Departemen');
         Alert::success('Success', 'Data berhasil diupload!');
         return redirect()->route('departemen.index');
     }
@@ -105,8 +107,9 @@ class DepartemenController extends Controller
                 'nama'          =>strtoupper($request->nama) ?? strtoupper($departemen->nama),
                 'id_divisi'     => $request->id_divisi ?? $departemen->id_divisi,
                 'updated_at'    => now(),
+                'updated_by'    => Auth::user()->id
             ]);
-
+        ActivityLog::activity_log('Mengubah data Departemen');
         Alert::success('Success', 'Data berhasil diupdate!');
         return redirect()->route('departemen.index');
     }
@@ -120,6 +123,7 @@ class DepartemenController extends Controller
     public function destroy($id)
     {
         Departemen::where('id', $id)->delete();
+        ActivityLog::activity_log('Menghapus data Departemen');
         Alert::success('Success', 'Data berhasil dihapus!');
         return redirect()->route('departemen.index');
     }

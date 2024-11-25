@@ -321,6 +321,14 @@
         $("#feedback").addClass('active');
         $("#modul").addClass('active open');
         break;
+      case 'learning-growth':
+        $("#learning_growth").addClass('active');
+        $("#report").addClass('active open');
+        break;
+      case 'activity-log':
+        $("#activity_log").addClass('active');
+        $("#report").addClass('active open');
+        break;
       default:
         break;
     }

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -42,8 +44,13 @@ class LoginController extends Controller
         ]);
 
         if (Auth::attempt($credentials)) {
-            $request->session()->regenerate();
-            return redirect('/dashboard');
+            $user = User::where('nik',$request->nik)->where('status','Aktif')->first();
+            if($user){
+                $request->session()->regenerate();
+                ActivityLog::activity_log('Berhasil login');
+                return redirect('/dashboard');
+            }
+            return redirect()->back()->with(['loginError' => 'Akun tidak aktif']);
         }
 
         return redirect()->back()->with(['loginError' => 'NIK / Password Salah']);
@@ -96,8 +103,8 @@ class LoginController extends Controller
 
     public function logout(Request $request)
     {
+        ActivityLog::activity_log('Berhasil logout');
         Auth::logout();
-
         request()->session()->invalidate();
 
         request()->session()->regenerateToken();

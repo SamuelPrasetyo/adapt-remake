@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Nilai;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use RealRashid\SweetAlert\Facades\Alert;
 
 class NilaiController extends Controller
@@ -43,10 +45,10 @@ class NilaiController extends Controller
         $data = [
             'nama_nilai'    => $request->nama_nilai,
             'created_at'    => now(),
-            'updated_at'    => now()
+            'created_by'    => Auth::user()->id
         ];
         Nilai::insert($data);
-
+        ActivityLog::activity_log('Menambah data Nilai');
         Alert::success('Success', 'Data berhasil ditambahkan!');
         return redirect()->route('nilai.index');
     }
@@ -87,8 +89,10 @@ class NilaiController extends Controller
             ->update([
                 'nama_nilai'    => $request->nama_nilai ?? $nilai->nama_nilai,
                 'updated_at'    => now(),
+                'updated_by'    => Auth::user()->id
             ]);
 
+        ActivityLog::activity_log('Mengubah data Nilai');
         Alert::success('Success', 'Data berhasil diupdate!');
         return redirect()->route('nilai.index');
     }
@@ -102,6 +106,7 @@ class NilaiController extends Controller
     public function destroy($id)
     {
         Nilai::where('id_nilai', $id)->delete();
+        ActivityLog::activity_log('Menghapus data Nilai');
         Alert::success('Success', 'Data berhasil dihapus!');
         return redirect()->route('nilai.index');
     }

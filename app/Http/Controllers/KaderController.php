@@ -7,10 +7,12 @@ use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 use RealRashid\SweetAlert\Facades\Alert;
 use App\Imports\KaderImport;
+use App\Models\ActivityLog;
 use App\Models\Batch;
 use App\Models\Company;
 use App\Models\Departemen;
 use App\Models\Divisi;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Validators\ValidationException;
 
@@ -73,6 +75,7 @@ class KaderController extends Controller
             Excel::import(new KaderImport, request()->file('file'));
 
             Alert::success('Success', 'Import data berhasil!');
+            ActivityLog::activity_log('Mengimport data Kader');
             return redirect()->route('kader.index');
         } catch (\Exception $ex) {
             Alert::warning('Failed', 'Import data gagal!');
@@ -125,8 +128,10 @@ class KaderController extends Controller
                 'id_departemen'     => $request->id_departemen ?? $kader->id_departemen,
                 'company_code'      => $request->company_code ?? $kader->id_departemen,
                 'updated_at'        => now(),
+                'updated_by'        => Auth::user()->id
             ]);
-
+            
+        ActivityLog::activity_log('Mengubah data Kader');
         Alert::success('Success', 'Data berhasil diupdate!');
         return redirect()->route('kader.index');
     }

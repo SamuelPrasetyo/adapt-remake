@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Company;
 use App\Models\Kader;
 use App\Models\User;
@@ -30,6 +31,7 @@ class UserController extends Controller
             'users.nik',
             'users.name',
             'users.type',
+            'users.status',
             'company.company_shortname as bu'
         )
             ->leftJoin('company', function ($join) {
@@ -80,11 +82,11 @@ class UserController extends Controller
             'type'          => $request->nik_kader != null ? 'Kader' : 'Mentor',
             'company_code'  => $company_code,
             'created_at'    => now(),
-            'updated_at'    => now()
+            'created_by'    => Auth::user()->id
         ];
 
         User::insert($data);
-
+        ActivityLog::activity_log('Menambah data User');
         Alert::success('Success', 'Data berhasil ditambahkan!');
         return redirect()->route('user.index');
     }
@@ -129,6 +131,7 @@ class UserController extends Controller
     public function destroy($id)
     {
         User::where('id', $id)->delete();
+        ActivityLog::activity_log('Mengubah data User');
         Alert::success('Success', 'Data berhasil dihapus!');
         return redirect()->route('user.index');
     }
@@ -147,6 +150,7 @@ class UserController extends Controller
                 Auth::logout();
                 request()->session()->invalidate();
                 request()->session()->regenerateToken();
+                ActivityLog::activity_log('Berhasil mengubah password');
 
                 return redirect()->route('login.index')->with(['changes' => 'Password berhasil diubah']);
             } else {
@@ -157,5 +161,16 @@ class UserController extends Controller
             session()->flash('errors', 'Password lama tidak cocok');
             return redirect()->back();
         }
+    }
+
+    public function change_status($userId)
+    {
+        $user = User::where('id',$userId)->first();
+        $status = $user->status == 'Aktif' ? 'Tidak Aktif' : 'Aktif';
+        User::where('id',$userId)->update(['status' => $status]);
+        
+        ActivityLog::activity_log('Berhasil mengubah status user');
+        Alert::success('Success', 'Status Berhasil Diubah');
+        return redirect()->route('user.index');
     }
 }

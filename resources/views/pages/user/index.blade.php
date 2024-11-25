@@ -28,6 +28,7 @@
                                                 <th style="text-align: center;">Nama</th>
                                                 <th style="text-align: center;">Type</th>
                                                 <th style="text-align: center;">Bisnis Unit</th>
+                                                <th style="text-align: center;">Status</th>
                                                 <th style="text-align: center;">Action</th>
                                             </tr>
                                         </thead>
@@ -40,16 +41,27 @@
                                                 <td style="text-align: center;font-size:14px">{{$user->name}}</td>
                                                 <td style="text-align: center;font-size:14px">{{$user->type}}</td>
                                                 <td style="text-align: center;font-size:14px">{{$user->bu}}</td>
+                                                <td style="text-align: center;font-size:14px">
+                                                    @if($user->status == 'Aktif')
+                                                    <span class="badge bg-label-success me-1">{{$user->status}}</span>
+                                                    @else
+                                                    <span class="badge bg-label-danger me-1">{{$user->status}}</span>
+                                                    @endif
+                                                </td>
                                                 @if(Auth::user()->id != $user->id && Auth::user()->type == 'Admin')
                                                 <td class="text-center">
-                                                    <!-- <button class="btn btn-sm btn-primary" data-bs-toggle="modal"
-                                                        data-bs-target="#edit-data{{$user->id}}">Edit</button> -->
-                                                    <form action="{{ route('user.delete', $user->id) }}" method="POST" class="d-inline">
+                                                    <form action="{{ route('change.status', $user->id) }}" method="POST" class="d-inline">
+                                                        @csrf
+                                                        <input name="_method" type="hidden" value="POST">
+                                                        <button type="submit" class="btn btn-sm btn-primary show_confirm_status" data-toggle="tooltip" title='Change Status'>
+                                                            <i class="tf-icons bx bxs-edit"></i></button>
+                                                    </form>
+                                                    <!-- <form action="{{ route('user.delete', $user->id) }}" method="POST" class="d-inline">
                                                         @method('delete')
                                                         @csrf
                                                         <input name="_method" type="hidden" value="DELETE">
-                                                        <button type="submit" class="btn btn-sm btn-danger show_confirm" data-toggle="tooltip" title='Delete'>Delete</button>
-                                                    </form>
+                                                        <button type="submit" class="btn btn-sm btn-danger show_confirm" data-toggle="tooltip" title='Delete'><i class="tf-icons bx bxs-trash"></i></button>
+                                                    </form> -->
                                                 </td>
                                                 @else
                                                 <td class="text-center">
@@ -248,6 +260,37 @@
         swal({
 
                 title: `Apakah anda yakin ingin menghapus data ini ?`,
+
+                icon: "warning",
+
+                buttons: true,
+
+                dangerMode: true,
+
+            })
+
+            .then((willDelete) => {
+
+                if (willDelete) {
+
+                    form.submit();
+
+                }
+
+            });
+
+    });
+    $('.show_confirm_status').click(function(event) {
+
+        var form = $(this).closest("form");
+
+        var name = $(this).data("name");
+
+        event.preventDefault();
+
+        swal({
+
+                title: `Apakah anda yakin ingin mengubah status user ini ?`,
 
                 icon: "warning",
 

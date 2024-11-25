@@ -1,8 +1,13 @@
 @extends('app')
 @section('content')
 <div class="container-xxl flex-grow-1 container-p-y container-p-x">
+    <nav style="--bs-breadcrumb-divider: url(&#34;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M2.5 0L1 1.5 3.5 4 1 6.5 2.5 8l4-4-4-4z' fill='currentColor'/%3E%3C/svg%3E&#34;);" aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{route('learning.index')}}">Learning Growth</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{$title['nama_kader']}}</li>
+        </ol>
+    </nav>
     <div class="row">
-
         <div class="col-lg-12 mb-4 order-0">
             <div class="card" style="background-color:#E5E4E2;">
                 <div class="row m-0 pt-1 pb-0" style="background-color: skyblue;border-radius:6px 6px 0px 0px">
@@ -12,27 +17,35 @@
                     <div class="row">
                         <div class="col-8">
                             <div class="row">
-                                <div class="col-2">
-                                Nama
+                                <div class="col-3">
+                                    Nama
                                 </div>
                                 <div class="col-8">
-                                    : Aditya Rinduwan
+                                    : {{$title['nama_kader']}}
                                 </div>
                             </div>
                             <div class="row">
-                                <div class="col-2">
-                                Posisi
+                                <div class="col-3">
+                                    Divisi
                                 </div>
                                 <div class="col-8">
-                                    : Digital Marketing Staff
+                                    : {{$title['divisi']}}
                                 </div>
                             </div>
                             <div class="row">
-                                <div class="col-2">
-                                BU
+                                <div class="col-3">
+                                    Departemen
                                 </div>
                                 <div class="col-8">
-                                    : PT. Mekar Armada Investama
+                                    : {{$title['departemen']}}
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-3">
+                                    BU
+                                </div>
+                                <div class="col-8">
+                                    : {{$title['bu']}}
                                 </div>
                             </div>
                             <!-- <h6>Nama &emsp;: Aditya Rinduwan</h6>
@@ -103,12 +116,13 @@
     var avg = <?php echo $avg; ?>;
     var lg = <?php echo $learningG; ?>;
     var kkm = <?php echo $kkm; ?>;
+    console.log(avg,lg,kkm);
+    
 
 
     var myLineChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: week, // Using Laravel's json() function to pass data
             datasets: [{
                     label: 'Ave Score',
                     data: avg,

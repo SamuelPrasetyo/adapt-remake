@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Week;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use RealRashid\SweetAlert\Facades\Alert;
 
 class WeekController extends Controller
@@ -43,10 +45,10 @@ class WeekController extends Controller
         $data = [
             'angka_week'    => $request->angka_week,
             'created_at'    => now(),
-            'updated_at'    => now()
+            'created_by'    => Auth::user()->id
         ];
         Week::insert($data);
-
+        ActivityLog::activity_log('Menambah data Week');
         Alert::success('Success', 'Data berhasil ditambahkan!');
         return redirect()->route('week.index');
     }
@@ -87,8 +89,9 @@ class WeekController extends Controller
             ->update([
                 'angka_week'    => $request->angka_week ?? $week->angka_week,
                 'updated_at'    => now(),
+                'updated_by'    => Auth::user()->id
             ]);
-
+        ActivityLog::activity_log('Mengubah data Week');
         Alert::success('Success', 'Data berhasil diupdate!');
         return redirect()->route('week.index');
     }
@@ -102,6 +105,7 @@ class WeekController extends Controller
     public function destroy($id)
     {
         Week::where('id_week', $id)->delete();
+        ActivityLog::activity_log('Menghapus data Week');
         Alert::success('Success', 'Data berhasil dihapus!');
         return redirect()->route('week.index');
     }

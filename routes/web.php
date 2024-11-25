@@ -12,6 +12,7 @@ use App\Http\Controllers\PertanyaanController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WeekController;
+use App\Models\ActivityLog;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -28,13 +29,27 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('app');
 });
+
+Route::middleware(['can:isAll'])->group(function () {
+    Route::controller(LoginController::class)->group(function () {
+        Route::post('/logout', 'logout')->name('logout');
+        Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
+    });
+});
+
 Route::controller(LoginController::class)->group(function () {
     Route::get('/login', 'index')->name('login.index');
     Route::post('/login/store', 'store')->name('login.store');
     Route::post('/logout', 'logout')->name('logout');
 });
-Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
 Route::middleware(['can:isAdmin'])->group(function () {
+    Route::get('/activity-log', function () {
+        $activities_log = ActivityLog::select('activity_log.*', 'users.name as nama')
+            ->join('users', 'activity_log.created_by', 'users.id')
+            ->orderBy('created_at', 'desc')
+            ->get();
+        return view('pages.activity_log.index', compact('activities_log'));
+    })->name('activity.log');
 
     Route::controller(DivisiController::class)->group(function () {
         Route::get('/divisi', 'index')->name('divisi.index');
@@ -56,6 +71,7 @@ Route::middleware(['can:isAdmin'])->group(function () {
         Route::post('/user/change_password/{id}', 'change_password')->name('user.change_password');
         Route::put('/user/update/{id}', 'update')->name('user.update');
         Route::delete('/user/delete/{id}', 'destroy')->name('user.delete');
+        Route::post('/user/change_status/{id}', 'change_status')->name('change.status');
     });
     Route::controller(BatchController::class)->group(function () {
         Route::get('/batch', 'index')->name('batch.index');
@@ -90,22 +106,27 @@ Route::middleware(['can:isAdmin'])->group(function () {
     });
 
     Route::controller(JawabanController::class)->group(function () {
-        Route::get('/jawaban', 'index')->name('jawaban.index');         
-        Route::put('/jawaban/update/{id}', 'update')->name('jawaban.update');         
-        Route::get('/jawaban_user/{week}', 'feedback_user')->name('feedback.user');
-        Route::post('/jawaban/store', 'store')->name('jawaban.store');
-        Route::put('/jawaban/update/{id}', 'update')->name('jawaban.update');
-        Route::get('/detail/{week}', 'detail')->name('jawaban.detail');
+        Route::get('/feedback', 'index')->name('jawaban.index');
+        Route::put('/feedback/update/{id}', 'update')->name('jawaban.update');
+        Route::get('/feedback_user/{week}', 'feedback_user')->name('feedback.user');
+        Route::post('/feedback/store', 'store')->name('jawaban.store');
+        Route::put('/feedback/update/{id}', 'update')->name('jawaban.update');
+        Route::get('/feedback/detail/{week}', 'detail')->name('jawaban.detail');
     });
-
+});
+Route::middleware(['can:isAdmin&Mentor'])->group(function () {
     Route::controller(ReportController::class)->group(function () {
-        Route::get('/learning-growth','learning_growth')->name('learning.growth');
+        Route::get('/learning-index', 'learning_index')->name('learning.index');
+        Route::post('/learning-growth', 'learning_growth')->name('learning.growth');
+        Route::get('/ojt-index', 'weekly_index')->name('weekly.index');
+        Route::post('/ojt-monitoring', 'weekly_monitoring')->name('weekly.monitoring');
     });
 });
 
-
-Route::controller(JawabanController::class)->group(function () {
-    Route::get('/feedback', 'feedback')->name('feedback.index');
-    Route::post('/feedback/store', 'feedback_store')->name('feedback.store');
-    Route::post('/feedback_kader/store', 'feedback_kader_store')->name('feedback_kader.store');
+Route::middleware(['can:isUser'])->group(function () {
+    Route::controller(JawabanController::class)->group(function () {
+        Route::get('/feedback-survey', 'feedback')->name('feedback.index');
+        Route::post('/feedback-survey/store', 'feedback_store')->name('feedback.store');
+        Route::post('/feedback-survey-kader/store', 'feedback_kader_store')->name('feedback_kader.store');
+    });
 });

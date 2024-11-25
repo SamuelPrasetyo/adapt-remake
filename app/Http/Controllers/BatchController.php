@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Batch;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use RealRashid\SweetAlert\Facades\Alert;
 use Illuminate\Support\Str;
 
@@ -45,11 +47,11 @@ class BatchController extends Controller
             'nama_batch'    => $request->nama_batch,
             'tahun_batch'   => $request->tahun_batch,
             'created_at'    => now(),
-            'updated_at'    => now()
+            'updated_by'    => Auth::user()->id
         ];
 
         Batch::insert($data);
-
+        ActivityLog::activity_log('Mengubah data Batch');
         Alert::success('Success', 'Data berhasil ditambahkan!');
         return redirect()->route('batch.index');
     }
@@ -90,10 +92,12 @@ class BatchController extends Controller
             'nama_batch'    => $request->nama_batch ?? $batch->nama_batch,
             'tahun_batch'   => $request->tahun_batch ?? $batch->tahun_batch,
             'updated_at'    => now(),
+            'updated_by'    => Auth::user()->id
         ];
         Batch::where('id_batch', $id)
             ->update($data);
 
+        ActivityLog::activity_log('Mengedit data Batch');
         Alert::success('Success', 'Data berhasil diupdate!');
         return redirect()->route('batch.index');
     }
@@ -107,6 +111,7 @@ class BatchController extends Controller
     public function destroy($id)
     {
         Batch::where('id_batch', $id)->delete();
+        ActivityLog::activity_log('Menghapus data Batch');
         Alert::success('Success', 'Data berhasil dihapus!');
         return redirect()->route('batch.index');
     }

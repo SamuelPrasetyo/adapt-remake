@@ -14,9 +14,9 @@
                                     </div>
                                     <div class="col d-flex justify-content-end mb-3">
                                         <!-- Button trigger modal -->
-                                        <!-- <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">
+                                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">
                                             Tambah
-                                        </button> -->
+                                        </button>
                                     </div>
                                 </div>
                                 <div class="table table-striped">
@@ -26,6 +26,7 @@
                                                 <th style="text-align: center;">No</th>
                                                 <th style="text-align: center;">Nama</th>
                                                 <th style="text-align: center;">Type</th>
+                                                <th style="text-align: center;">Status</th>
                                                 <th style="text-align: center;">Action</th>
                                             </tr>
                                         </thead>
@@ -36,6 +37,13 @@
                                                 <td style="text-align: left;font-size:14px">{{$no++}}</td>
                                                 <td style="text-align: left;font-size:14px">{{strip_tags($pertanyaan->nama_pertanyaan)}}</td>
                                                 <td style="text-align: left;font-size:14px">{{$pertanyaan->type}}</td>
+                                                <td style="text-align: center;font-size:14px">
+                                                    @if($pertanyaan->status == 'Aktif')
+                                                    <span class="badge bg-label-success me-1">{{$pertanyaan->status}}</span>
+                                                    @else
+                                                    <span class="badge bg-label-danger me-1">{{$pertanyaan->status}}</span>
+                                                    @endif
+                                                </td>
                                                 <td class="text-left">
                                                     <button class="btn btn-sm btn-primary" data-bs-toggle="modal"
                                                         data-bs-target="#edit-data{{$pertanyaan->id_pertanyaan}}">Edit</button>
@@ -55,13 +63,21 @@
                                         <h5 class="modal-title" id="exampleModalLabel">Tambah Data</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                     </div>
-                                    <form action="{{route('divisi.store')}}" method="POST">
+                                    <form action="{{route('pertanyaan.store')}}" method="POST">
                                         @csrf
                                         <div class="modal-body">
-                                            <label class="mb-2">Nama Divisi: </label>
+                                            <label class="mb-2">Nama Pertanyaan: </label>
                                             <div class="form-group">
-                                                <input type="text" placeholder="nama divisi"
-                                                    class="form-control" name="nama">
+                                                <textarea type="text" placeholder="nama pertanyaan"
+                                                    class="form-control" id="ck-add" name="nama_pertanyaan"></textarea>
+                                            </div>
+                                            <label class="mb-2">Type: </label>
+                                            <div class="form-group">
+                                                <select class="form-control" name="type" id="">
+                                                    <option value="">--Pilih type--</option>
+                                                    <option value="Mentor">Mentor</option>
+                                                    <option value="Kader">Kader</option>
+                                                </select>
                                             </div>
                                         </div>
                                         <div class="modal-footer">
@@ -101,9 +117,17 @@
                                             <label class="mb-2">Type: </label>
                                             <div class="form-group">
                                                 <select class="form-control" name="type" id="">
-                                                    <option value="">--Pilih nama divisi--</option>
+                                                    <option value="">--Pilih type--</option>
                                                     <option value="Mentor" {{$pertanyaan->type=='Mentor' ? 'selected' : ''}}>Mentor</option>
                                                     <option value="Kader" {{$pertanyaan->type=='Kader' ? 'selected' : ''}}>Kader</option>
+                                                </select>
+                                            </div>
+                                            <label class="mb-2">Status: </label>
+                                            <div class="form-group">
+                                                <select class="form-control" name="status" id="">
+                                                    <option value="">--Pilih status--</option>
+                                                    <option value="Aktif" {{$pertanyaan->status=='Aktif' ? 'selected' : ''}}>Aktif</option>
+                                                    <option value="Tidak Aktif" {{$pertanyaan->status=='Tidak Aktif' ? 'selected' : ''}}>Tidak Aktif</option>
                                                 </select>
                                             </div>
                                             @endif
@@ -133,6 +157,13 @@
 <script type="text/javascript">
     var i = 0;
     $(document).ready(function() {
+        ClassicEditor
+            .create(document.querySelector('#ck-add'))
+            .then(editor => {})
+            .catch(error => {
+                console.error(error);
+            });
+
         $('#example').DataTable({
             // scrollY:        "100%",
             scrollCollapse: true,

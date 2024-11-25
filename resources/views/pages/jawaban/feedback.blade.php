@@ -66,7 +66,7 @@
                                         <div class="row justify-content-center">
                                             @for($j=1;$j<=10;$j++)
                                             <div class="col-1 text-center">
-                                                <input class="form-check-input text-center" type="radio" style="border:grey 1px solid" name="pertanyaan1_mentor_{{$j}}" id="flexRadioDefault{{$j}}">
+                                                <input class="form-check-input text-center" type="radio" style="border:grey 1px solid" name="pertanyaan1_mentor" id="flexRadioDefault{{$j}}" value="{{$j}}">
                                             </div>
                                             @endfor
                                         </div>
@@ -81,18 +81,18 @@
                                     <input type="text" hidden name="id_pertanyaan2" value="{{$id_pertanyaan[2]}}">
                                     <div class="form-group mb-1">
                                         <div class="row justify-content-center">
-                                            @for($i=1;$i<=10;$i++)
+                                            @for($k=1;$k<=10;$k++)
                                             <div class="col-1 text-center">
                                                     <label class="form-check-label" for="flexRadioDefault1">
-                                                        {{$i}}
+                                                        {{$k}}
                                                     </label>
                                             </div>
                                             @endfor
                                         </div>
                                         <div class="row justify-content-center">
-                                            @for($j=1;$j<=10;$j++)
+                                            @for($l=1;$l<=10;$l++)
                                             <div class="col-1 text-center">
-                                                <input class="form-check-input text-center" type="radio" style="border:grey 1px solid" name="pertanyaan2_mentor_{{$j}}" id="flexRadioDefault{{$j}}">
+                                                <input class="form-check-input text-center" type="radio" style="border:grey 1px solid" name="pertanyaan2_mentor" id="flexRadioDefault{{$l}}" value="{{$l}}">
                                             </div>
                                             @endfor
                                         </div>
@@ -107,18 +107,18 @@
                                     <input type="text" hidden name="id_pertanyaan3" value="{{$id_pertanyaan[3]}}">
                                     <div class="form-group mb-1">
                                         <div class="row justify-content-center">
-                                            @for($i=1;$i<=10;$i++)
+                                            @for($m=1;$m<=10;$m++)
                                             <div class="col-1 text-center">
                                                     <label class="form-check-label" for="flexRadioDefault1">
-                                                        {{$i}}
+                                                        {{$m}}
                                                     </label>
                                             </div>
                                             @endfor
                                         </div>
                                         <div class="row justify-content-center">
-                                            @for($j=1;$j<=10;$j++)
+                                            @for($n=1;$n<=10;$n++)
                                             <div class="col-1 text-center">
-                                                <input class="form-check-input text-center" type="radio" style="border:grey 1px solid" name="pertanyaan3_mentor_{{$j}}" id="flexRadioDefault{{$j}}">
+                                                <input class="form-check-input text-center" type="radio" style="border:grey 1px solid" name="pertanyaan3_mentor" id="flexRadioDefault{{$n}}" value="{{$n}}">
                                             </div>
                                             @endfor
                                         </div>
@@ -133,18 +133,18 @@
                                     <input type="text" hidden name="id_pertanyaan4" value="{{$id_pertanyaan[4]}}">
                                     <div class="form-group mb-1">
                                         <div class="row justify-content-center">
-                                            @for($i=1;$i<=10;$i++)
+                                            @for($o=1;$o<=10;$o++)
                                             <div class="col-1 text-center">
                                                     <label class="form-check-label" for="flexRadioDefault1">
-                                                        {{$i}}
+                                                        {{$o}}
                                                     </label>
                                             </div>
                                             @endfor
                                         </div>
                                         <div class="row justify-content-center">
-                                            @for($j=1;$j<=10;$j++)
+                                            @for($q=1;$q<=10;$q++)
                                             <div class="col-1 text-center">
-                                                <input class="form-check-input text-center" type="radio" style="border:grey 1px solid" name="pertanyaan4_mentor_{{$j}}" id="flexRadioDefault{{$j}}">
+                                                <input class="form-check-input text-center" type="radio" style="border:grey 1px solid" name="pertanyaan4_mentor" id="flexRadioDefault{{$q}}" value="{{$q}}">
                                             </div>
                                             @endfor
                                         </div>

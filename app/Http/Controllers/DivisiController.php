@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Imports\DivisiImport;
+use App\Models\ActivityLog;
 use App\Models\Divisi;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use RealRashid\SweetAlert\Facades\Alert;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
@@ -47,9 +49,9 @@ class DivisiController extends Controller
             'id'            => Str::uuid(),
             'nama'          => $request->nama,
             'created_at'    => now(),
-            'updated_at'    => now()
+            'created_by'    => Auth::user()->id
         ]);
-
+        ActivityLog::activity_log('Menambah data Divisi');
         Alert::success('Success', 'Data berhasil ditambahkan!');
         return redirect()->route('divisi.index');
     }
@@ -58,6 +60,7 @@ class DivisiController extends Controller
 
         Excel::import(new DivisiImport(), $request->file('file')->store('temp'));
 
+        ActivityLog::activity_log('Mengimport data Divisi');
         Alert::success('Success', 'Data berhasil diupload!');
         return redirect()->route('divisi.index');
     }
@@ -98,8 +101,10 @@ class DivisiController extends Controller
             ->update([
                 'nama' => strtoupper($request->nama) ?? strtoupper($divisi->nama),
                 'updated_at'    => now(),
+                'updated_by'    => Auth::user()->id
             ]);
-
+            
+        ActivityLog::activity_log('Mengedit data Divisi');
         Alert::success('Success', 'Data berhasil diupdate!');
         return redirect()->route('divisi.index');
     }
@@ -113,6 +118,7 @@ class DivisiController extends Controller
     public function destroy($id)
     {
         Divisi::where('id', $id)->delete();
+        ActivityLog::activity_log('Menghapus data Divisi');
         Alert::success('Success', 'Data berhasil dihapus!');
         return redirect()->route('divisi.index');
     }

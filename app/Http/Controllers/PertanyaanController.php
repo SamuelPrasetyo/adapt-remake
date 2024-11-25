@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Pertanyaan;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use RealRashid\SweetAlert\Facades\Alert;
 
 class PertanyaanController extends Controller
@@ -42,11 +44,13 @@ class PertanyaanController extends Controller
     {
         $data = [
             'nama_pertanyaan'    => $request->nama_pertanyaan,
-            'created_at'    => now(),
-            'updated_at'    => now()
+            'type'               => $request->type,
+            'created_at'         => now(),
+            'created_by'         => Auth::user()->id,
+            'status'             => 'Aktif'
         ];
         Pertanyaan::insert($data);
-
+        ActivityLog::activity_log('Menambah data Pertanyaan');
         Alert::success('Success', 'Data berhasil ditambahkan!');
         return redirect()->route('pertanyaan.index');
     }
@@ -87,9 +91,11 @@ class PertanyaanController extends Controller
             ->update([
                 'nama_pertanyaan'   => $request->nama_pertanyaan ?? $pertanyaan->nama_pertanyaan,
                 'type'              => $request->type ?? $pertanyaan->type,
+                'status'            => $request->status ?? $pertanyaan->status,
                 'updated_at'        => now(),
+                'updated_by'        => Auth::user()->id
             ]);
-
+        ActivityLog::activity_log('Mengubah data Pertanyaan');
         Alert::success('Success', 'Data berhasil diupdate!');
         return redirect()->route('pertanyaan.index');
     }
@@ -103,7 +109,9 @@ class PertanyaanController extends Controller
     public function destroy($id)
     {
         Pertanyaan::where('id_pertanyaan', $id)->delete();
+        ActivityLog::activity_log('Menghapus data Pertanyaan');
         Alert::success('Success', 'Data berhasil dihapus!');
         return redirect()->route('pertanyaan.index');
     }
+
 }

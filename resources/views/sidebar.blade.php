@@ -84,16 +84,16 @@
             </a>
             <ul class="menu-sub">
                 @canany('isAdmin')
+                <li class="menu-item" id="activity_log">
+                    <a href="{{route('activity.log')}}" class="menu-link">
+                        <i class="menu-icon tf-icons bx bxs-cog"></i>
+                        <div data-i18n="Activity Log">Activity Log</div>
+                    </a>
+                </li>
                 <li class="menu-item" id="jawaban">
                     <a href="{{route('jawaban.index')}}" class="menu-link">
                         <i class="menu-icon tf-icons bx bxs-file"></i>
-                        <div data-i18n="Jawaban">Jawaban</div>
-                    </a>
-                </li>
-                <li class="menu-item" id="learning_growth">
-                    <a href="{{route('learning.growth')}}" class="menu-link">
-                        <i class="menu-icon tf-icons bx bxs-file"></i>
-                        <div data-i18n="learning_growth">learning Growth</div>
+                        <div data-i18n="Jawaban">Feedback</div>
                     </a>
                 </li>
                 @endcanany
@@ -107,5 +107,26 @@
                 @endcanany
             </ul>
         </li>
+        <li class="menu-item" id="report">
+            <a href="javascript:void(0);" class="menu-link menu-toggle">
+                <i class="menu-icon tf-icons bx bx-file"></i>
+                <div data-i18n="Layouts">Report</div>
+            </a>
+            <ul class="menu-sub">
+                @canany(['isAdmin','isMentor'])
+                <li class="menu-item" id="learning_growth">
+                    <a href="{{route('learning.index')}}" class="menu-link">
+                        <i class="menu-icon tf-icons bx bxs-detail"></i>
+                        <div data-i18n="learning_growth">Learning Growth</div>
+                    </a>
+                </li>
+                <li class="menu-item" id="learning_growth">
+                    <a href="{{route('weekly.index')}}" class="menu-link">
+                        <i class="menu-icon tf-icons bx bxs-chart"></i>
+                        <div data-i18n="learning_growth">OJT Monitoring</div>
+                    </a>
+                </li>
+                @endcanany
+            </ul>
     </ul>
 </aside>

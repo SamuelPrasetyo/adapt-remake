@@ -8,6 +8,7 @@ use App\Models\Departemen;
 use App\Models\Divisi;
 use App\Models\Kader;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\ToModel;
@@ -38,7 +39,7 @@ class KaderImport implements ToCollection, WithHeadingRow
                 'id_departemen' => $departemen->id,
                 'id_batch'      => $batch->id_batch,
                 'created_at'    => now(),
-                'updated_at'    => now()
+                'created_by'    => Auth::user()->id
             ];
             // Kader::insert($data);
         }

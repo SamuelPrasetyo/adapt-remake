@@ -108,7 +108,7 @@
                                             <label class="mb-2">Nama Batch: </label>
                                             <div class="form-group">
                                                 <input type="text" placeholder="nama batch"
-                                                    class="form-control" name="nama" value="{{ old('nama_batch') ? old('nama_batch') : $batch->nama_batch }}">
+                                                    class="form-control" name="nama_batch" value="{{ old('nama_batch') ? old('nama_batch') : $batch->nama_batch }}">
                                             </div>
                                             <label class="mb-2">Tahun Batch: </label>
                                             <div class="form-group">
