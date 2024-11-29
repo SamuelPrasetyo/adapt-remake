@@ -9,6 +9,11 @@ use App\Models\Pertanyaan;
 use App\Models\Week;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Barryvdh\Snappy\Facades\SnappyPdf;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 
 class ReportController extends Controller
 {
@@ -42,7 +47,6 @@ class ReportController extends Controller
     {
         $reports = Jawaban::selectRaw("SUM(jawaban) / 4 as avg,nik_kader,weeks.angka_week as week")
             ->join('weeks', 'jawaban.id_week', 'weeks.id_week')
-            ->whereNotNull('nama_mentor')
             ->where('nik_kader', $request->nik_kader)
             ->whereNotIn('id_pertanyaan', ['5', '6'])
             ->groupBy('nik_kader', 'week')
@@ -61,10 +65,8 @@ class ReportController extends Controller
             $rounded = round($cal, 2);
             $data_lg[$val->week] =  $rounded;
 
-            // array_push($learningG, $rounded);
             $learningG[$val->week] =  $rounded;
 
-            // array_push($avg, $val->avg);
             $avg[$val->week] = $val->avg;
 
             array_push($kkm, 7);
@@ -79,19 +81,18 @@ class ReportController extends Controller
         $week = json_encode($week, JSON_NUMERIC_CHECK);
         $learningG = json_encode($learningG, JSON_NUMERIC_CHECK);
         $kkm = json_encode($kkm, JSON_NUMERIC_CHECK);
-        // dd($data,$labels);
 
-        $kader = Kader::select('kader.nama as nama_kader', 'divisis.nama as nama_divisi', 'departemens.nama as nama_departemen', 'company.company_name')
+        $kader = Kader::select('kader.nama as nama_kader', 'kader.nik', 'divisis.nama as nama_divisi', 'departemens.nama as nama_departemen', 'company.company_name')
             ->where('nik', $request->nik_kader)
             ->join('company', 'kader.company_code', 'company.company_code')
             ->join('divisis', 'kader.id_divisi', 'divisis.id')
             ->join('departemens', 'kader.id_departemen', 'departemens.id')
             ->first();
-
         $title['nama_kader'] = $kader->nama_kader;
         $title['divisi'] = $kader->nama_divisi;
         $title['departemen'] = $kader->nama_departemen;
         $title['bu'] = $kader->company_name;
+        $title['nik'] = $kader->nik;
 
 
         return view('pages.report.learning_growth', compact('week', 'reports', 'avg', 'learningG', 'kkm', 'data_lg', 'title'));
@@ -119,18 +120,20 @@ class ReportController extends Controller
                 break;
         }
         // dd($week_arr);
-        $reports = Jawaban::selectRaw("pertanyaan.nama_pertanyaan,jawaban,nik_kader,weeks.angka_week as week")
+        $reports = Jawaban::selectRaw("pertanyaan.nama_pertanyaan,jawaban,nik_kader,weeks.angka_week as week, users.name as nama_mentor")
             ->join('weeks', 'jawaban.id_week', 'weeks.id_week')
             ->join('pertanyaan', 'jawaban.id_pertanyaan', 'pertanyaan.id_pertanyaan')
-            ->whereNotNull('nama_mentor')
+            ->join('users', 'jawaban.created_by', 'users.id')
+            // ->whereNotNull('nama_mentor')
             ->where('nik_kader', $request->nik_kader)
+            ->where('pertanyaan.status','Aktif')
             ->whereNotIn('jawaban.id_pertanyaan', ['5', '6'])
             ->whereIn('weeks.angka_week', $week_arr)
             // ->groupBy('pertanyaan.nama_pertanyaan', 'nik_kader', 'week')
             ->orderBy('pertanyaan.id_pertanyaan')
             ->get();
 
-        $pertanyaans = Pertanyaan::where('type', 'Mentor')->orderBy('id_pertanyaan', 'asc')->limit(4)->get();
+        $pertanyaans = Pertanyaan::where('type', 'Mentor')->where('status','Aktif')->orderBy('id_pertanyaan', 'asc')->limit(4)->get();
         // dd($reports);
         $data_count = count($reports);
         $avg = [];
@@ -145,18 +148,24 @@ class ReportController extends Controller
         $i = 0;
         $weeks = Week::whereIn('angka_week', $week_arr)->orderBy('angka_week', 'asc')->get();
         $week = [];
-        
+        $nama_mentor = '';
+
         foreach ($weeks as $w) {
             array_push($week, $w->angka_week);
             array_push($kkm, 7);
         }
         foreach ($reports as $val) {
             $data[strip_tags($val->nama_pertanyaan)][$val->week] = $val->jawaban;
-            $avg_week[$val->week] = ($avg_week[$val->week] ?? 0) + $val->jawaban / 4;
+            if(is_numeric($val->jawaban)){
+                $avg_week[$val->week] = ($avg_week[$val->week] ?? 0) + $val->jawaban / 4;
+            }
+            // log::info($val->week);
+            // log::info($val->jawaban);
+            $nama_mentor = $val->nama_mentor;
         }
-        foreach($avg_week as $key => $avw){
-            $cal = ($avw + $temp_week) / 6;
 
+        foreach ($avg_week as $key => $avw) {
+            $cal = ($avw + $temp_week) / 6;
             $rounded = round($cal, 2);
             $data_lg[$key] =  $rounded;
             $learningG[$key] =  $rounded;
@@ -164,8 +173,6 @@ class ReportController extends Controller
             // $week[$key] = $key;
 
             $temp_week += $avw;
-
-
         }
 
         // Iterate over the data to fill missing weeks with "0"
@@ -186,7 +193,7 @@ class ReportController extends Controller
 
         // dd($avg,$week,$learningG,$kkm);
 
-        $kader = Kader::select('kader.nama as nama_kader','kader.iq','kader.ipk', 'divisis.nama as nama_divisi', 'departemens.nama as nama_departemen', 'company.company_name', 'jawaban.nama_mentor', 'batch.nama_batch', 'batch.tahun_batch')
+        $kader = Kader::select('kader.nama as nama_kader', 'kader.iq', 'kader.ipk', 'divisis.nama as nama_divisi', 'departemens.nama as nama_departemen', 'company.company_name', 'jawaban.nama_mentor', 'batch.nama_batch', 'batch.tahun_batch')
             ->leftJoin('jawaban', 'kader.nik', 'jawaban.nik_kader')
             ->leftJoin('company', 'kader.company_code', 'company.company_code')
             ->leftJoin('divisis', 'kader.id_divisi', 'divisis.id')
@@ -196,7 +203,7 @@ class ReportController extends Controller
             // ->whereNotNull('jawaban.nama_mentor')
             ->first();
 
-        $title['nama_mentor'] = $kader->nama_mentor;
+        $title['nama_mentor'] = $nama_mentor;
         $title['nama_kader'] = $kader->nama_kader;
         $title['divisi'] = $kader->nama_divisi;
         $title['departemen'] = $kader->nama_departemen;
@@ -205,7 +212,10 @@ class ReportController extends Controller
         $title['ipk'] = $kader->ipk;
         $title['ojt'] = $request->ojt;
         $title['batch'] = $this->ToRomawi($kader->nama_batch) . ' - ' . $kader->tahun_batch;
-        return view('pages.report.weekly_monitoring', compact('week', 'reports', 'avg', 'learningG', 'kkm', 'data_lg', 'title', 'pertanyaans', 'data', 'week_arr', 'avg_week','data_kkm'));
+        $batch = $this->ToRomawi($kader->nama_batch);
+        $tahun = $kader->tahun_batch;
+
+        return view('pages.report.weekly_monitoring', compact('week', 'reports', 'avg', 'learningG', 'kkm', 'data_lg', 'title', 'pertanyaans', 'data', 'week_arr', 'avg_week', 'data_kkm','batch','tahun'));
     }
 
     public function weekly_index()
@@ -225,12 +235,13 @@ class ReportController extends Controller
         return view('pages.report.learning_index', compact('kaders', 'title'));
     }
 
-    function ToRomawi($number) {
+    function ToRomawi($number)
+    {
         $map = array('M' => 1000, 'CM' => 900, 'D' => 500, 'CD' => 400, 'C' => 100, 'XC' => 90, 'L' => 50, 'XL' => 40, 'X' => 10, 'IX' => 9, 'V' => 5, 'IV' => 4, 'I' => 1);
         $returnValue = '';
         while ($number > 0) {
             foreach ($map as $roman => $int) {
-                if($number >= $int) {
+                if ($number >= $int) {
                     $number -= $int;
                     $returnValue .= $roman;
                     break;
@@ -239,6 +250,8 @@ class ReportController extends Controller
         }
         return $returnValue;
     }
+
+
     /**
      * Show the form for creating a new resource.
      *

@@ -1,5 +1,14 @@
-@extends('app')
-@section('content')
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+    <title>Hi</title>
+
+</head>
+
+<body>
 <div class="container-xxl flex-grow-1 container-p-y container-p-x">
     <nav style="--bs-breadcrumb-divider: url(&#34;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M2.5 0L1 1.5 3.5 4 1 6.5 2.5 8l4-4-4-4z' fill='currentColor'/%3E%3C/svg%3E&#34;);" aria-label="breadcrumb">
         <ol class="breadcrumb">
@@ -9,9 +18,7 @@
     </nav>
     <div class="row">
         <div class="col-lg-12 mb-4 order-0">
-            <button id="downloadPdf" class="btn btn-sm btn-primary mb-2">Export to PDF</button>
-            <input type="text" id="nama_kader" hidden value="{{$title['nama_kader']}}">
-            <div class="card" style="background-color:#E5E4E2;" id="reportPage">
+            <div class="card" style="background-color:#E5E4E2;">
                 <div class="row m-0 pt-1 pb-0" style="background-color: skyblue;border-radius:6px 6px 0px 0px">
                     <h5 class="text-center">LEARNING GROWTH (DEVELOPMENT)</h5>
                 </div>
@@ -50,6 +57,9 @@
                                     : {{$title['bu']}}
                                 </div>
                             </div>
+                            <!-- <h6>Nama &emsp;: Aditya Rinduwan</h6>
+                            <h6>Posisi &emsp;: Digital Marketing Staff</h6>
+                            <h6>BU &emsp; &emsp;: PT. Mekar Armada Investama</h6> -->
                         </div>
                         <div class="col-4">
                             <div class="row">
@@ -107,41 +117,18 @@
         </div>
     </div>
 </div>
-@endsection
+</body>
+
+</html>
 @section('addon-script')
-
-
 <script type="text/javascript">
-    document.getElementById('downloadPdf').addEventListener('click', async () => {
-        const {
-            jsPDF
-        } = window.jspdf; // Use the jsPDF instance
-        const doc = new jsPDF('p', 'pt', 'a4'); // Portrait, points, A4 size
-
-        // Select the content to be converted to PDF
-        const reportPage = document.getElementById('reportPage');
-
-        // Use html2canvas to capture content as image
-        const canvas = await html2canvas(reportPage);
-        const imgData = canvas.toDataURL('image/png');
-
-        // Add image to PDF
-        const imgProps = doc.getImageProperties(imgData);
-        const pdfWidth = doc.internal.pageSize.getWidth();
-        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-
-        doc.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-        const namaKader = $('#nama_kader').val();
-        doc.save('LearningGrowthReport_'+namaKader+'.pdf'); // Save the PDF
-    });
-
     var ctx = document.getElementById('myLineChart').getContext('2d');
     var week = <?php echo $week; ?>;
     var avg = <?php echo $avg; ?>;
     var lg = <?php echo $learningG; ?>;
     var kkm = <?php echo $kkm; ?>;
-    console.log(avg, lg, kkm);
-
+    console.log(avg,lg,kkm);
+    
 
 
     var myLineChart = new Chart(ctx, {
@@ -190,35 +177,6 @@
                 },
             },
         }
-    });
-    document.getElementById('exportPdf').addEventListener('click', () => {
-        const canvas = document.getElementById('myLineChart');
-        const image = canvas.toDataURL('image/png'); // Konversi ke base64
-        var nikValue = $('#nik').val();
-
-        fetch('/export-pdf', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                },
-                body: JSON.stringify({
-                    image,
-                    nik: nikValue
-                })
-            })
-            .then(response => response.blob())
-            .then(blob => {
-
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = url;
-                a.download = 'chart.pdf';
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-            });
     });
     $(document).ready(function() {
 

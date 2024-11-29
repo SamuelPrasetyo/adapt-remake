@@ -6,6 +6,7 @@ use App\Models\ActivityLog;
 use App\Models\Company;
 use App\Models\Jawaban;
 use App\Models\Kader;
+use App\Models\Nilai;
 use App\Models\Pertanyaan;
 use App\Models\Week;
 use Illuminate\Http\Request;
@@ -47,15 +48,24 @@ class JawabanController extends Controller
     }
     public function feedback()
     {
-        $subject = Pertanyaan::where('type', 'Subject ' . $this->user->type)->first();
+        $subject = Pertanyaan::where('type', 'Subject ' . $this->user->type)->where('status','Aktif')->first();
         // $subject = Pertanyaan::where('type','Subject Kader')->first();
 
-        $weeks = Week::orderBy('angka_week', 'asc')->get();
+        $jawaban = Jawaban::select('weeks.angka_week')
+                            ->join('weeks','jawaban.id_week','weeks.id_week')
+                            ->where('jawaban.created_by',Auth::user()->id)
+                            ->groupBy('weeks.angka_week')
+                            ->get();
+        $week = [];
+        foreach($jawaban as $j){
+            array_push($week,$j->angka_week);
+        }
+        $weeks = Week::orderBy('angka_week', 'asc')->whereNotIn('angka_week',$week)->get();
         $company = Company::where('company_code', $this->user->company_code)->first();
         $kaders = Kader::where('company_code', $company->company_code)
             ->orderBy('nama', 'asc')
             ->get();
-        $pertanyaans = Pertanyaan::where('type', $this->user->type)->orderBy('id_pertanyaan', 'asc')->get();
+        $pertanyaans = Pertanyaan::where('type', $this->user->type)->where('status','Aktif')->orderBy('id_pertanyaan', 'asc')->get();
         $no = 1;
         foreach ($pertanyaans as $val) {
             $pertanyaan[$no] = $val->nama_pertanyaan;
@@ -64,8 +74,10 @@ class JawabanController extends Controller
         }
         $counts = count($pertanyaans);
 
+        $nilai = Nilai::orderBy('id_nilai','asc')->get();
+
         if ($this->user->type == 'Mentor') {
-            return view('pages.jawaban.feedback', compact('subject', 'weeks', 'kaders', 'counts', 'pertanyaan', 'id_pertanyaan'));
+            return view('pages.jawaban.feedback', compact('subject', 'weeks', 'kaders', 'counts', 'pertanyaan', 'id_pertanyaan','nilai'));
         } elseif ($this->user->type == 'Kader') {
             return view('pages.jawaban.feedback_kader', compact('subject', 'weeks', 'kaders', 'counts', 'pertanyaan', 'id_pertanyaan'));
         }
@@ -102,7 +114,7 @@ class JawabanController extends Controller
             $jawaban_mentor['3'] = $request->pertanyaan3_mentor;
 
             $jawaban_mentor['4'] = $request->pertanyaan4_mentor;
-            $count_pertanyaan = Pertanyaan::where('type', 'Mentor')->get()->count();
+            $count_pertanyaan = Pertanyaan::where('type', 'Mentor')->where('status','Aktif')->get()->count();
             for ($i = 1; $i < $count_pertanyaan; $i++) {
 
                 $jawaban = '';
@@ -145,7 +157,7 @@ class JawabanController extends Controller
             $file = explode('.', $file);
             $ext_name = end($file);
             $nama_file =  $name . '_' . $bu->company_shortname . '_' . $week->angka_week . '.' . $ext_name;
-            $count_pertanyaan = Pertanyaan::where('type', 'Kader')->get()->count();
+            $count_pertanyaan = Pertanyaan::where('type', 'Kader')->where('status','Aktif')->get()->count();
 
             for ($i = 1; $i <= $count_pertanyaan; $i++) {
                 // dd($request['id_pertanyaan'.$i]);
@@ -181,16 +193,18 @@ class JawabanController extends Controller
         $angka_week = $split[0];
         $user_name = str_replace('_', ' ', $split[1]);
 
-        $jawabans = Jawaban::select('jawaban.*', 'weeks.angka_week', 'pertanyaan.nama_pertanyaan', 'weeks.angka_week')
+        $jawabans = Jawaban::select('jawaban.*','kader.nama as nama_kader', 'weeks.angka_week', 'pertanyaan.nama_pertanyaan', 'weeks.angka_week')
             ->join('pertanyaan', 'pertanyaan.id_pertanyaan', 'jawaban.id_pertanyaan')
             ->join('weeks', 'weeks.id_week', 'jawaban.id_week')
             ->join('users', 'jawaban.created_by', 'users.id')
+            ->join('kader', 'jawaban.nik_kader', 'kader.nik')
             ->where(function ($query) use ($user_name) {
                 $query->where('jawaban.nama_mentor', $user_name)
                     ->orWhere('users.name', $user_name);
             })
             ->where('weeks.angka_week', $angka_week)
             ->get();
+
 
         $title = Jawaban::select('jawaban.*', 'kader.nama as nama_kader', 'users.name as nama_mentor', 'users.type')
             ->join('weeks', 'weeks.id_week', 'jawaban.id_week')
@@ -207,6 +221,26 @@ class JawabanController extends Controller
         $week = $angka_week;
 
         return view('pages.jawaban.detail', compact('jawabans', 'week', 'title'));
+    }
+
+    public function fetchWeek(Request $request)
+    {
+        $jawaban = Jawaban::select('weeks.angka_week')
+                            ->join('weeks','jawaban.id_week','weeks.id_week')
+                            ->where('jawaban.nik_kader',$request->id_kader)
+                            ->groupBy('weeks.angka_week')
+                            ->get();
+        $week = [];
+        foreach($jawaban as $j){
+            array_push($week,$j->angka_week);
+        }
+        $data['weeks'] = Week::orderBy('angka_week', 'asc')->whereNotIn('angka_week',$week)->get();
+        log::info($data);
+        // $data['weeks'] = Week::where("country_id", $request->country_id)
+
+        //     ->get(["name", "id"]);
+
+        return response()->json($data);
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\KadersExport;
 use App\Models\Kader;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
@@ -63,6 +64,13 @@ class KaderController extends Controller
     public function store(Request $request)
     {
         //
+    }
+
+    public function export() 
+    {
+        $file_name = 'kaders_'.date('d-m-Y_H:i:s') . '.xlsx';
+
+        return Excel::download(new KadersExport,$file_name);
     }
 
     public function import(Request $request)

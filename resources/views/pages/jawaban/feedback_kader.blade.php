@@ -51,7 +51,7 @@
                     <div class="card mb-2">
                         <div class="card-body">
                             <div class="row">
-                                <h6 class="mb-2">1. {{$pertanyaan[1]}}</h6>
+                                <h6 class="mb-2">1. {{strip_tags($pertanyaan[1])}}</h6>
                                 <input type="text" hidden name="id_pertanyaan1" value="{{$id_pertanyaan[1]}}">
                                 <div class="form-group mb-1">
                                     <textarea type="text" placeholder="jawaban"
@@ -63,7 +63,7 @@
                     <div class="card mb-2">
                         <div class="card-body">
                             <div class="row">
-                                <h6 class="mb-2">2. {{$pertanyaan[2]}}</h6>
+                                <h6 class="mb-2">2. {{strip_tags($pertanyaan[2])}}</h6>
                                 <input type="text" hidden name="id_pertanyaan2" value="{{$id_pertanyaan[2]}}">
                                 <div class="form-group mb-1">
                                     <textarea type="text" placeholder="jawaban"
@@ -75,7 +75,7 @@
                     <div class="card mb-2">
                         <div class="card-body">
                             <div class="row">
-                                <h6 class="mb-2">3. {{$pertanyaan[3]}}</h6>
+                                <h6 class="mb-2">3. {{strip_tags($pertanyaan[3])}}</h6>
                                 <input type="text" hidden name="id_pertanyaan3" value="{{$id_pertanyaan[3]}}">
                                 <div class="form-group mb-1">
                                     <textarea type="text" placeholder="jawaban"
@@ -88,7 +88,7 @@
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-3">
-                                    <h6 class="mb-2">4. {{$pertanyaan[4]}}</h6>
+                                    <h6 class="mb-2">4. {{strip_tags($pertanyaan[4])}}</h6>
                                     <input type="text" hidden name="id_pertanyaan4" value="{{$id_pertanyaan[4]}}">
                                     <div class="form-group mb-1">
                                         <input type="file" name="jawaban_kader[4]">

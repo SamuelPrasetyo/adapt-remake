@@ -21,7 +21,7 @@
                                         @if($title->type == 'Mentor')
                                         <h6 class="card-subtitle mb-1 text-nowrap">Mentor : {{$title->nama_mentor}}</h6>
                                         @endif
-                                        <h6 class="card-subtitle text-nowrap">Kader : {{$title->nama_kader}}</h6>
+                                        <!-- <h6 class="card-subtitle text-nowrap">Kader : {{$title->nama_kader}}</h6> -->
                                     </div>
                                     <div class="col d-flex justify-content-end mb-3">
                                     </div>
@@ -31,6 +31,7 @@
                                         <thead>
                                             <tr>
                                                 <th style="text-align: center;">No</th>
+                                                <th style="text-align: center;">Nama Kader</th>
                                                 <th style="text-align: center;width:30%">Pertanyaan</th>
                                                 <th style="text-align: center;width:30%">Jawaban</th>
                                                 @if($title->type == 'Mentor')
@@ -44,6 +45,7 @@
                                             @foreach($jawabans as $jawaban)
                                             <tr>
                                                 <td style="text-align: center">{{$no++}}</td>
+                                                <td style="text-align: center;font-size:14px">{{strip_tags($jawaban->nama_kader)}}</td>
                                                 <td style="text-align: center;font-size:14px">{{strip_tags($jawaban->nama_pertanyaan)}}</td>
                                                 @if(str_contains($jawaban->jawaban,'pdf') OR str_contains($jawaban->jawaban,'xlsx') OR str_contains($jawaban->jawaban,'xls'))
                                                 @php
@@ -54,8 +56,12 @@
                                                 <td style="text-align: center;font-size:14px">{{strip_tags($jawaban->jawaban)}}</td>
                                                 @if($title->type == 'Mentor')
                                                 <td style="text-align: center;font-size:14px">{{strip_tags($jawaban->essay_revisi ?? '-')}}</td>
-                                                <td style="text-align: center;font-size:14px"><button class="btn btn-sm btn-primary" data-bs-toggle="modal"
-                                                        data-bs-target="#edit-data{{$jawaban->id_jawaban}}">Edit</button></td>
+                                                    @if($jawaban->id_pertanyaan == '6')
+                                                    <td style="text-align: center;font-size:14px"><button class="btn btn-sm btn-primary" data-bs-toggle="modal"
+                                                            data-bs-target="#edit-data{{$jawaban->id_jawaban}}">Edit</button></td>
+                                                    @else
+                                                    <td></td>
+                                                    @endif
                                                 @endif
                                                 @endif
                                             </tr>

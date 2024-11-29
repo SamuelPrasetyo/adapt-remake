@@ -17,6 +17,7 @@
                                         <!-- <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">
                                             Tambah
                                         </button> -->
+                                        <a class="btn btn-primary" href="{{ route('kader.export') }}">Export</a>
                                         &nbsp;
                                         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#import">
                                             Import
@@ -52,7 +53,7 @@
                                                 <td style="text-align: center;font-size:14px">{{$kader->tahun_batch}}</td>
                                                 <td class="text-center">
                                                     <button class="btn btn-sm btn-primary" data-bs-toggle="modal"
-                                                        data-bs-target="#edit-data{{$kader->id}}">Edit</button>
+                                                        data-bs-target="#edit-data{{$kader->id}}">Show</button>
                                                 </td>
                                             </tr>
                                             @endforeach
@@ -98,85 +99,111 @@
                             <div class="modal-dialog">
                                 <div class="modal-content">
                                     <div class="modal-header">
-                                        <h5 class="modal-title" id="exampleModalLabel">Update Data</h5>
+                                        <h5 class="modal-title" id="exampleModalLabel">Show Data</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                     </div>
-                                    <form action="{{route('kader.update',$kader->id)}}" method="POST">
+                                    <form action="{{ route('kader.update', $kader->id) }}" method="POST">
                                         @csrf
                                         @method('put')
                                         <div class="modal-body">
                                             <label class="mb-2">Nama Kader: </label>
                                             <div class="form-group">
                                                 <input type="text"
-                                                    class="form-control" name="nama" value="{{ old('nama') ? old('nama') : $kader->nama }}">
+                                                    class="form-control"
+                                                    name="nama"
+                                                    value="{{ old('nama') ? old('nama') : $kader->nama }}"
+                                                    readonly>
                                             </div>
+
                                             <label class="mb-2">NIK: </label>
                                             <div class="form-group">
                                                 <input type="text"
-                                                    class="form-control" value="{{ old('nik') ? old('nik') : $kader->nik }}">
+                                                    class="form-control"
+                                                    value="{{ old('nik') ? old('nik') : $kader->nik }}"
+                                                    readonly>
                                             </div>
+
                                             <label class="mb-2">Jenis Kelamin: </label>
                                             <div class="form-group">
                                                 <input type="text"
-                                                    class="form-control" name="jenis_kelamin" value="{{ old('jenis_kelamin') ? old('jenis_kelamin') : $kader->jenis_kelamin }}">
+                                                    class="form-control"
+                                                    name="jenis_kelamin"
+                                                    value="{{ old('jenis_kelamin') ? old('jenis_kelamin') : $kader->jenis_kelamin }}"
+                                                    readonly>
                                             </div>
+
                                             <label class="mb-2">IQ: </label>
                                             <div class="form-group">
                                                 <input type="text"
-                                                    class="form-control" name="iq" value="{{ old('iq') ? old('iq') : $kader->iq }}">
+                                                    class="form-control"
+                                                    name="iq"
+                                                    value="{{ old('iq') ? old('iq') : $kader->iq }}"
+                                                    readonly>
                                             </div>
+
                                             <label class="mb-2">IPK: </label>
                                             <div class="form-group">
                                                 <input type="text"
-                                                    class="form-control" name="ipk" value="{{ old('ipk') ? old('ipk') : $kader->ipk }}">
+                                                    class="form-control"
+                                                    name="ipk"
+                                                    value="{{ old('ipk') ? old('ipk') : $kader->ipk }}"
+                                                    readonly>
                                             </div>
+
                                             <label class="mb-2">Batch: </label>
                                             <div class="form-group">
-                                                <select class="form-control" name="id_batch" id="">
+                                                <select class="form-control" name="id_batch" disabled>
                                                     <option value="">--Pilih batch--</option>
                                                     @foreach($batchs as $batch)
-                                                    <option value="{{$batch->id_batch}}" {{$kader->id_batch==$batch->id_batch ? 'selected' : ''}}>{{ $batch->nama_batch }}</option>
+                                                    <option value="{{ $batch->id_batch }}"
+                                                        {{ $kader->id_batch == $batch->id_batch ? 'selected' : '' }}>
+                                                        {{ $batch->nama_batch }}
+                                                    </option>
                                                     @endforeach
                                                 </select>
                                             </div>
+
                                             <label class="mb-2">Bisnis Unit: </label>
                                             <div class="form-group">
-                                                <select class="form-control" name="company_code" id="">
+                                                <select class="form-control" name="company_code" disabled>
                                                     <option value="">--Pilih nama bisnis unit--</option>
                                                     @foreach($companys as $company)
-                                                    <option value="{{$company->company_code}}" {{$kader->company_code==$company->company_code ? 'selected' : ''}}>{{ $company->company_shortname }}</option>
+                                                    <option value="{{ $company->company_code }}"
+                                                        {{ $kader->company_code == $company->company_code ? 'selected' : '' }}>
+                                                        {{ $company->company_shortname }}
+                                                    </option>
                                                     @endforeach
                                                 </select>
                                             </div>
+
                                             <label class="mb-2">Divisi: </label>
                                             <div class="form-group">
-                                                <select class="form-control" name="id_divisi" id="">
+                                                <select class="form-control" name="id_divisi" disabled>
                                                     <option value="">--Pilih nama divisi--</option>
                                                     @foreach($divisis as $divisi)
-                                                    <option value="{{$divisi->id}}" {{$kader->id_divisi==$divisi->id ? 'selected' : ''}}>{{ $divisi->nama }}</option>
+                                                    <option value="{{ $divisi->id }}"
+                                                        {{ $kader->id_divisi == $divisi->id ? 'selected' : '' }}>
+                                                        {{ $divisi->nama }}
+                                                    </option>
                                                     @endforeach
                                                 </select>
                                             </div>
+
                                             <label class="mb-2">Departemen: </label>
                                             <div class="form-group">
-                                                <select class="form-control" name="id_departemen" id="">
+                                                <select class="form-control" name="id_departemen" disabled>
                                                     <option value="">--Pilih nama departemen--</option>
                                                     @foreach($departemens as $departemen)
-                                                    <option value="{{$departemen->id}}" {{$kader->id_departemen==$departemen->id ? 'selected' : ''}}>{{ $departemen->nama }}</option>
+                                                    <option value="{{ $departemen->id }}"
+                                                        {{ $kader->id_departemen == $departemen->id ? 'selected' : '' }}>
+                                                        {{ $departemen->nama }}
+                                                    </option>
                                                     @endforeach
                                                 </select>
                                             </div>
                                         </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn btn-light-secondary"
-                                                data-bs-dismiss="modal">
-                                                <i class="bx bx-x d-block d-sm-none"></i>
-                                                <span class="d-none d-sm-block">Close</span>
-                                            </button>
-                                            <button class="btn btn-primary ml-1" type="submit">Update
-                                            </button>
-                                        </div>
                                     </form>
+
                                 </div>
                             </div>
                         </div>

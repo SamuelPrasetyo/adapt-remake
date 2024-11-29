@@ -23,7 +23,7 @@ class KaderImport implements ToCollection, WithHeadingRow
             $company = Company::where('company_shortname', $row['company_shortname'])->first();
             $divisi = Divisi::where('nama', $row['divisi'])->first();
             $departemen = Departemen::where('nama', $row['departemen'])->first();
-            $batch = Batch::where('nama_batch', $row['batch'])->first();
+            $batch = Batch::where('nama_batch', $row['batch'])->where('tahun_batch',$row['tahun'])->first();
             if (!$company || !$divisi || !$departemen || !$batch) {
                 continue;
             }

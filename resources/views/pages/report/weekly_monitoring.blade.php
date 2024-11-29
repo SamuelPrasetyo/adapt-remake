@@ -9,7 +9,10 @@
     </nav>
     <div class="row">
         <div class="col-lg-12 mb-4 order-0">
-            <div class="card" style="background-color:#FFF;">
+        <button id="downloadPdf" class="btn btn-sm btn-primary mb-2">Export to PDF</button>
+            <div class="card" style="background-color:#FFF;" id="reportOjt">
+            <input type="text" id="nama_kaderojt" hidden value="{{$title['nama_kader']}}">
+            <input type="text" id="ojt" hidden value="{{$title['ojt']}}">
                 <div class="card-body p-4 pt-3">
                     <div class="row">
                         <div class="col-2 text-center" style="border: #000 2px solid;">
@@ -120,6 +123,30 @@
 @endsection
 @section('addon-script')
 <script type="text/javascript">
+    document.getElementById('downloadPdf').addEventListener('click', async () => {
+        const {
+            jsPDF
+        } = window.jspdf; // Use the jsPDF instance
+        const doc = new jsPDF('p', 'pt', 'a4'); // Portrait, points, A4 size
+
+        // Select the content to be converted to PDF
+        const reportPage = document.getElementById('reportOjt');
+
+        // Use html2canvas to capture content as image
+        const canvas = await html2canvas(reportPage);
+        const imgData = canvas.toDataURL('image/png');
+
+        // Add image to PDF
+        const imgProps = doc.getImageProperties(imgData);
+        const pdfWidth = doc.internal.pageSize.getWidth();
+        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+        doc.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        const namaKader = $('#nama_kaderojt').val();
+        const ojt = $('#ojt').val();
+        doc.save('OJT'+ojt+'_MonitoringReport_'+namaKader+'.pdf'); // Save the PDF
+    });
+    
     var ctx = document.getElementById('myLineChart').getContext('2d');
     var week = <?php echo $week; ?>;
     
@@ -167,7 +194,7 @@
                     position: 'bottom',
                     title: {
                         display: true,
-                        text: 'TIME SPENT (WEEK)',
+                        text: 'TIME SPENT (BIWEEK)',
                     }
                 },
             },

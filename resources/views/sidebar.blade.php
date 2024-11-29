@@ -107,19 +107,21 @@
                 @endcanany
             </ul>
         </li>
+        @canany(['isAdmin','isMentor'])
+
         <li class="menu-item" id="report">
             <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <i class="menu-icon tf-icons bx bx-file"></i>
                 <div data-i18n="Layouts">Report</div>
             </a>
             <ul class="menu-sub">
-                @canany(['isAdmin','isMentor'])
                 <li class="menu-item" id="learning_growth">
                     <a href="{{route('learning.index')}}" class="menu-link">
                         <i class="menu-icon tf-icons bx bxs-detail"></i>
                         <div data-i18n="learning_growth">Learning Growth</div>
                     </a>
                 </li>
+                @canany(['isAdmin'])
                 <li class="menu-item" id="learning_growth">
                     <a href="{{route('weekly.index')}}" class="menu-link">
                         <i class="menu-icon tf-icons bx bxs-chart"></i>
@@ -128,5 +130,8 @@
                 </li>
                 @endcanany
             </ul>
+        </li>
+        @endcanany
+
     </ul>
 </aside>

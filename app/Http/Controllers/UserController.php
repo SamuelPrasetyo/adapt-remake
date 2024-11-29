@@ -64,7 +64,7 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
-        $nama = $request->nama;
+        $nama = $request->name;
         $company_code = $request->company_code;
         if ($request->nik_kader != null) {
             $kader = Kader::select('kader.nama', 'company.company_code')
@@ -81,6 +81,7 @@ class UserController extends Controller
             'password'      => Hash::make($request->password),
             'type'          => $request->nik_kader != null ? 'Kader' : 'Mentor',
             'company_code'  => $company_code,
+            'status'        => 'Aktif',
             'created_at'    => now(),
             'created_by'    => Auth::user()->id
         ];

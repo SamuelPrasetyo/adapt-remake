@@ -120,6 +120,9 @@ Route::middleware(['can:isAdmin&Mentor'])->group(function () {
         Route::post('/learning-growth', 'learning_growth')->name('learning.growth');
         Route::get('/ojt-index', 'weekly_index')->name('weekly.index');
         Route::post('/ojt-monitoring', 'weekly_monitoring')->name('weekly.monitoring');
+
+        Route::get('/learning-growth/export-pdf/{nik}', 'exportLearningGrowthPdf')->name('learning.export_pdf');
+        Route::post('/export-pdf', 'exportPdf')->name('exportPdf');
     });
 });
 
@@ -128,5 +131,6 @@ Route::middleware(['can:isUser'])->group(function () {
         Route::get('/feedback-survey', 'feedback')->name('feedback.index');
         Route::post('/feedback-survey/store', 'feedback_store')->name('feedback.store');
         Route::post('/feedback-survey-kader/store', 'feedback_kader_store')->name('feedback_kader.store');
+        Route::post('api/fetch-weeks', 'fetchWeek')->name('fetch.week');
     });
 });
