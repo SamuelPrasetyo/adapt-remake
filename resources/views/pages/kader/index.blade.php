@@ -17,7 +17,7 @@
                                         <!-- <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">
                                             Tambah
                                         </button> -->
-                                        <a class="btn btn-primary" href="{{ route('kader.export') }}">Export</a>
+                                        <a class="btn btn-primary" href="{{ route('kader.exportpdf') }}">Export</a>
                                         &nbsp;
                                         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#import">
                                             Import

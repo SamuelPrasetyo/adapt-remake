@@ -66,7 +66,7 @@ class KaderController extends Controller
         //
     }
 
-    public function export() 
+    public function export_kader() 
     {
         $file_name = 'kaders_'.date('d-m-Y_H:i:s') . '.xlsx';
 
