@@ -179,17 +179,17 @@
                   <div class="modal-body">
                     <label class="mb-2">Kata sandi lama: </label>
                     <div class="form-group">
-                      <input type="password" placeholder="kata sandi lama"
+                      <input type="password" required placeholder="kata sandi lama"
                         class="form-control" name="password_lama">
                     </div>
                     <label class="mb-2">Kata sandi baru: </label>
                     <div class="form-group">
-                      <input type="password" placeholder="kata sandi baru"
+                      <input type="password" required placeholder="kata sandi baru"
                         class="form-control" name="password">
                     </div>
                     <label class="mb-2">Konfirmasi Kata sandi: </label>
                     <div class="form-group">
-                      <input type="password" placeholder="kata sandi"
+                      <input type="password" required placeholder="kata sandi"
                         class="form-control" name="password2">
                     </div>
                   </div>
