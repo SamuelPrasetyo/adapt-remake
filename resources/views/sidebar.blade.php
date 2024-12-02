@@ -1,6 +1,6 @@
 <aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme">
     <div class="app-brand demo justify-content-center">
-        <a href="index.html" class="app-brand-link">
+        <a href="{{route('dashboard.index')}}" class="app-brand-link">
             <h5 class="mt-2"><span class="card-header fw-bold">ADAPT</span></h5>
         </a>
 
