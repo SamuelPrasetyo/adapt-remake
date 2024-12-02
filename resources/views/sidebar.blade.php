@@ -122,10 +122,10 @@
                     </a>
                 </li>
                 @canany(['isAdmin'])
-                <li class="menu-item" id="learning_growth">
+                <li class="menu-item" id="ojt">
                     <a href="{{route('weekly.index')}}" class="menu-link">
                         <i class="menu-icon tf-icons bx bxs-chart"></i>
-                        <div data-i18n="learning_growth">OJT Monitoring</div>
+                        <div data-i18n="ojt">OJT Monitoring</div>
                     </a>
                 </li>
                 @endcanany

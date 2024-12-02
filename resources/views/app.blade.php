@@ -328,6 +328,18 @@
         $("#learning_growth").addClass('active');
         $("#report").addClass('active open');
         break;
+      case 'learning-index':
+        $("#learning_growth").addClass('active');
+        $("#report").addClass('active open');
+        break;
+      case 'ojt-index':
+        $("#ojt").addClass('active');
+        $("#report").addClass('active open');
+        break;
+      case 'ojt-monitoring':
+        $("#ojt").addClass('active');
+        $("#report").addClass('active open');
+        break;
       case 'activity-log':
         $("#activity_log").addClass('active');
         $("#report").addClass('active open');
