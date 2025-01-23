@@ -52,6 +52,22 @@
                                 <button class="btn btn-primary ml-1 mt-2" type="submit">Submit
                                 </button>
                             </form>
+                            @elseif(strtolower($title) == 'report feedback')
+                            <form action="{{route('report.feedback')}}" class="col-6" method="POST">
+                                @csrf
+                                <label class="mb-2">OJT: </label>
+                                <div class="form-group mb-1">
+                                    <select class="form-control" name="ojt">
+                                        <option value="">--Pilih OJT--</option>
+                                        <option value="1">1</option>
+                                        <option value="2">2</option>
+                                        <option value="3">3</option>
+                                        <option value="4">4</option>
+                                    </select>
+                                </div>
+                                <button class="btn btn-primary ml-1 mt-2" type="submit">Submit
+                                </button>
+                            </form>
                             @endif
                         </div>
                     </div>

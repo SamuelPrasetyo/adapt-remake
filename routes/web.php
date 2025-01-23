@@ -124,6 +124,9 @@ Route::middleware(['can:isAdmin&Mentor'])->group(function () {
 
         Route::get('/learning-growth/export-pdf/{nik}', 'exportLearningGrowthPdf')->name('learning.export_pdf');
         Route::post('/export-pdf', 'exportPdf')->name('exportPdf');
+        
+        Route::get('/reportfeedback-index', 'feedback_index')->name('reportfeedback.index');
+        Route::post('/reportfeedback', 'report_feedback')->name('report.feedback');
     });
 });
 

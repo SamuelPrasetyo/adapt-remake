@@ -123,6 +123,12 @@
                 </li>
                 @canany(['isAdmin'])
                 <li class="menu-item" id="ojt">
+                    <a href="{{route('reportfeedback.index')}}" class="menu-link">
+                        <i class="menu-icon tf-icons bx bxs-file"></i>
+                        <div data-i18n="reportfeedback">Report Feedback</div>
+                    </a>
+                </li>
+                <li class="menu-item" id="ojt">
                     <a href="{{route('weekly.index')}}" class="menu-link">
                         <i class="menu-icon tf-icons bx bxs-chart"></i>
                         <div data-i18n="ojt">OJT Monitoring</div>
