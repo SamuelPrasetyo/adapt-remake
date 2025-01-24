@@ -56,6 +56,7 @@
                                                     @endif
                                                     @endforeach
                                                     @endforeach
+                                                    <th style="text-align: center;">PERFORMANCE SUMMARY</th>
                                                     <th style="text-align: center;">AVG</th>
                                                     <th style="text-align: center;">GRADE</th>
                                                     <th style="text-align: center;width:200px"> SUMMARY GRADE</th>
@@ -131,17 +132,18 @@
                                                     @foreach($weeks as $wk)
                                                     @foreach($pertanyaans as $key => $q)
                                                     @if($key == 5)
-                                                    <td style="text-align: center;">{{strip_tags($jawaban[$q->id_pertanyaan][$wk->id_week][$data->nik] ?? '')}}</td>
+                                                    <td style="text-align: center;">{{strip_tags($jawaban[$q->id_pertanyaan][$wk->id_week][$data->nik] ?? '-')}}</td>
                                                     @endif
                                                     @endforeach
                                                     @endforeach
                                                     @php
-                                                    if($rata2_1 != 0 OR $rata2_2 != 0 ){
-                                                    $rata2_3 = ($rata2_1 + $rata2_2) / 2;
-                                                    }else{
-                                                    $rata2_3 = 0;
-                                                    }
+                                                        if($rata2_1 != 0 OR $rata2_2 != 0 ){
+                                                            $rata2_3 = ($rata2_1 + $rata2_2) / 2;
+                                                        }else{
+                                                            $rata2_3 = 0;
+                                                        }
                                                     @endphp
+                                                    <td style="text-align: left;font-size:14px">{{'-'}}</td>
                                                     <td style="text-align: left;font-size:14px">{{round($rata2_3 , 2) ?? 0}}</td>
                                                     @php
                                                     $norma = \App\Models\Norma::where('nilai1','<',$rata2_3)->where('nilai2','>',$rata2_3)->first();

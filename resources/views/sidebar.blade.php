@@ -122,10 +122,10 @@
                     </a>
                 </li>
                 @canany(['isAdmin'])
-                <li class="menu-item" id="ojt">
+                <li class="menu-item" id="reportfeedback">
                     <a href="{{route('reportfeedback.index')}}" class="menu-link">
                         <i class="menu-icon tf-icons bx bxs-file"></i>
-                        <div data-i18n="reportfeedback">Report Feedback</div>
+                        <div data-i18n="reportfeedback">Feedback</div>
                     </a>
                 </li>
                 <li class="menu-item" id="ojt">

@@ -291,10 +291,11 @@ class ReportController extends Controller
             foreach ($data_jawaban as $key => $jwb) {
                 // $jawaban[$value->nik][$jwb->id_week][$jwb->id_pertanyaan] = $jwb->jawaban;
                 $jawaban[$jwb->id_pertanyaan][$jwb->id_week][$value->nik] = $jwb->jawaban;
+                $revisi[$jwb->id_pertanyaan][$jwb->id_week][$value->nik] = $jwb->essay_revisi;
             }
         }
         $pertanyaans = Pertanyaan::get();
-        return view('pages.report.feedback', compact('datas', 'mentor', 'jawaban', 'pertanyaans', 'weeks'));
+        return view('pages.report.feedback', compact('datas', 'mentor', 'jawaban', 'pertanyaans', 'weeks','revisi'));
     }
 
     function ToRomawi($number)
