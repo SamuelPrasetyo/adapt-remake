@@ -60,6 +60,7 @@
                                                     <th style="text-align: center;">AVG</th>
                                                     <th style="text-align: center;">GRADE</th>
                                                     <th style="text-align: center;width:200px"> SUMMARY GRADE</th>
+                                                    <th style="text-align: center;width:200px">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -142,8 +143,10 @@
                                                         }else{
                                                             $rata2_3 = 0;
                                                         }
+
+                                                        $performsum = \App\Models\PerformanceSum::where('nik_kader',$data->nik_kader)->where('ojt',$ojt)->first();
                                                     @endphp
-                                                    <td style="text-align: left;font-size:14px">{{'-'}}</td>
+                                                    <td style="text-align: left;font-size:14px">{{$performsum->desc ?? '-'}}</td>
                                                     <td style="text-align: left;font-size:14px">{{round($rata2_3 , 2) ?? 0}}</td>
                                                     @php
                                                     $norma = \App\Models\Norma::where('nilai1','<',$rata2_3)->where('nilai2','>',$rata2_3)->first();
@@ -151,11 +154,93 @@
                                                         <td style="text-align: left;font-size:14px">{{$norma->grade ?? '-'}}</td>
                                                         <td style="text-align: left;font-size:14px"> {{ strlen($norma->deskripsi ?? '') > 40 ? substr($norma->deskripsi ?? '-', 0, 40) . '...' : $norma->deskripsi ?? '-' }}
                                                         </td>
+                                                        <td>
+                                                            @php 
+                                                                $performSums = \App\Models\PerformanceSum::where('nik_kader',$data->nik_kader)->where('ojt',$ojt)->first();
+                                                            @endphp
+                                                        @if($performSums)
+                                                        <button class="btn btn-sm btn-primary" data-bs-toggle="modal"
+                                                        data-bs-target="#edit-data{{$data->nik_kader . $ojt}}">Edit</button>
+                                                        @else
+                                                        <button class="btn btn-sm btn-primary" data-bs-toggle="modal"
+                                                        data-bs-target="#add-data{{$data->nik_kader}}">Add</button>
+                                                        @endif
+                                                        </td>
                                             </tr>
                                             @endforeach
                                         </tbody>
                                     </table>
                                 </div>
+                                @foreach($datas as $data)
+                                <!-- Modal -->
+                                <div class="modal fade" id="add-data{{$data->nik_kader}}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="exampleModalLabel">Tambah Data</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <form action="{{route('performsum.add')}}" method="POST">
+                                                @csrf
+                                                <input type="hidden" name="nik_kader" value="{{$data->nik_kader}}">
+                                                <input type="hidden" name="ojt" value="{{$ojt}}">
+                                                <div class="modal-body">
+                                                    <label class="mb-2">Performance Summary: </label>
+                                                    <div class="form-group">
+                                                        <textarea type="text"
+                                                            class="form-control" name="perform_sum"></textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-light-secondary"
+                                                        data-bs-dismiss="modal">
+                                                        <i class="bx bx-x d-block d-sm-none"></i>
+                                                        <span class="d-none d-sm-block">Close</span>
+                                                    </button>
+                                                    <button class="btn btn-primary ml-1" type="submit">Submit
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                @endforeach
+
+                                <!-- Modal Edit -->
+                                
+                                @foreach($performance_sums as $performance_sum)
+                                <div class="modal fade" id="edit-data{{$performance_sum->nik_kader.$performance_sum->ojt}}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="exampleModalLabel">Edit Data</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <form action="{{route('performsum.edit',$performance_sum->id)}}" method="POST">
+                                                @csrf
+                                                @method('put')
+                                                <input type="hidden" name="ojt" value="{{$ojt}}">
+                                                <div class="modal-body">
+                                                    <label class="mb-2">Nama performance_sum: </label>
+                                                    <div class="form-group">
+                                                        <textarea type="text" placeholder="nama performance_sum"
+                                                            class="form-control" name="perform_sum">{{$performance_sum->desc}}</textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-light-secondary"
+                                                        data-bs-dismiss="modal">
+                                                        <i class="bx bx-x d-block d-sm-none"></i>
+                                                        <span class="d-none d-sm-block">Close</span>
+                                                    </button>
+                                                    <button class="btn btn-primary ml-1" type="submit">Update
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                @endforeach
                             </div>
                         </div>
                     </div>

@@ -339,6 +339,10 @@
         $("#reportfeedback").addClass('active');
         $("#report").addClass('active open');
         break;
+      case 'reportfeedback-index':
+        $("#reportfeedback").addClass('active');
+        $("#report").addClass('active open');
+        break;
       case 'ojt-monitoring':
         $("#ojt").addClass('active');
         $("#report").addClass('active open');

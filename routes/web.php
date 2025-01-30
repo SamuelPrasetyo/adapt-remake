@@ -126,7 +126,11 @@ Route::middleware(['can:isAdmin&Mentor'])->group(function () {
         Route::post('/export-pdf', 'exportPdf')->name('exportPdf');
         
         Route::get('/reportfeedback-index', 'feedback_index')->name('reportfeedback.index');
-        Route::post('/reportfeedback', 'report_feedback')->name('report.feedback');
+        Route::match(['get', 'post'],'/reportfeedback', 'report_feedback')->name('report.feedback');
+        Route::match(['get', 'post'],'/reportfeedback-back/{ojt}', 'report_feedback_back')->name('report.feedback.back');
+
+        Route::post('/performsum', 'perform_sum_add')->name('performsum.add');
+        Route::put('/performsum-edit/{id}', 'perform_sum_edit')->name('performsum.edit');
     });
 });
 

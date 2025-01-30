@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\cr;
 use App\Models\Jawaban;
 use App\Models\Kader;
+use App\Models\PerformanceSum;
 use App\Models\Pertanyaan;
 use App\Models\User;
 use App\Models\Week;
@@ -15,6 +17,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Barryvdh\Snappy\Facades\SnappyPdf;
 use Dompdf\Dompdf;
 use Dompdf\Options;
+use RealRashid\SweetAlert\Facades\Alert;
 
 class ReportController extends Controller
 {
@@ -250,6 +253,7 @@ class ReportController extends Controller
             ->join('departemens', 'kader.id_departemen', 'departemens.id')
             ->join('batch', 'kader.id_batch', 'batch.id_batch')
             ->join('jawaban', 'kader.nik', 'jawaban.nik_kader')
+            ->join('performance_summary','kader.nik','performance_summary.nik_kader')
             // ->join('users','jawaban.created_by','users.id')
             ->groupBy('kader.nama', 'kader.jenis_kelamin', 'kader.iq', 'kader.ipk', 'company.company_name', 'divisis.nama', 'departemens.nama', 'jawaban.nik_kader', 'kader.nik', 'batch.nama_batch', 'batch.tahun_batch')
             ->get();
@@ -295,7 +299,106 @@ class ReportController extends Controller
             }
         }
         $pertanyaans = Pertanyaan::get();
-        return view('pages.report.feedback', compact('datas', 'mentor', 'jawaban', 'pertanyaans', 'weeks','revisi'));
+
+        $performance_sums = PerformanceSum::where('ojt',$request->ojt)->get();
+
+        $ojt = $request->ojt;
+
+
+        return view('pages.report.feedback', compact('datas', 'mentor', 'jawaban', 'pertanyaans', 'weeks','revisi','performance_sums','ojt'));
+    }
+
+    public function report_feedback_back($ojt)
+    {
+        $datas = Kader::select('kader.nama', 'kader.jenis_kelamin', 'kader.iq', 'kader.ipk', 'company.company_name', 'divisis.nama as divisi', 'departemens.nama as departement', 'batch.nama_batch', 'batch.tahun_batch', 'kader.nik', 'jawaban.nik_kader')
+            ->join('company', 'kader.company_code', 'company.company_code')
+            ->join('divisis', 'kader.id_divisi', 'divisis.id')
+            ->join('departemens', 'kader.id_departemen', 'departemens.id')
+            ->join('batch', 'kader.id_batch', 'batch.id_batch')
+            ->join('jawaban', 'kader.nik', 'jawaban.nik_kader')
+            // ->join('users','jawaban.created_by','users.id')
+            ->groupBy('kader.nama', 'kader.jenis_kelamin', 'kader.iq', 'kader.ipk', 'company.company_name', 'divisis.nama', 'departemens.nama', 'jawaban.nik_kader', 'kader.nik', 'batch.nama_batch', 'batch.tahun_batch')
+            ->get();
+        $mentor[] = [];
+
+        switch ($ojt) {
+            case '1':
+                $arr_week = ['2', '4', '6', '8', '10', '12'];
+                break;
+            case '2':
+                $arr_week = ['14', '16', '18', '20', '22', '24'];
+                break;
+            case '3':
+                $arr_week = ['26', '28', '30', '32', '34', '36'];
+                break;
+            case '4':
+                $arr_week = ['38', '40', '42', '44', '46', '48'];
+                break;
+            default:
+                $arr_week = [];
+                break;
+        }
+        $weeks = Week::whereIn('angka_week', $arr_week)->get();
+
+        foreach ($datas as $value) {
+            $data_mentor = User::select('users.name', 'users.id')
+                ->join('jawaban', 'users.id', 'jawaban.created_by')
+                ->where('jawaban.nik_kader', $value->nik)
+                ->where('users.type', 'Mentor')
+                ->first();
+
+            $data_jawaban = Jawaban::select('jawaban.*', 'pertanyaan.nama_pertanyaan', 'pertanyaan.type')
+                ->where('nik_kader', $value->nik)
+                ->where('jawaban.created_by', $data_mentor->id)
+                ->join('pertanyaan', 'jawaban.id_pertanyaan', 'pertanyaan.id_pertanyaan')
+                ->get();
+            $mentor[$value->nik] = $data_mentor->name ?? '';
+
+            foreach ($data_jawaban as $key => $jwb) {
+                // $jawaban[$value->nik][$jwb->id_week][$jwb->id_pertanyaan] = $jwb->jawaban;
+                $jawaban[$jwb->id_pertanyaan][$jwb->id_week][$value->nik] = $jwb->jawaban;
+                $revisi[$jwb->id_pertanyaan][$jwb->id_week][$value->nik] = $jwb->essay_revisi;
+            }
+        }
+        $pertanyaans = Pertanyaan::get();
+
+        $performance_sums = PerformanceSum::where('ojt',$ojt)->get();
+
+        $ojt = $ojt;
+
+
+        return view('pages.report.feedback', compact('datas', 'mentor', 'jawaban', 'pertanyaans', 'weeks','revisi','performance_sums','ojt'));
+    }
+
+    public function perform_sum_add(Request $request)
+    {
+        $data = [
+            'desc'          => $request->perform_sum,
+            'nik_kader'     => $request->nik_kader,
+            'ojt'           => $request->ojt,
+            'created_at'    => now(),
+            'created_by'    => Auth::user()->id
+        ];
+        PerformanceSum::create($data);
+
+        ActivityLog::activity_log('Menambah data Performance Summary');
+        Alert::success('Success', 'Data berhasil ditambahkan!');
+        return redirect()->route('report.feedback.back',$request->ojt);
+    }
+
+    public function perform_sum_edit(Request $request, $id)
+    {
+        $data_performsum = PerformanceSum::where('id',$id)->first();
+        $data = [
+            'desc'          => $request->perform_sum ?? $data_performsum->desc,
+            'updated_at'    => now(),
+            'updated_by'    => Auth::user()->id
+        ];
+        PerformanceSum::where('id',$data_performsum->id)->update($data);
+
+        ActivityLog::activity_log('Mengubah data Performance Summary');
+        Alert::success('Success', 'Data berhasil diupdate!');
+        return redirect()->route('report.feedback.back',$request->ojt);
     }
 
     function ToRomawi($number)
