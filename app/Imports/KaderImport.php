@@ -43,6 +43,7 @@ class KaderImport implements ToCollection, WithHeadingRow
             ];
             // Kader::insert($data);
         }
+        dd($data);
         Kader::upsert($data,['nik'],['nama','jenis_kelamin','iq','ipk','company_code','id_divisi','id_departemen','id_batch','created_at','updated_at']);
     }
 

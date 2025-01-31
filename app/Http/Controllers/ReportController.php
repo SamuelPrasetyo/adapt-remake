@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\ReportFeedbackExport;
 use App\Models\ActivityLog;
 use App\Models\cr;
 use App\Models\Jawaban;
@@ -17,6 +18,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Barryvdh\Snappy\Facades\SnappyPdf;
 use Dompdf\Dompdf;
 use Dompdf\Options;
+use Maatwebsite\Excel\Facades\Excel;
 use RealRashid\SweetAlert\Facades\Alert;
 
 class ReportController extends Controller
@@ -254,7 +256,6 @@ class ReportController extends Controller
             ->join('batch', 'kader.id_batch', 'batch.id_batch')
             ->join('jawaban', 'kader.nik', 'jawaban.nik_kader')
             ->join('performance_summary','kader.nik','performance_summary.nik_kader')
-            // ->join('users','jawaban.created_by','users.id')
             ->groupBy('kader.nama', 'kader.jenis_kelamin', 'kader.iq', 'kader.ipk', 'company.company_name', 'divisis.nama', 'departemens.nama', 'jawaban.nik_kader', 'kader.nik', 'batch.nama_batch', 'batch.tahun_batch')
             ->get();
         $mentor[] = [];
@@ -293,7 +294,6 @@ class ReportController extends Controller
             $mentor[$value->nik] = $data_mentor->name ?? '';
 
             foreach ($data_jawaban as $key => $jwb) {
-                // $jawaban[$value->nik][$jwb->id_week][$jwb->id_pertanyaan] = $jwb->jawaban;
                 $jawaban[$jwb->id_pertanyaan][$jwb->id_week][$value->nik] = $jwb->jawaban;
                 $revisi[$jwb->id_pertanyaan][$jwb->id_week][$value->nik] = $jwb->essay_revisi;
             }
@@ -399,6 +399,13 @@ class ReportController extends Controller
         ActivityLog::activity_log('Mengubah data Performance Summary');
         Alert::success('Success', 'Data berhasil diupdate!');
         return redirect()->route('report.feedback.back',$request->ojt);
+    }
+
+    public function export_reportfeedback($ojt)
+    {
+        $file_name = 'reportfeedback_ojt_'.$ojt.'_'.date('d-m-Y_H:i:s') . '.xlsx';
+
+        return Excel::download(new ReportFeedbackExport($ojt),$file_name);
     }
 
     function ToRomawi($number)

@@ -103,7 +103,7 @@ Route::middleware(['can:isAdmin'])->group(function () {
         Route::put('/kader/update/{id}', 'update')->name('kader.update');
         Route::delete('/kader/delete/{id}', 'destroy')->name('kader.delete');
         Route::post('/kader/import', 'import')->name('kader.import');
-        Route::get('/kader/export', 'export_kader')->name('kader.exportpdf');
+        Route::get('/kader/export', 'export_kader')->name('kader.exportexcel');
     });
 
     Route::controller(JawabanController::class)->group(function () {
@@ -128,6 +128,7 @@ Route::middleware(['can:isAdmin&Mentor'])->group(function () {
         Route::get('/reportfeedback-index', 'feedback_index')->name('reportfeedback.index');
         Route::match(['get', 'post'],'/reportfeedback', 'report_feedback')->name('report.feedback');
         Route::match(['get', 'post'],'/reportfeedback-back/{ojt}', 'report_feedback_back')->name('report.feedback.back');
+        Route::get('/reportfeedback/export/{ojt}', 'export_reportfeedback')->name('reportfeedback.exportexcel');
 
         Route::post('/performsum', 'perform_sum_add')->name('performsum.add');
         Route::put('/performsum-edit/{id}', 'perform_sum_edit')->name('performsum.edit');

@@ -14,9 +14,12 @@
                     <div class="col-sm-12">
                         <div class="card">
                             <div class="card-body">
-                                <div class="row mb-4">
+                                <div class="row">
                                     <div class="col">
-                                        <h5 class="card-title mb-1 text-nowrap">Report Feedback</h5>
+                                        <h5 class="card-title mb-1 text-nowrap">Report Feedback OJT {{$ojt}}</h5>
+                                    </div>
+                                    <div class="col d-flex justify-content-end mb-3">
+                                        <a class="btn btn-primary" href="{{ route('reportfeedback.exportexcel',$ojt) }}">Export</a>
                                     </div>
                                 </div>
                                 <div class="table table-striped">
@@ -138,13 +141,13 @@
                                                     @endforeach
                                                     @endforeach
                                                     @php
-                                                        if($rata2_1 != 0 OR $rata2_2 != 0 ){
-                                                            $rata2_3 = ($rata2_1 + $rata2_2) / 2;
-                                                        }else{
-                                                            $rata2_3 = 0;
-                                                        }
+                                                    if($rata2_1 != 0 OR $rata2_2 != 0 ){
+                                                    $rata2_3 = ($rata2_1 + $rata2_2) / 2;
+                                                    }else{
+                                                    $rata2_3 = 0;
+                                                    }
 
-                                                        $performsum = \App\Models\PerformanceSum::where('nik_kader',$data->nik_kader)->where('ojt',$ojt)->first();
+                                                    $performsum = \App\Models\PerformanceSum::where('nik_kader',$data->nik_kader)->where('ojt',$ojt)->first();
                                                     @endphp
                                                     <td style="text-align: left;font-size:14px">{{$performsum->desc ?? '-'}}</td>
                                                     <td style="text-align: left;font-size:14px">{{round($rata2_3 , 2) ?? 0}}</td>
@@ -155,16 +158,16 @@
                                                         <td style="text-align: left;font-size:14px"> {{ strlen($norma->deskripsi ?? '') > 40 ? substr($norma->deskripsi ?? '-', 0, 40) . '...' : $norma->deskripsi ?? '-' }}
                                                         </td>
                                                         <td>
-                                                            @php 
-                                                                $performSums = \App\Models\PerformanceSum::where('nik_kader',$data->nik_kader)->where('ojt',$ojt)->first();
+                                                            @php
+                                                            $performSums = \App\Models\PerformanceSum::where('nik_kader',$data->nik_kader)->where('ojt',$ojt)->first();
                                                             @endphp
-                                                        @if($performSums)
-                                                        <button class="btn btn-sm btn-primary" data-bs-toggle="modal"
-                                                        data-bs-target="#edit-data{{$data->nik_kader . $ojt}}">Edit</button>
-                                                        @else
-                                                        <button class="btn btn-sm btn-primary" data-bs-toggle="modal"
-                                                        data-bs-target="#add-data{{$data->nik_kader}}">Add</button>
-                                                        @endif
+                                                            @if($performSums)
+                                                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal"
+                                                                data-bs-target="#edit-data{{$data->nik_kader . $ojt}}">Edit</button>
+                                                            @else
+                                                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal"
+                                                                data-bs-target="#add-data{{$data->nik_kader}}">Add</button>
+                                                            @endif
                                                         </td>
                                             </tr>
                                             @endforeach
@@ -207,7 +210,7 @@
                                 @endforeach
 
                                 <!-- Modal Edit -->
-                                
+
                                 @foreach($performance_sums as $performance_sum)
                                 <div class="modal fade" id="edit-data{{$performance_sum->nik_kader.$performance_sum->ojt}}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
                                     <div class="modal-dialog">

@@ -124,11 +124,13 @@
                     <div class="dropdown-divider"></div>
                   </li>
                   <li>
+                    @if(Auth::user()->type != 'Mentor')
                     <a style="cursor:pointer" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#changepassword">
                       <i class="bx bx-key me-2"></i>
                       <span class="align-middle">Change Password</span>
                     </a>
                   </li>
+                    @endif
                   <li>
                     <a class="dropdown-item" href="{{ route('logout') }}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
                       <i class="bx bx-power-off me-2"></i>
