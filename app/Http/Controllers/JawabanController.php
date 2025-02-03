@@ -123,6 +123,26 @@ class JawabanController extends Controller
                 } else {
                     $jawaban = $request->pertanyaan_mentor[$i];
                 }
+                if($i == 5){
+                    switch($jawaban)
+                    {
+                        case 'Sangat Kurang':
+                            $jawaban = 1;
+                            break;
+                        case 'Kurang':
+                            $jawaban = 2;
+                            break;
+                        case 'Cukup':
+                            $jawaban = 3;
+                            break;
+                        case 'Baik':
+                            $jawaban = 4;
+                            break;
+                        case 'Sangat Baik':
+                            $jawaban = 5;
+                            break;
+                    }
+                }
                 $data[$i] = [
                     'id_week'       => $request->id_week,
                     'id_pertanyaan' => $request->id_pertanyaan . $i,

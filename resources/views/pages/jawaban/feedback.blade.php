@@ -16,7 +16,9 @@
                                     <form action="{{route('feedback.store')}}" method="POST">
                                         @csrf
                                         <div class="form-group mb-1">
-                                            <label class="mb-2"><strong>{{Auth::user()->name}}</strong></label>
+                                            <!-- <label class="mb-2"><strong>{{Auth::user()->name}}</strong></label> -->
+                                            <label class="mb-2">Nama Mentor: </label>
+                                             <input type="text" class="form-control" placeholder="nama mentor" name="nama_mentor" id="">
                                         </div>
                                         @if(Auth::user()->type != 'Kader')
                                         <label class="mb-2">Nama Kader: </label>

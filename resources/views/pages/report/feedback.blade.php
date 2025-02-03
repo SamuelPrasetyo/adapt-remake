@@ -36,6 +36,7 @@
                                                 <th style="text-align: center;">L/P</th>
                                                 <th style="text-align: center;">Iq</th>
                                                 <th style="text-align: center;">Inch</th>
+
                                                 @foreach($weeks as $wk)
                                                 @foreach($pertanyaans as $key => $q)
                                                 @if($key < 4)
@@ -59,6 +60,7 @@
                                                     @endif
                                                     @endforeach
                                                     @endforeach
+
                                                     <th style="text-align: center;">PERFORMANCE SUMMARY</th>
                                                     <th style="text-align: center;">AVG</th>
                                                     <th style="text-align: center;">GRADE</th>
@@ -66,15 +68,16 @@
                                                     <th style="text-align: center;width:200px">Action</th>
                                             </tr>
                                         </thead>
+
                                         <tbody>
-                                            @php $no = 1; @endphp
+                                            @php $no = 1;  @endphp
                                             @foreach($datas as $data)
                                             <tr>
                                                 <td style="text-align: left;font-size:14px">{{$no++}}</td>
                                                 <td style="text-align: left;font-size:14px">{{$data->company_name}}</td>
                                                 <td style="text-align: left;font-size:14px">{{$data->divisi}}</td>
                                                 <td style="text-align: left;font-size:14px">{{$data->departement}}</td>
-                                                <td style="text-align: left;font-size:14px">{{$mentor[$data->nik]}}</td>
+                                                <td style="text-align: left;font-size:14px"> {{ is_array($mentor[$data->nik] ?? '') ? implode(', ', $mentor[$data->nik]) : $mentor[$data->nik] ?? '' }}</td>
                                                 <td style="text-align: left;font-size:14px">{{$data->nama}}</td>
                                                 @php
                                                 $map = array('M' => 1000, 'CM' => 900, 'D' => 500, 'CD' => 400, 'C' => 100, 'XC' => 90, 'L' => 50, 'XL' => 40, 'X' => 10, 'IX' => 9, 'V' => 5, 'IV' => 4, 'I' => 1);
@@ -93,6 +96,7 @@
                                                 <td style="text-align: left;font-size:14px">{{$data->jenis_kelamin}}</td>
                                                 <td style="text-align: left;font-size:14px">{{$data->iq}}</td>
                                                 <td style="text-align: left;font-size:14px">{{$data->ipk}}</td>
+
                                                 @php
                                                 $rata2_1 = 0;
                                                 $c = 0;
@@ -169,11 +173,17 @@
                                                                 data-bs-target="#add-data{{$data->nik_kader}}">Add</button>
                                                             @endif
                                                         </td>
+
                                             </tr>
+                                            @php
+                                            @endphp
+
                                             @endforeach
+
                                         </tbody>
                                     </table>
                                 </div>
+
                                 @foreach($datas as $data)
                                 <!-- Modal -->
                                 <div class="modal fade" id="add-data{{$data->nik_kader}}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">

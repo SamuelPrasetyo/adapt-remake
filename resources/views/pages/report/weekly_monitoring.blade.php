@@ -28,15 +28,27 @@
                     <div class="row">
                         <div class="col-12 text-center" style="border-left: #000 2px solid;border-right: #000 2px solid;border-bottom: #000 2px solid;">
                             <div class="row">
-                                <div class="col-4">
+                                <div class="col-6">
                                     <p class="m-0" style="text-align: left; font-size:14px"><b>PERIOD</b> : OJT {{$title['ojt']}}</p>
                                     <p class="m-0" style="text-align: left; font-size:14px"><b>MANTEE NAME</b> : {{strtoupper($title['nama_kader'])}}</p>
-                                    <p class="m-0" style="text-align: left; font-size:14px"><b>MENTOR NAME</b> : {{strtoupper($title['nama_mentor'])}}</p>
+                                    <p class="m-0" style="text-align: left; font-size:14px"><b>MENTOR NAME</b> : 
+                                    @if(is_array($title['nama_mentor']))
+                                        @foreach($title['nama_mentor'] as $key => $nm)
+                                            @if($key !== array_key_last($title['nama_mentor']))
+                                                {{strtoupper($nm)}},
+                                            @else
+                                                {{strtoupper($nm)}}
+                                            @endif
+                                        @endforeach
+                                    @else
+                                        {{strtoupper($title['nama_mentor'])}}
+                                    @endif
+                                    </p>
                                     <p class="m-0" style="text-align: left; font-size:14px"><b>MT BATCH</b> : {{$title['batch']}}</p>
                                     <p class="m-0" style="text-align: left; font-size:14px"><b>IQ</b> : {{$title['iq']}} </p>
                                     <p class="m-0" style="text-align: left; font-size:14px"><b>INCH</b> : {{$title['ipk']}}</p>
                                 </div>
-                                <div class="col-4 offset-3">
+                                <div class="col-5 offset-1">
                                     <p class="m-0" style="text-align: left; font-size:14px"><b>DIVISION</b> : {{$title['divisi']}}</p>
                                     <p class="m-0" style="text-align: left; font-size:14px"><b>DEPARTEMENT</b> : {{$title['departemen']}}</p>
                                     <p class="m-0" style="text-align: left; font-size:14px"><b>BUSSINESS UNIT</b> : {{$title['bu']}}</p>

@@ -27,6 +27,11 @@ class KaderImport implements ToCollection, WithHeadingRow
             if (!$company || !$divisi || !$departemen || !$batch) {
                 continue;
             }
+            $first_char =substr($row['nik'],0,1);
+            if(!is_numeric($first_char))
+            {
+                $row['nik'] = substr($row['nik'], 1);
+            }
             $data[] = [
                 'id'            => Str::uuid(),
                 'nik'           => $row['nik'],
@@ -43,7 +48,6 @@ class KaderImport implements ToCollection, WithHeadingRow
             ];
             // Kader::insert($data);
         }
-        dd($data);
         Kader::upsert($data,['nik'],['nama','jenis_kelamin','iq','ipk','company_code','id_divisi','id_departemen','id_batch','created_at','updated_at']);
     }
 

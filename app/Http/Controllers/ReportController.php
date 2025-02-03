@@ -126,7 +126,7 @@ class ReportController extends Controller
                 break;
         }
         // dd($week_arr);
-        $reports = Jawaban::selectRaw("pertanyaan.nama_pertanyaan,jawaban,nik_kader,weeks.angka_week as week, users.name as nama_mentor")
+        $reports = Jawaban::selectRaw("pertanyaan.nama_pertanyaan,jawaban,nik_kader,weeks.angka_week as week, jawaban.nama_mentor as nama_mentor")
             ->join('weeks', 'jawaban.id_week', 'weeks.id_week')
             ->join('pertanyaan', 'jawaban.id_pertanyaan', 'pertanyaan.id_pertanyaan')
             ->join('users', 'jawaban.created_by', 'users.id')
@@ -160,14 +160,20 @@ class ReportController extends Controller
             array_push($week, $w->angka_week);
             array_push($kkm, 7);
         }
+        $nama_mentors = [];
         foreach ($reports as $val) {
+            $nama_mentors[] = $val->nama_mentor;
+
             $data[strip_tags($val->nama_pertanyaan)][$val->week] = $val->jawaban;
             if (is_numeric($val->jawaban)) {
                 $avg_week[$val->week] = ($avg_week[$val->week] ?? 0) + $val->jawaban / 4;
             }
-            // log::info($val->week);
-            // log::info($val->jawaban);
-            $nama_mentor = $val->nama_mentor;
+        }
+        $nama_mentors = array_unique($nama_mentors); // Hapus duplikat
+        if (count($nama_mentors) === 1) {
+            $nama_mentor = reset($nama_mentors); // Ambil nilai pertama
+        } else {
+            $nama_mentor = array_values($nama_mentors); // Reset indeks array
         }
 
         foreach ($avg_week as $key => $avw) {
@@ -255,7 +261,7 @@ class ReportController extends Controller
             ->join('departemens', 'kader.id_departemen', 'departemens.id')
             ->join('batch', 'kader.id_batch', 'batch.id_batch')
             ->join('jawaban', 'kader.nik', 'jawaban.nik_kader')
-            ->join('performance_summary','kader.nik','performance_summary.nik_kader')
+            // ->join('performance_summary','kader.nik','performance_summary.nik_kader')
             ->groupBy('kader.nama', 'kader.jenis_kelamin', 'kader.iq', 'kader.ipk', 'company.company_name', 'divisis.nama', 'departemens.nama', 'jawaban.nik_kader', 'kader.nik', 'batch.nama_batch', 'batch.tahun_batch')
             ->get();
         $mentor[] = [];
@@ -277,28 +283,39 @@ class ReportController extends Controller
                 $arr_week = [];
                 break;
         }
-        $weeks = Week::whereIn('angka_week', $arr_week)->get();
+        $mentor = [];
 
+        $weeks = Week::whereIn('angka_week', $arr_week)->get();
         foreach ($datas as $value) {
-            $data_mentor = User::select('users.name', 'users.id')
-                ->join('jawaban', 'users.id', 'jawaban.created_by')
+            $data_mentor = Jawaban::select('jawaban.nama_mentor','jawaban.nik_kader')
                 ->where('jawaban.nik_kader', $value->nik)
-                ->where('users.type', 'Mentor')
-                ->first();
+                ->groupBy('jawaban.nama_mentor','jawaban.nik_kader')
+                ->get();
+
+                foreach($data_mentor as $dt)
+                {
+                    if (!isset($mentor[$dt->nik_kader])) {
+                        $mentor[$dt->nik_kader] = []; // Initialize as an array if not set
+                    }
+                    array_push($mentor[$dt->nik_kader],$dt->nama_mentor);
+                }
 
             $data_jawaban = Jawaban::select('jawaban.*', 'pertanyaan.nama_pertanyaan', 'pertanyaan.type')
                 ->where('nik_kader', $value->nik)
-                ->where('jawaban.created_by', $data_mentor->id)
+                // ->where('jawaban.created_by', $data_mentor->id)
                 ->join('pertanyaan', 'jawaban.id_pertanyaan', 'pertanyaan.id_pertanyaan')
                 ->get();
-            $mentor[$value->nik] = $data_mentor->name ?? '';
+
+                
+            
 
             foreach ($data_jawaban as $key => $jwb) {
                 $jawaban[$jwb->id_pertanyaan][$jwb->id_week][$value->nik] = $jwb->jawaban;
                 $revisi[$jwb->id_pertanyaan][$jwb->id_week][$value->nik] = $jwb->essay_revisi;
             }
         }
-        $pertanyaans = Pertanyaan::get();
+
+        $pertanyaans = Pertanyaan::where('type','Mentor')->get();
 
         $performance_sums = PerformanceSum::where('ojt',$request->ojt)->get();
 

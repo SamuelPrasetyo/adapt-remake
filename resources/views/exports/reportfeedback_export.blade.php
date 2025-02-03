@@ -49,7 +49,7 @@
                 <td style="border:1px solid #000;text-align: left;font-size:12px">{{$data->company_name}}</td>
                 <td style="border:1px solid #000;text-align: left;font-size:12px">{{$data->divisi}}</td>
                 <td style="border:1px solid #000;text-align: left;font-size:12px">{{$data->departement}}</td>
-                <td style="border:1px solid #000;text-align: left;font-size:12px">{{$mentor[$data->nik]}}</td>
+                <td style="border:1px solid #000;text-align: left;font-size:12px">{{ is_array($mentor[$data->nik] ?? '') ? implode(', ', $mentor[$data->nik]) : $mentor[$data->nik] ?? '' }}</td>
                 <td style="border:1px solid #000;text-align: left;font-size:12px">{{$data->nama}}</td>
                 @php
                 $map = array('M' => 1000, 'CM' => 900, 'D' => 500, 'CD' => 400, 'C' => 100, 'XC' => 90, 'L' => 50, 'XL' => 40, 'X' => 10, 'IX' => 9, 'V' => 5, 'IV' => 4, 'I' => 1);

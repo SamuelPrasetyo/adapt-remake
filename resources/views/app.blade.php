@@ -341,6 +341,10 @@
         $("#reportfeedback").addClass('active');
         $("#report").addClass('active open');
         break;
+      case 'reportfeedback-back':
+        $("#reportfeedback").addClass('active');
+        $("#report").addClass('active open');
+        break;
       case 'reportfeedback-index':
         $("#reportfeedback").addClass('active');
         $("#report").addClass('active open');
