@@ -29,16 +29,16 @@ class KaderImport implements ToCollection, WithHeadingRow
             $departemen = Departemen::where('nama', $row['departemen'])->first();
             $batch = Batch::where('nama_batch', $row['batch'])->where('tahun_batch',$row['tahun'])->first();
             if (!$company) {
-                $missingCompanies[] = $row['company_shortname'];
+                $missingCompanies[] = $row['nama'] . ' - '.$row['company_shortname'];
             }
             if (!$divisi) {
-                $missingDivisions[] = $row['divisi'];
+                $missingDivisions[] = $row['nama'] . ' - '.$row['divisi'];
             }
             if (!$departemen) {
-                $missingDepartments[] = $row['departemen'];
+                $missingDepartments[] = $row['nama'] . ' - '.$row['departemen'];
             }
             if (!$batch) {
-                $missingBatches[] = $row['batch'] . ' (' . $row['tahun'] . ')';
+                $missingBatches[] = $row['nama'] . ' - '.$row['batch'] . ' (' . $row['tahun'] . ')';
             }
 
             if (!$company || !$divisi || !$departemen || !$batch) {

@@ -5,7 +5,7 @@
         <div class="col-lg-12 mb-4 order-0">
             @if (session('missingCompanies') && count(session('missingCompanies')) > 0)
             <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                <strong>Warning!</strong> Bussiness unit not found:
+                <strong>Bussiness unit not found: </strong>
                 <ul>
                     @foreach (session('missingCompanies') as $company)
                     <li>{{ $company }}</li>
@@ -17,7 +17,7 @@
 
             @if (session('missingDivisions') && count(session('missingDivisions')) > 0)
             <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                <strong>Warning!</strong> Division not found:
+                <strong>Division not found: </strong>
                 <ul>
                     @foreach (session('missingDivisions') as $division)
                     <li>{{ $division }}</li>
@@ -29,7 +29,7 @@
 
             @if (session('missingDepartments') && count(session('missingDepartments')) > 0)
             <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                <strong>Warning!</strong> Departments not found:
+                <strong>Departments not found: </strong>
                 <ul>
                     @foreach (session('missingDepartments') as $department)
                     <li>{{ $department }}</li>
