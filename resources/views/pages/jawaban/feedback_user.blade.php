@@ -90,7 +90,7 @@
 
 
         $('#example').DataTable({
-            // scrollY:        "100%",
+            scrollY:        "100%",
             scrollCollapse: true,
             paging: true,
             aaSorting: [],

@@ -14,6 +14,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\WeekController;
 use App\Models\ActivityLog;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Session;
 
 /*
 |--------------------------------------------------------------------------
@@ -143,3 +144,20 @@ Route::middleware(['can:isUser'])->group(function () {
         Route::post('api/fetch-weeks', 'fetchWeek')->name('fetch.week');
     });
 });
+
+Route::post('/clear-session', function () {
+    Session::forget('missing_companies');
+    return response()->json(['success' => true]);
+})->name('clear.session');
+Route::post('/clear-session2', function () {
+    Session::forget('missing_divisis');
+    return response()->json(['success' => true]);
+})->name('clear.session2');
+Route::post('/clear-session3', function () {
+    Session::forget('missing_departements');
+    return response()->json(['success' => true]);
+})->name('clear.session3');
+Route::post('/clear-session4', function () {
+    Session::forget('missing_batchs');
+    return response()->json(['success' => true]);
+})->name('clear.session4');

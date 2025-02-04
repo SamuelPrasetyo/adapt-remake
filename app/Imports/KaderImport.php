@@ -19,11 +19,28 @@ class KaderImport implements ToCollection, WithHeadingRow
     public function collection(Collection $rows)
     {
         $data = [];
+        $missingCompanies = [];
+        $missingDivisions = [];
+        $missingDepartments = [];
+        $missingBatches = [];
         foreach ($rows as $row) {
             $company = Company::where('company_shortname', $row['company_shortname'])->first();
             $divisi = Divisi::where('nama', $row['divisi'])->first();
             $departemen = Departemen::where('nama', $row['departemen'])->first();
             $batch = Batch::where('nama_batch', $row['batch'])->where('tahun_batch',$row['tahun'])->first();
+            if (!$company) {
+                $missingCompanies[] = $row['company_shortname'];
+            }
+            if (!$divisi) {
+                $missingDivisions[] = $row['divisi'];
+            }
+            if (!$departemen) {
+                $missingDepartments[] = $row['departemen'];
+            }
+            if (!$batch) {
+                $missingBatches[] = $row['batch'] . ' (' . $row['tahun'] . ')';
+            }
+
             if (!$company || !$divisi || !$departemen || !$batch) {
                 continue;
             }
@@ -49,6 +66,11 @@ class KaderImport implements ToCollection, WithHeadingRow
             // Kader::insert($data);
         }
         Kader::upsert($data,['nik'],['nama','jenis_kelamin','iq','ipk','company_code','id_divisi','id_departemen','id_batch','created_at','updated_at']);
+
+        session()->flash('missingCompanies', $missingCompanies);
+    session()->flash('missingDivisions', $missingDivisions);
+    session()->flash('missingDepartments', $missingDepartments);
+    session()->flash('missingBatches', $missingBatches);
     }
 
 

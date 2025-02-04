@@ -3,6 +3,54 @@
 <div class="container-xxl flex-grow-1 container-p-y container-p-x">
     <div class="row">
         <div class="col-lg-12 mb-4 order-0">
+            @if (session('missingCompanies') && count(session('missingCompanies')) > 0)
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <strong>Warning!</strong> Bussiness unit not found:
+                <ul>
+                    @foreach (session('missingCompanies') as $company)
+                    <li>{{ $company }}</li>
+                    @endforeach
+                </ul>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            @endif
+
+            @if (session('missingDivisions') && count(session('missingDivisions')) > 0)
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <strong>Warning!</strong> Division not found:
+                <ul>
+                    @foreach (session('missingDivisions') as $division)
+                    <li>{{ $division }}</li>
+                    @endforeach
+                </ul>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            @endif
+
+            @if (session('missingDepartments') && count(session('missingDepartments')) > 0)
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <strong>Warning!</strong> Departments not found:
+                <ul>
+                    @foreach (session('missingDepartments') as $department)
+                    <li>{{ $department }}</li>
+                    @endforeach
+                </ul>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            @endif
+
+            @if (session('missingBatches') && count(session('missingBatches')) > 0)
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <strong>Warning!</strong> Batches not found:
+                <ul>
+                    @foreach (session('missingBatches') as $batch)
+                    <li>{{ $batch }}</li>
+                    @endforeach
+                </ul>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            @endif
+
             <div class="card">
                 <div class="d-flex align-items-end row">
                     <div class="col-sm-12">
@@ -249,13 +297,12 @@
 <script type="text/javascript">
     $(document).ready(function() {
         $('#example').DataTable({
-            // scrollY:        "100%",
+            scrollY: "100%",
             scrollCollapse: true,
             paging: true,
             aaSorting: [],
             "lengthMenu": [10, 25, 50, 100, ],
         });
-
     });
     $('.show_confirm').click(function(event) {
 
@@ -287,6 +334,55 @@
 
             });
 
+    });
+
+    $("#close-alert").click(function() {
+        $.ajax({
+            url: "{{ route('clear.session') }}", // Route to clear session
+            type: "POST",
+            data: {
+                _token: "{{ csrf_token() }}"
+            },
+            success: function() {
+                $("#missing-companies-alert").remove(); // Hide alert on success
+            }
+        });
+    });
+    $("#close-alert2").click(function() {
+        $.ajax({
+            url: "{{ route('clear.session2') }}", // Route to clear session
+            type: "POST",
+            data: {
+                _token: "{{ csrf_token() }}"
+            },
+            success: function() {
+                $("#missing-divisis-alert").remove(); // Hide alert on success
+            }
+        });
+    });
+    $("#close-alert3").click(function() {
+        $.ajax({
+            url: "{{ route('clear.session3') }}", // Route to clear session
+            type: "POST",
+            data: {
+                _token: "{{ csrf_token() }}"
+            },
+            success: function() {
+                $("#missing-departements-alert").remove(); // Hide alert on success
+            }
+        });
+    });
+    $("#close-alert4").click(function() {
+        $.ajax({
+            url: "{{ route('clear.session4') }}", // Route to clear session
+            type: "POST",
+            data: {
+                _token: "{{ csrf_token() }}"
+            },
+            success: function() {
+                $("#missing-batchs-alert").remove(); // Hide alert on success
+            }
+        });
     });
 </script>
 @endsection
