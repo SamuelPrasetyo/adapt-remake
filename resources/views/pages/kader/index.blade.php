@@ -335,54 +335,5 @@
             });
 
     });
-
-    $("#close-alert").click(function() {
-        $.ajax({
-            url: "{{ route('clear.session') }}", // Route to clear session
-            type: "POST",
-            data: {
-                _token: "{{ csrf_token() }}"
-            },
-            success: function() {
-                $("#missing-companies-alert").remove(); // Hide alert on success
-            }
-        });
-    });
-    $("#close-alert2").click(function() {
-        $.ajax({
-            url: "{{ route('clear.session2') }}", // Route to clear session
-            type: "POST",
-            data: {
-                _token: "{{ csrf_token() }}"
-            },
-            success: function() {
-                $("#missing-divisis-alert").remove(); // Hide alert on success
-            }
-        });
-    });
-    $("#close-alert3").click(function() {
-        $.ajax({
-            url: "{{ route('clear.session3') }}", // Route to clear session
-            type: "POST",
-            data: {
-                _token: "{{ csrf_token() }}"
-            },
-            success: function() {
-                $("#missing-departements-alert").remove(); // Hide alert on success
-            }
-        });
-    });
-    $("#close-alert4").click(function() {
-        $.ajax({
-            url: "{{ route('clear.session4') }}", // Route to clear session
-            type: "POST",
-            data: {
-                _token: "{{ csrf_token() }}"
-            },
-            success: function() {
-                $("#missing-batchs-alert").remove(); // Hide alert on success
-            }
-        });
-    });
 </script>
 @endsection
