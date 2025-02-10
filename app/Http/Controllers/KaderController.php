@@ -31,10 +31,10 @@ class KaderController extends Controller
     public function index()
     {
         $kaders = Kader::select('kader.*', 'divisis.nama as divisi_name', 'departemens.nama as dept_name', 'company.company_shortname as bu', 'batch.nama_batch as batch_name','batch.tahun_batch')
-            ->join('divisis', 'kader.id_divisi', 'divisis.id')
-            ->join('departemens', 'kader.id_departemen', 'departemens.id')
-            ->join('batch', 'kader.id_batch', 'batch.id_batch')
-            ->join('company', 'kader.company_code', '=', 'company.company_code')
+            ->leftJoin('divisis', 'kader.id_divisi', 'divisis.id')
+            ->leftJoin('departemens', 'kader.id_departemen', 'departemens.id')
+            ->leftJoin('batch', 'kader.id_batch', 'batch.id_batch')
+            ->leftJoin('company', 'kader.company_code', '=', 'company.company_code')
             ->orderBy('kader.nama', 'asc')
             ->get();
 

@@ -124,7 +124,7 @@
                                                     @foreach($weeks as $wk)
                                                     @foreach($pertanyaans as $key => $q)
                                                     @if($key == 4)
-                                                    <td style="text-align: center;">{{strip_tags($jawaban[$q->id_pertanyaan][$wk->id_week][$data->nik] ?? 0)}}</td>
+                                                    <td style="text-align: left;font-size:14px">{{strip_tags($jawaban[$q->id_pertanyaan][$wk->id_week][$data->nik] ?? 0)}}</td>
                                                     @php
                                                     $rata2_2 += $jawaban[$q->id_pertanyaan][$wk->id_week][$data->nik] ?? 0;
 
@@ -140,7 +140,7 @@
                                                     @foreach($weeks as $wk)
                                                     @foreach($pertanyaans as $key => $q)
                                                     @if($key == 5)
-                                                    <td style="text-align: center;">{{strip_tags($jawaban[$q->id_pertanyaan][$wk->id_week][$data->nik] ?? '-')}}</td>
+                                                    <td style="text-align: left;font-size:14px">{{strip_tags($jawaban[$q->id_pertanyaan][$wk->id_week][$data->nik] ?? '-')}}</td>
                                                     @endif
                                                     @endforeach
                                                     @endforeach

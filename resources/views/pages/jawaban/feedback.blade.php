@@ -152,7 +152,8 @@
             <div class="form-group mb-1 col-4">
                 <!-- <textarea type="text" placeholder="jawaban"
                                     class="form-control" id="ckeditor" name="pertanyaan_mentor[5]"></textarea> -->
-                <select name="pertanyaan_mentor[5]" id="" class="form-control">
+                                    <input type="text" hidden name="id_pertanyaan5" value="{{$id_pertanyaan[5]}}">
+                <select name="pertanyaan5_mentor" id="" class="form-control">
                     <option value="">--Pilih Nilai--</option>
                     @foreach($nilai as $val)
                     <option value="{{$val->nama_nilai}}">{{$val->nama_nilai}}</option>
@@ -166,9 +167,10 @@
     <div class="card-body">
         <div class="row">
             <h6 class="mb-2">6. {{strip_tags($pertanyaan[6])}}</h6>
+            <input type="text" hidden name="id_pertanyaan6" value="{{$id_pertanyaan[6]}}">
             <div class="form-group mb-1">
                 <textarea type="text" placeholder="jawaban"
-                    class="form-control" id="ckeditor2" name="pertanyaan_mentor[6]"></textarea>
+                    class="form-control" id="ckeditor2" name="pertanyaan6_mentor"></textarea>
             </div>
         </div>
     </div>

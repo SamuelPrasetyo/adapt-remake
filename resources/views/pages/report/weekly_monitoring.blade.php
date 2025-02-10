@@ -9,10 +9,10 @@
     </nav>
     <div class="row">
         <div class="col-lg-12 mb-4 order-0">
-        <button id="downloadPdf" class="btn btn-sm btn-primary mb-2">Export to PDF</button>
+            <button id="downloadPdf" class="btn btn-sm btn-primary mb-2">Export to PDF</button>
             <div class="card" style="background-color:#FFF;" id="reportOjt">
-            <input type="text" id="nama_kaderojt" hidden value="{{$title['nama_kader']}}">
-            <input type="text" id="ojt" hidden value="{{$title['ojt']}}">
+                <input type="text" id="nama_kaderojt" hidden value="{{$title['nama_kader']}}">
+                <input type="text" id="ojt" hidden value="{{$title['ojt']}}">
                 <div class="card-body p-4 pt-3">
                     <div class="row">
                         <div class="col-2 text-center" style="border: #000 2px solid;">
@@ -31,18 +31,18 @@
                                 <div class="col-6">
                                     <p class="m-0" style="text-align: left; font-size:14px"><b>PERIOD</b> : OJT {{$title['ojt']}}</p>
                                     <p class="m-0" style="text-align: left; font-size:14px"><b>MANTEE NAME</b> : {{strtoupper($title['nama_kader'])}}</p>
-                                    <p class="m-0" style="text-align: left; font-size:14px"><b>MENTOR NAME</b> : 
-                                    @if(is_array($title['nama_mentor']))
+                                    <p class="m-0" style="text-align: left; font-size:14px"><b>MENTOR NAME</b> :
+                                        @if(is_array($title['nama_mentor']))
                                         @foreach($title['nama_mentor'] as $key => $nm)
-                                            @if($key !== array_key_last($title['nama_mentor']))
-                                                {{strtoupper($nm)}},
-                                            @else
-                                                {{strtoupper($nm)}}
-                                            @endif
+                                        @if($key !== array_key_last($title['nama_mentor']))
+                                        {{strtoupper($nm)}},
+                                        @else
+                                        {{strtoupper($nm)}}
+                                        @endif
                                         @endforeach
-                                    @else
+                                        @else
                                         {{strtoupper($title['nama_mentor'])}}
-                                    @endif
+                                        @endif
                                     </p>
                                     <p class="m-0" style="text-align: left; font-size:14px"><b>MT BATCH</b> : {{$title['batch']}}</p>
                                     <p class="m-0" style="text-align: left; font-size:14px"><b>IQ</b> : {{$title['iq']}} </p>
@@ -83,7 +83,7 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            @php $no=1; @endphp
+                                            @php $no=1;@endphp
                                             @foreach($pertanyaans as $val)
                                             <tr>
                                                 <td style="font-size: 11px;background-color:#E5E4E2;text-align:center;border:1px black solid">{{$no++}}</td>
@@ -115,7 +115,29 @@
                                                 @foreach($week_arr as $i)
                                                 <td style="font-size: 11px;background-color:#E5E4E2;text-align:center;border:1px black solid">{{$data_kkm[$i] ?? 0}}</td>
                                                 @endforeach
-                                                
+
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            @else
+                            <div class="row">
+                                <div class="col-12 p-0">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th style="font-size: 9px;border:1px black solid;background-color:white;padding-bottom:1.5vh; text-align:center">NO</th>
+                                                <th style="font-size: 9px;border:1px black solid;background-color:white;padding-bottom:1.5vh; text-align:center">ASSESSMENT POINT</th>
+                                                @foreach($week_arr as $wa)
+                                                <th style="font-size: 9px;border:1px black solid;background-color:white;padding-bottom:1.5vh; text-align:center">W{{$wa}}</th>
+                                                @endforeach
+                                                <th style="font-size: 9px;border:1px black solid;background-color:white;padding-bottom:1.5vh; text-align:center">AVE</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td style="border:1px black solid;font-size: 11px;background-color:#E5E4E2;text-align:center" colspan="9">Empty Data</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -124,7 +146,176 @@
                             @endif
                         </div>
                         <div class="col-6 text-center">
-                            <canvas id="myLineChart"></canvas>
+                            <canvas id="myLineChart" style="height: 75vh;"></canvas>
+                        </div>
+                    </div>
+                    <div class="row mt-4">
+                        <div class="col-6">
+                            <div class="row">
+                                <div class="col-12 text-center" style="border: #000 1px solid; background-color:skyblue">
+                                    <h6 class="m-2">FEEDBACK RESULTS</h6>
+                                </div>
+                            </div>
+                            @if($data2 != [])
+                            <div class="row">
+                                <div class="col-12 p-0">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th style="padding:3vh;font-size: 9px;border:1px black solid;background-color:white;padding-bottom:1.5vh; text-align:center">POINT</th>
+                                                @foreach($week_arr as $wa)
+                                                <th style="padding:3vh;font-size: 9px;border:1px black solid;background-color:white;padding-bottom:1.5vh; text-align:center">W{{$wa}}</th>
+                                                @endforeach
+                                                <th style="padding:3vh;font-size: 9px;border:1px black solid;background-color:white;padding-bottom:1.5vh; text-align:center">AVE</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td style="font-size: 11px;background-color:#E5E4E2;text-align:center;border:1px black solid">INVOLMENT & MOTIVATION</td>
+                                                @php $avg2 = 0;@endphp
+                                                @for($j = 0; $j < count($data2); $j++)
+                                                    <td style="font-size: 11px;background-color:#E5E4E2;text-align:center;border:1px black solid;vertical-align: middle;    ">{{$data2[$week_arr[$j]]}}</td>
+                                                    @php $avg2 += $data2[$week_arr[$j]]; @endphp
+                                                    @endfor
+                                                    <td style="font-size: 11px;background-color:#E5E4E2;text-align:center;border:1px black solid;vertical-align: middle;">{{round($avg2/6)}}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            @else
+                            <div class="row">
+                                <div class="col-12 p-0">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th style="padding:3vh;font-size: 9px;border:1px black solid;background-color:white;padding-bottom:1.5vh; text-align:center">POINT</th>
+                                                @foreach($week_arr as $wa)
+                                                <th style="padding:3vh;font-size: 9px;border:1px black solid;background-color:white;padding-bottom:1.5vh; text-align:center">W{{$wa}}</th>
+                                                @endforeach
+                                                <th style="padding:3vh;font-size: 9px;border:1px black solid;background-color:white;padding-bottom:1.5vh; text-align:center">AVE</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td style="border:1px black solid;font-size: 11px;background-color:#E5E4E2;text-align:center" colspan="9">Empty Data</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            @endif
+                        </div>
+                        <div class="col-6 text-center">
+                            <canvas id="myLineChart2" style="height: 15vh;"></canvas>
+                        </div>
+                    </div>
+                    <div class="row mt-2 gap-3">
+                        <div class="col-6">
+                            <div class="row">
+                                <div class="col-12 text-center" style="border: #000 1px solid; background-color:skyblue">
+                                    <h6 class="m-2">MENTORS INPUT</h6>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12 p-0">
+                                    <table class="table">
+                                        <thead>
+                                            @foreach($week_arr as $w)
+                                            <tr>
+                                                <th style="padding:3vh;font-size: 9px;border:1px black solid;background-color:white;padding-bottom:1.5vh; text-align:left">{{'Week '.$w}}</th>
+                                                <th style="font-size: 11px;text-align:left;border:1px black solid;vertical-align: middle;    "> {{ isset($data3[$w]) ? strip_tags($data3[$w]) : '-' }}</th>
+                                            </tr>
+                                            @endforeach
+                                        </thead>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-5 ms-auto" style="border: #000 1px solid; width:48%;height:max-content">
+                            <div class="row mt-3 mb-4">
+                                <h5 class="text-center mb-4">WEEKLY FEEDBACK PRESENCE</h5>
+                                <div class="row mb-3">
+                                    <div class="col-4">
+                                        <h6>MENTOR : </h6>
+                                    </div>
+                                    <div class="col-8">
+                                        <div class="progress" style="height: 4vh;">
+                                            <div class="progress-bar" role="progressbar"
+                                                style="width: {{ $mentor_percent }}%;"
+                                                aria-valuenow="{{ $mentor_percent }}"
+                                                aria-valuemin="0"
+                                                aria-valuemax="100">
+                                                {{ $mentor_percent }}%
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row mt-3 mb-3">
+                                    <div class="col-4">
+                                        <h6>MANTEE : </h6>
+                                    </div>
+                                    <div class="col-8">
+                                        <div class="progress" style="height: 4vh;">
+                                            <div class="progress-bar" role="progressbar"
+                                                style="width: {{ $kader_percent }}%;"
+                                                aria-valuenow="{{ $kader_percent }}"
+                                                aria-valuemin="0"
+                                                aria-valuemax="100">
+                                                {{ $kader_percent }}%
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="row">
+                                <div class="col-12 text-left p-0 mb-2">
+                                    <h6 class="m-0">PERFORMANCE SUMMARY</h6>
+                                </div>
+                            </div>
+                            <div class="row" style="border: #000 1px solid;min-height:25vh">
+                                <p class="m-1" style="font-size: 13px;">{{$performance_sums->desc ?? ''}}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row mt-2" id="aproval">
+                        <div class="col-9" style="position: relative;left:44%">
+                            <div class="row mt-0">
+                                <div class="col-3" style="border: #000 1px solid;border-right:0;">
+                                    <p class="text-center m-1" style="vertical-align:middle;font-size:12px;font-weight:bold">PREPARED</p>
+                                </div>
+                                <div class="col-3" style="border: #000 1px solid;border-right:0;">
+                                    <p class="text-center m-1" style="vertical-align:middle;font-size:12px;font-weight:bold">CHECKED</p>
+                                </div>
+                                <div class="col-3" style="border: #000 1px solid">
+                                    <p class="text-center m-1" style="vertical-align:middle;font-size:12px;font-weight:bold">APPROVED</p>
+                                </div>
+                            </div>
+                            <div class="row mt-0">
+                                <div class="col-3" style="border: #000 1px solid;border-top:0;border-right:0;min-height:18vh">
+
+                                </div>
+                                <div class="col-3" style="border: #000 1px solid;border-top:0;border-right:0;min-height:18vh">
+                                </div>
+                                <div class="col-3" style="border: #000 1px solid;border-top:0;min-height:18vh">
+                                </div>
+                            </div>
+                            <div class="row mt-0">
+                                <div class="col-3" style="border: #000 1px solid;border-top:0;;border-right:0;">
+                                    <p class="text-center m-1" style="vertical-align:middle;font-size:12px;font-weight:bold">HR DATA ANALYST</p>
+                                </div>
+                                <div class="col-3" style="border: #000 1px solid;border-top:0;;border-right:0;">
+                                    <p class="text-center m-1" style="vertical-align:middle;font-size:12px;font-weight:bold">PEOPLE DEVELOPMENT</p>
+                                </div>
+                                <div class="col-3" style="border: #000 1px solid;border-top:0;">
+                                    <p class="text-center m-1" style="vertical-align:middle;font-size:12px;font-weight:bold">CHC DIVISION HEAD</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -155,32 +346,32 @@
 
         doc.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
         const namaKader = $('#nama_kaderojt').val();
-        const ojt = $('#ojt').val();
-        doc.save('OJT'+ojt+'_MonitoringReport_'+namaKader+'.pdf'); // Save the PDF
+        const ojt = <?php echo $title['ojt'] ?>;
+        doc.save('OJT' + ojt + '_MonitoringReport_' + namaKader + '.pdf'); // Save the PDF
     });
-    
+
     var ctx = document.getElementById('myLineChart').getContext('2d');
+    var ctx2 = document.getElementById('myLineChart2').getContext('2d');
     var week = <?php echo $week; ?>;
-    
     var avg = <?php echo $avg; ?>;
     var lg = <?php echo $learningG; ?>;
     var kkm = <?php echo $kkm; ?>;
-    console.log(avg,lg,kkm,week);
-    
+
+    var avg_2 = <?php echo $avg_2; ?>;
+
 
 
     var myLineChart = new Chart(ctx, {
         type: 'line',
         data: {
-            datasets: [
-                {
+            datasets: [{
                     label: 'Ave Score',
                     data: avg,
                     borderColor: 'rgb(50, 205, 50)',
                     backgroundColor: 'rgb(50, 205, 50)',
                     borderWidth: 3,
                     tension: 0.4,
-                }, 
+                },
                 {
                     label: 'Learning growth',
                     data: lg,
@@ -217,10 +408,40 @@
             },
         }
     });
+    var myLineChart2 = new Chart(ctx2, {
+        type: 'line',
+        data: {
+            datasets: [{
+                label: 'Ave Score',
+                data: avg_2,
+                borderColor: 'rgb(50, 205, 50)',
+                backgroundColor: 'rgb(50, 205, 50)',
+                borderWidth: 3,
+                tension: 0.4,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    title: {
+                        display: true,
+                        text: 'TIME SPENT (BIWEEK)',
+                    }
+                },
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                },
+            },
+        }
+    });
     $(document).ready(function() {
 
         $('#example').DataTable({
-            scrollY:        "100%",
+            scrollY: "100%",
             scrollCollapse: true,
             paging: true,
             aaSorting: [],

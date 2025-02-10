@@ -28,11 +28,11 @@ class ReportFeedbackExport implements FromView, WithColumnWidths
         $ojt = $this->ojt;
 
         $datas = Kader::select('kader.nama', 'kader.jenis_kelamin', 'kader.iq', 'kader.ipk', 'company.company_name', 'divisis.nama as divisi', 'departemens.nama as departement', 'batch.nama_batch', 'batch.tahun_batch', 'kader.nik', 'jawaban.nik_kader')
-            ->join('company', 'kader.company_code', 'company.company_code')
-            ->join('divisis', 'kader.id_divisi', 'divisis.id')
-            ->join('departemens', 'kader.id_departemen', 'departemens.id')
-            ->join('batch', 'kader.id_batch', 'batch.id_batch')
-            ->join('jawaban', 'kader.nik', 'jawaban.nik_kader')
+            ->leftJoin('company', 'kader.company_code', 'company.company_code')
+            ->leftJoin('divisis', 'kader.id_divisi', 'divisis.id')
+            ->leftJoin('departemens', 'kader.id_departemen', 'departemens.id')
+            ->leftJoin('batch', 'kader.id_batch', 'batch.id_batch')
+            ->leftJoin('jawaban', 'kader.nik', 'jawaban.nik_kader')
             // ->join('performance_summary','kader.nik','performance_summary.nik_kader')
             ->groupBy('kader.nama', 'kader.jenis_kelamin', 'kader.iq', 'kader.ipk', 'company.company_name', 'divisis.nama', 'departemens.nama', 'jawaban.nik_kader', 'kader.nik', 'batch.nama_batch', 'batch.tahun_batch')
             ->get();

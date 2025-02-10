@@ -114,17 +114,21 @@ class JawabanController extends Controller
             $jawaban_mentor['3'] = $request->pertanyaan3_mentor;
 
             $jawaban_mentor['4'] = $request->pertanyaan4_mentor;
+            $jawaban_mentor['5'] = $request->pertanyaan5_mentor;
+            $jawaban_mentor['6'] = $request->pertanyaan6_mentor;
             $count_pertanyaan = Pertanyaan::where('type', 'Mentor')->where('status','Aktif')->get()->count();
-            for ($i = 1; $i < $count_pertanyaan; $i++) {
-
-                $jawaban = '';
-                if ($i < 5) {
-                    $jawaban = $jawaban_mentor[$i];
-                } else {
-                    $jawaban = $request->pertanyaan_mentor[$i];
-                }
+            for ($i = 1; $i <= $count_pertanyaan; $i++) {
+                log::info($i);
+                $jawaban = $jawaban_mentor[$i];
+               
+                // if ($i < 5 OR $i) {
+                //     $jawaban = $jawaban_mentor[$i];
+                // }
+                // if($i <= 6) {
+                //     $jawaban = $request->pertanyaan_mentor[$i];
+                // }
                 if($i == 5){
-                    switch($jawaban)
+                    switch($jawaban_mentor[$i])
                     {
                         case 'Sangat Kurang':
                             $jawaban = 1;
@@ -160,7 +164,6 @@ class JawabanController extends Controller
             Alert::success('Success', 'Feedback berhasil disubmit!');
             return redirect()->route('feedback.index');
         } catch (\Throwable $th) {
-            log::info($th);
             Alert::warning('Failed', 'Feedback gagal disubmit!');
             return redirect()->route('feedback.index');
         }
@@ -201,7 +204,6 @@ class JawabanController extends Controller
             Alert::success('Success', 'Feedback berhasil disubmit!');
             return redirect()->route('feedback.index');
         } catch (\Throwable $th) {
-            log::info($th);
             Alert::warning('Failed', 'Feedback gagal disubmit!');
             return redirect()->route('feedback.index');
         }
@@ -255,7 +257,6 @@ class JawabanController extends Controller
             array_push($week,$j->angka_week);
         }
         $data['weeks'] = Week::orderBy('angka_week', 'asc')->whereNotIn('angka_week',$week)->get();
-        log::info($data);
         // $data['weeks'] = Week::where("country_id", $request->country_id)
 
         //     ->get(["name", "id"]);

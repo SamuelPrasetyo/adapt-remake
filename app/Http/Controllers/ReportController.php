@@ -90,9 +90,9 @@ class ReportController extends Controller
 
         $kader = Kader::select('kader.nama as nama_kader', 'kader.nik', 'divisis.nama as nama_divisi', 'departemens.nama as nama_departemen', 'company.company_name')
             ->where('nik', $request->nik_kader)
-            ->join('company', 'kader.company_code', 'company.company_code')
-            ->join('divisis', 'kader.id_divisi', 'divisis.id')
-            ->join('departemens', 'kader.id_departemen', 'departemens.id')
+            ->leftJoin('company', 'kader.company_code', 'company.company_code')
+            ->leftJoin('divisis', 'kader.id_divisi', 'divisis.id')
+            ->leftJoin('departemens', 'kader.id_departemen', 'departemens.id')
             ->first();
         $title['nama_kader'] = $kader->nama_kader;
         $title['divisi'] = $kader->nama_divisi;
@@ -126,14 +126,14 @@ class ReportController extends Controller
                 break;
         }
         // dd($week_arr);
-        $reports = Jawaban::selectRaw("pertanyaan.nama_pertanyaan,jawaban,nik_kader,weeks.angka_week as week, jawaban.nama_mentor as nama_mentor")
+        $reports = Jawaban::selectRaw("pertanyaan.nama_pertanyaan,pertanyaan.id_pertanyaan,jawaban,nik_kader,weeks.angka_week as week, jawaban.nama_mentor as nama_mentor")
             ->join('weeks', 'jawaban.id_week', 'weeks.id_week')
             ->join('pertanyaan', 'jawaban.id_pertanyaan', 'pertanyaan.id_pertanyaan')
             ->join('users', 'jawaban.created_by', 'users.id')
             // ->whereNotNull('nama_mentor')
             ->where('nik_kader', $request->nik_kader)
             ->where('pertanyaan.status', 'Aktif')
-            ->whereNotIn('jawaban.id_pertanyaan', ['5', '6'])
+            // ->whereNotIn('jawaban.id_pertanyaan', ['6'])
             ->whereIn('weeks.angka_week', $week_arr)
             // ->groupBy('pertanyaan.nama_pertanyaan', 'nik_kader', 'week')
             ->orderBy('pertanyaan.id_pertanyaan')
@@ -147,27 +147,46 @@ class ReportController extends Controller
         $kkm = [];
         $data_kkm = [];
         $data = [];
+        $data2 = [];
+        $data3 = [];
         $data_lg = [];
         $temp_week = 0;
         $title['nama_kader'] = '';
         $avg_week = [];
+        $avg2_week = [];
         $i = 0;
         $weeks = Week::whereIn('angka_week', $week_arr)->orderBy('angka_week', 'asc')->get();
         $week = [];
         $nama_mentor = '';
 
-        foreach ($weeks as $w) {
-            array_push($week, $w->angka_week);
-            array_push($kkm, 7);
-        }
         $nama_mentors = [];
         foreach ($reports as $val) {
             $nama_mentors[] = $val->nama_mentor;
 
             $data[strip_tags($val->nama_pertanyaan)][$val->week] = $val->jawaban;
-            if (is_numeric($val->jawaban)) {
-                $avg_week[$val->week] = ($avg_week[$val->week] ?? 0) + $val->jawaban / 4;
+            if ($val->id_pertanyaan == '1') {
+                $data2[$val->week] = $val->jawaban;
+
+                if (is_numeric($val->jawaban)) {
+                    $avg2_week[$val->week] = $val->jawaban/1;
+                }
             }
+            if ($val->id_pertanyaan == '6') {
+                $data3[$val->week] = $val->jawaban;
+            }else{
+                if (is_numeric($val->jawaban)) {
+                    $avg_week[$val->week] = ($avg_week[$val->week] ?? 0) + $val->jawaban / 4;
+                }
+            }
+        }
+        foreach ($weeks as $w) {
+            if (!isset($avg_week[$w->angka_week])) {
+                $avg_week[$w->angka_week] = 0;
+                $avg2_week[$w->angka_week] = 0;
+                
+            }
+            array_push($week, $w->angka_week);
+            array_push($kkm, 7);
         }
         $nama_mentors = array_unique($nama_mentors); // Hapus duplikat
         if (count($nama_mentors) === 1) {
@@ -175,10 +194,14 @@ class ReportController extends Controller
         } else {
             $nama_mentor = array_values($nama_mentors); // Reset indeks array
         }
-
         foreach ($avg_week as $key => $avw) {
-            $cal = ($avw + $temp_week) / 6;
-            $rounded = round($cal, 2);
+            if ($avw != 0) {
+                $cal = ($avw + $temp_week) / 6;
+                $rounded = round($cal, 2);
+            }else{
+                $rounded= 0;
+            }
+
             $data_lg[$key] =  $rounded;
             $learningG[$key] =  $rounded;
             $data_kkm[$key] = 7;
@@ -192,18 +215,21 @@ class ReportController extends Controller
             foreach ($week as $wk) {
                 if (!isset($data[$key][$wk])) {
                     $data[$key][$wk] = "0";
+                    $data2[$wk] = "0";
+                    $data3[$wk] = "-";
                 }
             }
 
             // Sort weeks to maintain order
             ksort($data[$key]);
         }
+        // dd($avg_week,$avg2_week);
         $avg = json_encode($avg_week, JSON_NUMERIC_CHECK);
+        $avg_2 = json_encode($avg2_week, JSON_NUMERIC_CHECK);
         $week = json_encode($week, JSON_NUMERIC_CHECK);
         $learningG = json_encode($learningG, JSON_NUMERIC_CHECK);
         $kkm = json_encode($kkm, JSON_NUMERIC_CHECK);
 
-        // dd($avg,$week,$learningG,$kkm);
 
         $kader = Kader::select('kader.nama as nama_kader', 'kader.iq', 'kader.ipk', 'divisis.nama as nama_divisi', 'departemens.nama as nama_departemen', 'company.company_name', 'jawaban.nama_mentor', 'batch.nama_batch', 'batch.tahun_batch')
             ->leftJoin('jawaban', 'kader.nik', 'jawaban.nik_kader')
@@ -226,8 +252,27 @@ class ReportController extends Controller
         $title['batch'] = $this->ToRomawi($kader->nama_batch) . ' - ' . $kader->tahun_batch;
         $batch = $this->ToRomawi($kader->nama_batch);
         $tahun = $kader->tahun_batch;
+        // dd($avg,$avg2);
+        $performance_sums = PerformanceSum::where('nik_kader',$request->nik_kader)
+                                            ->where('ojt',$request->ojt)
+                                            ->first();
+        $mentor_percent = Jawaban::select('jawaban.created_by','id_week')
+                                    ->join('users','jawaban.created_by','users.id')
+                                    ->where('jawaban.nik_kader',$request->nik_kader)
+                                    ->where('users.type','Mentor')
+                                    ->groupBy('jawaban.created_by','id_week')
+                                    ->get()
+                                    ->count();
 
-        return view('pages.report.weekly_monitoring', compact('week', 'reports', 'avg', 'learningG', 'kkm', 'data_lg', 'title', 'pertanyaans', 'data', 'week_arr', 'avg_week', 'data_kkm', 'batch', 'tahun'));
+        $kader_percent = Jawaban::select('jawaban.created_by','id_week')
+                                    ->join('users','jawaban.created_by','users.id')
+                                    ->where('jawaban.nik_kader',$request->nik_kader)
+                                    ->where('users.type','Kader')
+                                    ->groupBy('jawaban.created_by','id_week')
+                                    ->get()
+                                    ->count();
+
+        return view('pages.report.weekly_monitoring', compact('week', 'reports', 'avg', 'learningG', 'kkm', 'data_lg', 'title', 'pertanyaans', 'data', 'week_arr', 'avg_week', 'data_kkm', 'batch', 'tahun', 'data2','avg_2','data3','performance_sums','mentor_percent','kader_percent'));
     }
 
     public function weekly_index()
@@ -250,17 +295,17 @@ class ReportController extends Controller
     public function feedback_index()
     {
         $title = 'Report Feedback';
-        return view('pages.report.report_index',compact('title'));
+        return view('pages.report.report_index', compact('title'));
     }
 
     public function report_feedback(Request $request)
     {
         $datas = Kader::select('kader.nama', 'kader.jenis_kelamin', 'kader.iq', 'kader.ipk', 'company.company_name', 'divisis.nama as divisi', 'departemens.nama as departement', 'batch.nama_batch', 'batch.tahun_batch', 'kader.nik', 'jawaban.nik_kader')
-            ->join('company', 'kader.company_code', 'company.company_code')
-            ->join('divisis', 'kader.id_divisi', 'divisis.id')
-            ->join('departemens', 'kader.id_departemen', 'departemens.id')
-            ->join('batch', 'kader.id_batch', 'batch.id_batch')
-            ->join('jawaban', 'kader.nik', 'jawaban.nik_kader')
+            ->leftJoin('company', 'kader.company_code', 'company.company_code')
+            ->leftJoin('divisis', 'kader.id_divisi', 'divisis.id')
+            ->leftJoin('departemens', 'kader.id_departemen', 'departemens.id')
+            ->leftJoin('batch', 'kader.id_batch', 'batch.id_batch')
+            ->leftJoin('jawaban', 'kader.nik', 'jawaban.nik_kader')
             // ->join('performance_summary','kader.nik','performance_summary.nik_kader')
             ->groupBy('kader.nama', 'kader.jenis_kelamin', 'kader.iq', 'kader.ipk', 'company.company_name', 'divisis.nama', 'departemens.nama', 'jawaban.nik_kader', 'kader.nik', 'batch.nama_batch', 'batch.tahun_batch')
             ->get();
@@ -284,21 +329,21 @@ class ReportController extends Controller
                 break;
         }
         $mentor = [];
+        $jawaban = [];
 
         $weeks = Week::whereIn('angka_week', $arr_week)->get();
         foreach ($datas as $value) {
-            $data_mentor = Jawaban::select('jawaban.nama_mentor','jawaban.nik_kader')
+            $data_mentor = Jawaban::select('jawaban.nama_mentor', 'jawaban.nik_kader')
                 ->where('jawaban.nik_kader', $value->nik)
-                ->groupBy('jawaban.nama_mentor','jawaban.nik_kader')
+                ->groupBy('jawaban.nama_mentor', 'jawaban.nik_kader')
                 ->get();
 
-                foreach($data_mentor as $dt)
-                {
-                    if (!isset($mentor[$dt->nik_kader])) {
-                        $mentor[$dt->nik_kader] = []; // Initialize as an array if not set
-                    }
-                    array_push($mentor[$dt->nik_kader],$dt->nama_mentor);
+            foreach ($data_mentor as $dt) {
+                if (!isset($mentor[$dt->nik_kader])) {
+                    $mentor[$dt->nik_kader] = []; // Initialize as an array if not set
                 }
+                array_push($mentor[$dt->nik_kader], $dt->nama_mentor);
+            }
 
             $data_jawaban = Jawaban::select('jawaban.*', 'pertanyaan.nama_pertanyaan', 'pertanyaan.type')
                 ->where('nik_kader', $value->nik)
@@ -306,8 +351,6 @@ class ReportController extends Controller
                 ->join('pertanyaan', 'jawaban.id_pertanyaan', 'pertanyaan.id_pertanyaan')
                 ->get();
 
-                
-            
 
             foreach ($data_jawaban as $key => $jwb) {
                 $jawaban[$jwb->id_pertanyaan][$jwb->id_week][$value->nik] = $jwb->jawaban;
@@ -315,14 +358,14 @@ class ReportController extends Controller
             }
         }
 
-        $pertanyaans = Pertanyaan::where('type','Mentor')->get();
+        $pertanyaans = Pertanyaan::where('type', 'Mentor')->get();
 
-        $performance_sums = PerformanceSum::where('ojt',$request->ojt)->get();
+        $performance_sums = PerformanceSum::where('ojt', $request->ojt)->get();
 
         $ojt = $request->ojt;
 
 
-        return view('pages.report.feedback', compact('datas', 'mentor', 'jawaban', 'pertanyaans', 'weeks','revisi','performance_sums','ojt'));
+        return view('pages.report.feedback', compact('datas', 'mentor', 'jawaban', 'pertanyaans', 'weeks', 'revisi', 'performance_sums', 'ojt'));
     }
 
     public function report_feedback_back($ojt)
@@ -379,12 +422,12 @@ class ReportController extends Controller
         }
         $pertanyaans = Pertanyaan::get();
 
-        $performance_sums = PerformanceSum::where('ojt',$ojt)->get();
+        $performance_sums = PerformanceSum::where('ojt', $ojt)->get();
 
         $ojt = $ojt;
 
 
-        return view('pages.report.feedback', compact('datas', 'mentor', 'jawaban', 'pertanyaans', 'weeks','revisi','performance_sums','ojt'));
+        return view('pages.report.feedback', compact('datas', 'mentor', 'jawaban', 'pertanyaans', 'weeks', 'revisi', 'performance_sums', 'ojt'));
     }
 
     public function perform_sum_add(Request $request)
@@ -400,29 +443,29 @@ class ReportController extends Controller
 
         ActivityLog::activity_log('Menambah data Performance Summary');
         Alert::success('Success', 'Data berhasil ditambahkan!');
-        return redirect()->route('report.feedback.back',$request->ojt);
+        return redirect()->route('report.feedback.back', $request->ojt);
     }
 
     public function perform_sum_edit(Request $request, $id)
     {
-        $data_performsum = PerformanceSum::where('id',$id)->first();
+        $data_performsum = PerformanceSum::where('id', $id)->first();
         $data = [
             'desc'          => $request->perform_sum ?? $data_performsum->desc,
             'updated_at'    => now(),
             'updated_by'    => Auth::user()->id
         ];
-        PerformanceSum::where('id',$data_performsum->id)->update($data);
+        PerformanceSum::where('id', $data_performsum->id)->update($data);
 
         ActivityLog::activity_log('Mengubah data Performance Summary');
         Alert::success('Success', 'Data berhasil diupdate!');
-        return redirect()->route('report.feedback.back',$request->ojt);
+        return redirect()->route('report.feedback.back', $request->ojt);
     }
 
     public function export_reportfeedback($ojt)
     {
-        $file_name = 'reportfeedback_ojt_'.$ojt.'_'.date('d-m-Y_H:i:s') . '.xlsx';
+        $file_name = 'reportfeedback_ojt_' . $ojt . '_' . date('d-m-Y_H:i:s') . '.xlsx';
 
-        return Excel::download(new ReportFeedbackExport($ojt),$file_name);
+        return Excel::download(new ReportFeedbackExport($ojt), $file_name);
     }
 
     function ToRomawi($number)
