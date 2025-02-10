@@ -56,12 +56,12 @@
                             </div>
                         </div>
                     </div>
-                    <div class="row mt-4">
+                    <div class="row mt-2">
                         <div class="col-12 text-center" style="border: #000 2px solid; background-color:skyblue">
                             <h6 class="m-2">OVERVIEW</h6>
                         </div>
                     </div>
-                    <div class="row mt-4">
+                    <div class="row mt-2">
                         <div class="col-6">
                             <div class="row">
                                 <div class="col-12 text-center" style="border: #000 1px solid; background-color:skyblue">
@@ -146,10 +146,10 @@
                             @endif
                         </div>
                         <div class="col-6 text-center">
-                            <canvas id="myLineChart" style="height: 75vh;"></canvas>
+                            <canvas id="myLineChart" style="height: 60vh;"></canvas>
                         </div>
                     </div>
-                    <div class="row mt-4">
+                    <div class="row mt-2">
                         <div class="col-6">
                             <div class="row">
                                 <div class="col-12 text-center" style="border: #000 1px solid; background-color:skyblue">
@@ -162,11 +162,11 @@
                                     <table class="table">
                                         <thead>
                                             <tr>
-                                                <th style="padding:3vh;font-size: 9px;border:1px black solid;background-color:white;padding-bottom:1.5vh; text-align:center">POINT</th>
+                                                <th style="padding:1vh;font-size: 9px;border:1px black solid;background-color:white;padding-bottom:1.5vh; text-align:center">POINT</th>
                                                 @foreach($week_arr as $wa)
-                                                <th style="padding:3vh;font-size: 9px;border:1px black solid;background-color:white;padding-bottom:1.5vh; text-align:center">W{{$wa}}</th>
+                                                <th style="padding:1vh;font-size: 9px;border:1px black solid;background-color:white;padding-bottom:1.5vh; text-align:center">W{{$wa}}</th>
                                                 @endforeach
-                                                <th style="padding:3vh;font-size: 9px;border:1px black solid;background-color:white;padding-bottom:1.5vh; text-align:center">AVE</th>
+                                                <th style="padding:1vh;font-size: 9px;border:1px black solid;background-color:white;padding-bottom:1.5vh; text-align:center">AVE</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -189,11 +189,11 @@
                                     <table class="table">
                                         <thead>
                                             <tr>
-                                                <th style="padding:3vh;font-size: 9px;border:1px black solid;background-color:white;padding-bottom:1.5vh; text-align:center">POINT</th>
+                                                <th style="padding:1vh;font-size: 9px;border:1px black solid;background-color:white;padding-bottom:1.5vh; text-align:center">POINT</th>
                                                 @foreach($week_arr as $wa)
-                                                <th style="padding:3vh;font-size: 9px;border:1px black solid;background-color:white;padding-bottom:1.5vh; text-align:center">W{{$wa}}</th>
+                                                <th style="padding:1vh;font-size: 9px;border:1px black solid;background-color:white;padding-bottom:1.5vh; text-align:center">W{{$wa}}</th>
                                                 @endforeach
-                                                <th style="padding:3vh;font-size: 9px;border:1px black solid;background-color:white;padding-bottom:1.5vh; text-align:center">AVE</th>
+                                                <th style="padding:1vh;font-size: 9px;border:1px black solid;background-color:white;padding-bottom:1.5vh; text-align:center">AVE</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -223,8 +223,8 @@
                                         <thead>
                                             @foreach($week_arr as $w)
                                             <tr>
-                                                <th style="padding:3vh;font-size: 9px;border:1px black solid;background-color:white;padding-bottom:1.5vh; text-align:left">{{'Week '.$w}}</th>
-                                                <th style="font-size: 11px;text-align:left;border:1px black solid;vertical-align: middle;    "> {{ isset($data3[$w]) ? strip_tags($data3[$w]) : '-' }}</th>
+                                                <th style="padding:1vh;font-size: 9px;border:1px black solid;background-color:white;padding-bottom:1vh; text-align:left;width:12%;vertical-align: middle;">{{'Week '.$w}}</th>
+                                                <th style="font-size: 10px;text-align:left;border:1px black solid;vertical-align: middle;    "> {{ isset($data3[$w]) ? strip_tags($data3[$w]) : '-' }}</th>
                                             </tr>
                                             @endforeach
                                         </thead>
@@ -233,7 +233,7 @@
                             </div>
                         </div>
                         <div class="col-5 ms-auto" style="border: #000 1px solid; width:48%;height:max-content">
-                            <div class="row mt-3 mb-4">
+                            <div class="row mt-2 mb-4">
                                 <h5 class="text-center mb-4">WEEKLY FEEDBACK PRESENCE</h5>
                                 <div class="row mb-3">
                                     <div class="col-4">
@@ -271,15 +271,15 @@
                         </div>
                     </div>
 
-                    <div class="row mt-4">
+                    <div class="row mt-2">
                         <div class="col-12">
                             <div class="row">
                                 <div class="col-12 text-left p-0 mb-2">
                                     <h6 class="m-0">PERFORMANCE SUMMARY</h6>
                                 </div>
                             </div>
-                            <div class="row" style="border: #000 1px solid;min-height:25vh">
-                                <p class="m-1" style="font-size: 13px;">{{$performance_sums->desc ?? ''}}</p>
+                            <div class="row" style="border: #000 1px solid;min-height:20vh">
+                                <p class="m-1" style="font-size: 13px;font-family:Arial, Helvetica, sans-serif">{{$performance_sums->desc ?? ''}}</p>
                             </div>
                         </div>
                     </div>
@@ -297,12 +297,12 @@
                                 </div>
                             </div>
                             <div class="row mt-0">
-                                <div class="col-3" style="border: #000 1px solid;border-top:0;border-right:0;min-height:18vh">
+                                <div class="col-3" style="border: #000 1px solid;border-top:0;border-right:0;min-height:14vh">
 
                                 </div>
-                                <div class="col-3" style="border: #000 1px solid;border-top:0;border-right:0;min-height:18vh">
+                                <div class="col-3" style="border: #000 1px solid;border-top:0;border-right:0;min-height:14vh">
                                 </div>
-                                <div class="col-3" style="border: #000 1px solid;border-top:0;min-height:18vh">
+                                <div class="col-3" style="border: #000 1px solid;border-top:0;min-height:14vh">
                                 </div>
                             </div>
                             <div class="row mt-0">
