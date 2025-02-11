@@ -41,7 +41,15 @@ class UserController extends Controller
             })
             ->orderBy('name', 'asc')
             ->get();
-        $kaders = Kader::orderBy('nik', 'asc')->get();
+        foreach($users as $user)
+        {
+            if($user->type == 'Kader')
+            {
+                $kader_existing = [$user->nik];
+            }
+        }
+        $kaders = Kader::whereNotIn('nik',$kader_existing)->orderBy('nik', 'asc')->get();
+
         $companys = Company::get();
         return view('pages.user.index', compact('users', 'kaders', 'companys'));
     }
