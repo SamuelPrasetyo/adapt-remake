@@ -14,10 +14,17 @@
     <ul class="menu-inner py-1">
         <!-- Dashboard -->
         <li class="menu-item" id="dashboard">
+            @if(Auth::user()->type != 'Kader')
             <a href="{{route('dashboard.index')}}" class="menu-link">
                 <i class="menu-icon tf-icons bx bx-home-circle"></i>
                 <div data-i18n="Analytics">Dashboard</div>
             </a>
+            @else
+            <a href="{{route('dashboard.kader')}}" class="menu-link">
+                <i class="menu-icon tf-icons bx bx-home-circle"></i>
+                <div data-i18n="Analytics">Dashboard</div>
+            </a>
+            @endif
         </li>
         @canany('isAdmin')
         <li class="menu-item" id="master">
