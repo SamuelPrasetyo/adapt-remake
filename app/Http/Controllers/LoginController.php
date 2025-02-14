@@ -48,6 +48,9 @@ class LoginController extends Controller
             if($user){
                 $request->session()->regenerate();
                 ActivityLog::activity_log('Berhasil login');
+                if($user->type == 'Kader'){
+                    return redirect('/dashboard-kader');
+                }
                 return redirect('/dashboard');
             }
             return redirect()->back()->with(['loginError' => 'Akun tidak aktif']);
@@ -110,4 +113,6 @@ class LoginController extends Controller
         request()->session()->regenerateToken();
         return redirect('/login');
     }
+
+    
 }

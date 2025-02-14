@@ -156,10 +156,10 @@ class UserController extends Controller
                 User::where('id', $id)->update($data);
 
                 Alert::success('Success', 'Password Berhasil Diubah');
+                ActivityLog::activity_log('Berhasil mengubah password');
                 Auth::logout();
                 request()->session()->invalidate();
                 request()->session()->regenerateToken();
-                ActivityLog::activity_log('Berhasil mengubah password');
 
                 return redirect()->route('login.index')->with(['changes' => 'Password berhasil diubah']);
             } else {

@@ -34,6 +34,13 @@ Route::middleware(['can:isAll'])->group(function () {
     Route::controller(LoginController::class)->group(function () {
         Route::post('/logout', 'logout')->name('logout');
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
+        Route::post('/user/change_password/{id}', 'change_password')->name('user.change_password');
+    });
+});
+
+Route::middleware(['can:isKader'])->group(function () {
+    Route::controller(DashboardController::class)->group(function () {
+        Route::get('/dashboard-kader', 'dashboard_kader')->name('dashboard.kader');
     });
 });
 
@@ -68,7 +75,6 @@ Route::middleware(['can:isAdmin'])->group(function () {
     Route::controller(UserController::class)->group(function () {
         Route::get('/user', 'index')->name('user.index');
         Route::post('/user/store', 'store')->name('user.store');
-        Route::post('/user/change_password/{id}', 'change_password')->name('user.change_password');
         Route::put('/user/update/{id}', 'update')->name('user.update');
         Route::delete('/user/delete/{id}', 'destroy')->name('user.delete');
         Route::post('/user/change_status/{id}', 'change_status')->name('change.status');
