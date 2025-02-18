@@ -27,28 +27,28 @@ class KaderImport implements ToCollection, WithHeadingRow
             $company = Company::where('company_shortname', $row['company_shortname'])->first();
             $divisi = Divisi::where('nama', $row['divisi'])->first();
             $departemen = Departemen::where('nama', $row['departemen'])->first();
-            $batch = Batch::where('nama_batch', $row['batch'])->where('tahun_batch',$row['tahun'])->first();
+            $batch = Batch::where('nama_batch', $row['batch'])->where('tahun_batch', $row['tahun'])->first();
             if (!$company) {
-                $missingCompanies[] = $row['nama'] . ' - '.$row['company_shortname'];
+                $missingCompanies[] = $row['nama'] . ' - ' . $row['company_shortname'];
             }
             if (!$divisi) {
-                $missingDivisions[] = $row['nama'] . ' - '.$row['divisi'];
+                $missingDivisions[] = $row['nama'] . ' - ' . $row['divisi'];
             }
             if (!$departemen) {
-                $missingDepartments[] = $row['nama'] . ' - '.$row['departemen'];
+                $missingDepartments[] = $row['nama'] . ' - ' . $row['departemen'];
             }
             if (!$batch) {
-                $missingBatches[] = $row['nama'] . ' - '.$row['batch'] . ' (' . $row['tahun'] . ')';
+                $missingBatches[] = $row['nama'] . ' - ' . $row['batch'] . ' (' . $row['tahun'] . ')';
             }
 
             if (!$company || !$divisi || !$departemen || !$batch) {
                 continue;
             }
-            $first_char =substr($row['nik'],0,1);
-            if(!is_numeric($first_char))
-            {
-                $row['nik'] = substr($row['nik'], 1);
-            }
+            // $first_char =substr($row['nik'],0,1);
+            // if(!is_numeric($first_char))
+            // {
+            //     $row['nik'] = substr($row['nik'], 1);
+            // }
             $data[] = [
                 'id'            => Str::uuid(),
                 'nik'           => $row['nik'],
@@ -65,12 +65,12 @@ class KaderImport implements ToCollection, WithHeadingRow
             ];
             // Kader::insert($data);
         }
-        Kader::upsert($data,['nik'],['nama','jenis_kelamin','iq','ipk','company_code','id_divisi','id_departemen','id_batch','created_at','updated_at']);
+        Kader::upsert($data, ['nik'], ['nama', 'jenis_kelamin', 'iq', 'ipk', 'company_code', 'id_divisi', 'id_departemen', 'id_batch', 'created_at', 'updated_at']);
 
         session()->flash('missingCompanies', $missingCompanies);
-    session()->flash('missingDivisions', $missingDivisions);
-    session()->flash('missingDepartments', $missingDepartments);
-    session()->flash('missingBatches', $missingBatches);
+        session()->flash('missingDivisions', $missingDivisions);
+        session()->flash('missingDepartments', $missingDepartments);
+        session()->flash('missingBatches', $missingBatches);
     }
 
 
