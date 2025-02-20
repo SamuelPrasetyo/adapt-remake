@@ -95,10 +95,12 @@
                                     </div>
                                 </div>
                                 <div class="col-9">
-                                    @php
-                                    $url_sertif = asset('/assets/file/' . '');
-                                    @endphp
-                                    <a target="_blank" class="text-primary" href="#"><i class="menu-icon tf-icons bx bxs-download"></i>Download Form</a>
+                                @php
+                                    $url_form = asset('assets/file/BiweeklyReport.xlsx');
+                                @endphp
+                                <a class="text-primary" href="{{ $url_form }}">
+                                    <i class="menu-icon tf-icons bx bxs-download"></i> Download Form
+                                </a>
                                 </div>
                             </div>
                         </div>

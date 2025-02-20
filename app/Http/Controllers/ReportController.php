@@ -351,7 +351,6 @@ class ReportController extends Controller
                 ->join('pertanyaan', 'jawaban.id_pertanyaan', 'pertanyaan.id_pertanyaan')
                 ->get();
 
-
             foreach ($data_jawaban as $key => $jwb) {
                 $jawaban[$jwb->id_pertanyaan][$jwb->id_week][$value->nik] = $jwb->jawaban;
                 $revisi[$jwb->id_pertanyaan][$jwb->id_week][$value->nik] = $jwb->essay_revisi;
@@ -365,7 +364,7 @@ class ReportController extends Controller
         $ojt = $request->ojt;
 
 
-        return view('pages.report.feedback', compact('datas', 'mentor', 'jawaban', 'pertanyaans', 'weeks', 'revisi', 'performance_sums', 'ojt'));
+        return view('pages.report.feedback', compact('datas', 'mentor', 'jawaban', 'pertanyaans', 'weeks', 'performance_sums', 'ojt'));
     }
 
     public function report_feedback_back($ojt)

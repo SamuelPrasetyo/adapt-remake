@@ -35,6 +35,7 @@ class JawabanController extends Controller
      */
     public function index()
     {
+
         $jawabans = Jawaban::select('weeks.angka_week')
             // ->rightJoin('pertanyaan', 'pertanyaan.id_pertanyaan', 'jawaban.id_pertanyaan', 'weeks.angka_week')
             ->join('weeks', 'weeks.id_week', 'jawaban.id_week')
@@ -48,6 +49,7 @@ class JawabanController extends Controller
     }
     public function feedback()
     {
+        
         $subject = Pertanyaan::where('type', 'Subject ' . $this->user->type)->where('status','Aktif')->first();
         // $subject = Pertanyaan::where('type','Subject Kader')->first();
 
@@ -84,6 +86,7 @@ class JawabanController extends Controller
     }
     public function feedback_user($angka_week)
     {
+
         $kaders = Jawaban::select('users.name as nama', 'users.type', 'company.company_shortname as bu')
             ->where('weeks.angka_week', $angka_week)
             ->join('weeks', 'jawaban.id_week', 'weeks.id_week')
