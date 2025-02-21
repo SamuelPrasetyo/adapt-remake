@@ -87,7 +87,7 @@
                             <img src="{{asset('/assets/img/Talent&DevelopmentLogo.png')}}" width="120" height="120" alt="">
                         </div>
                         <!-- /Logo -->
-                        <h3 class="mb-2 text-center fw-bold" style="color:#3e464d">LOGIN</h3>
+                        <h5 class="mb-2 text-center fw-bold" style="color:#3e464d">TALENT & DEVELOPMENT</h5>
 
                         <form id="formAuthentication" class="mb-3" action="{{route('login.store')}}" method="POST">
                             @csrf
