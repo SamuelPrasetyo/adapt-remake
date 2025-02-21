@@ -40,6 +40,7 @@ class DashboardController extends Controller
         $reports = Jawaban::selectRaw("SUM(jawaban) / 4 as avg,nik_kader,weeks.angka_week as week")
             ->join('weeks', 'jawaban.id_week', 'weeks.id_week')
             ->where('nik_kader', $user_kader->nik)
+            ->whereNotNull('jawaban.nama_mentor')
             ->whereNotIn('id_pertanyaan', ['5', '6'])
             ->groupBy('nik_kader', 'week')
             ->get();

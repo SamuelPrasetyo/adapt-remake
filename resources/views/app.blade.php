@@ -33,7 +33,7 @@
 
 
   <!-- Favicon -->
-  <link rel="icon" type="image/x-icon" href="{{asset('/assets/img/logo.png')}}" />
+  <link rel="icon" type="image/x-icon" href="{{asset('/assets/img/Talent&DevelopmentLogo.png')}}" />
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -95,7 +95,7 @@
             </a>
           </div>
           <div class="navbar-nav-right d-flex align-items-center" id="navbar-collapse">
-            <span class="fw-bold text-uppercase">Armada Dashboard for Assessment and Performance Tracking</span>
+            <span class="fw-bold text-uppercase">TALENT MANAGEMENT</span>
             <ul class="navbar-nav flex-row align-items-center ms-auto">
               <!-- User -->
               <li class="nav-item navbar-dropdown dropdown-user dropdown">

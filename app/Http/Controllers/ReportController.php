@@ -54,6 +54,7 @@ class ReportController extends Controller
         $reports = Jawaban::selectRaw("SUM(jawaban) / 4 as avg,nik_kader,weeks.angka_week as week")
             ->join('weeks', 'jawaban.id_week', 'weeks.id_week')
             ->where('nik_kader', $request->nik_kader)
+            ->whereNotNull('nama_mentor')
             ->whereNotIn('id_pertanyaan', ['5', '6'])
             ->groupBy('nik_kader', 'week')
             ->get();
@@ -133,12 +134,12 @@ class ReportController extends Controller
             // ->whereNotNull('nama_mentor')
             ->where('nik_kader', $request->nik_kader)
             ->where('pertanyaan.status', 'Aktif')
+            ->where('pertanyaan.type', 'Mentor')
             // ->whereNotIn('jawaban.id_pertanyaan', ['6'])
             ->whereIn('weeks.angka_week', $week_arr)
             // ->groupBy('pertanyaan.nama_pertanyaan', 'nik_kader', 'week')
             ->orderBy('pertanyaan.id_pertanyaan')
             ->get();
-
         $pertanyaans = Pertanyaan::where('type', 'Mentor')->where('status', 'Aktif')->orderBy('id_pertanyaan', 'asc')->limit(4)->get();
         // dd($reports);
         $data_count = count($reports);

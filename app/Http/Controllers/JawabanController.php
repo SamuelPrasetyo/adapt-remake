@@ -49,7 +49,6 @@ class JawabanController extends Controller
     }
     public function feedback()
     {
-        
         $subject = Pertanyaan::where('type', 'Subject ' . $this->user->type)->where('status','Aktif')->first();
         // $subject = Pertanyaan::where('type','Subject Kader')->first();
 
@@ -164,7 +163,7 @@ class JawabanController extends Controller
             }
 
             ActivityLog::activity_log('Mentor mengisi feedback');
-            Alert::success('Success', 'Feedback berhasil disubmit!');
+            Alert::success('Terima Kasih', 'Feedback berhasil disubmit!');
             return redirect()->route('feedback.index');
         } catch (\Throwable $th) {
             Alert::warning('Failed', 'Feedback gagal disubmit!');
@@ -204,7 +203,7 @@ class JawabanController extends Controller
                 Jawaban::create($data[$i]);
             }
             ActivityLog::activity_log('Kader mengisi feedback');
-            Alert::success('Success', 'Feedback berhasil disubmit!');
+            Alert::success('Terima Kasih', 'Feedback berhasil disubmit!');
             return redirect()->route('feedback.index');
         } catch (\Throwable $th) {
             Alert::warning('Failed', 'Feedback gagal disubmit!');
@@ -253,6 +252,7 @@ class JawabanController extends Controller
         $jawaban = Jawaban::select('weeks.angka_week')
                             ->join('weeks','jawaban.id_week','weeks.id_week')
                             ->where('jawaban.nik_kader',$request->id_kader)
+                            ->whereNotNull('jawaban.nama_mentor')
                             ->groupBy('weeks.angka_week')
                             ->get();
         $week = [];

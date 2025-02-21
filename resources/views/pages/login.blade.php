@@ -31,7 +31,7 @@
     <meta name="description" content="" />
 
     <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="{{asset('/assets/img/logo.png')}}" />
+    <link rel="icon" type="image/x-icon" href="{{asset('/assets/img/Talent&DevelopmentLogo.png')}}" />
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -84,7 +84,7 @@
                 <div class="card">
                     <div class="card-body">
                         <div class="app-brand justify-content-center mb-3">
-                            <img src="{{asset('/assets/img/logomai.png')}}" width="140" height="80" alt="">
+                            <img src="{{asset('/assets/img/Talent&DevelopmentLogo.png')}}" width="120" height="120" alt="">
                         </div>
                         <!-- /Logo -->
                         <h3 class="mb-2 text-center fw-bold" style="color:#3e464d">LOGIN</h3>
