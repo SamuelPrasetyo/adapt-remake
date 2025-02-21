@@ -1,7 +1,7 @@
 <aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme">
     <div class="app-brand demo justify-content-center">
         <a href="{{route('dashboard.index')}}" class="app-brand-link">
-            <h6 class="mt-2"><span class="card-header fw-bold">TALENT MANAGEMENT</span></h5>
+            <h6 class="mt-2"><span class="card-header fw-bold">TALENT & DEVELOPMENT</span></h5>
         </a>
 
         <a href="javascript:void(0);" class="layout-menu-toggle menu-link text-large ms-auto d-block d-xl-none">

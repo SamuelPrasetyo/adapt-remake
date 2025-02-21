@@ -95,7 +95,7 @@
             </a>
           </div>
           <div class="navbar-nav-right d-flex align-items-center" id="navbar-collapse">
-            <span class="fw-bold text-uppercase">TALENT MANAGEMENT</span>
+            <span class="fw-bold text-uppercase">TALENT & DEVELOPMENT</span>
             <ul class="navbar-nav flex-row align-items-center ms-auto">
               <!-- User -->
               <li class="nav-item navbar-dropdown dropdown-user dropdown">

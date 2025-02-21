@@ -9,6 +9,7 @@ use App\Models\Kader;
 use App\Models\Nilai;
 use App\Models\Pertanyaan;
 use App\Models\Week;
+use App\Models\WeekKader;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use RealRashid\SweetAlert\Facades\Alert;
@@ -49,19 +50,21 @@ class JawabanController extends Controller
     }
     public function feedback()
     {
+
         $subject = Pertanyaan::where('type', 'Subject ' . $this->user->type)->where('status','Aktif')->first();
         // $subject = Pertanyaan::where('type','Subject Kader')->first();
 
-        $jawaban = Jawaban::select('weeks.angka_week')
-                            ->join('weeks','jawaban.id_week','weeks.id_week')
+        $jawaban = Jawaban::select('weeks_kader.angka_week')
+                            ->join('weeks_kader','jawaban.id_week','weeks_kader.id_week')
                             ->where('jawaban.created_by',Auth::user()->id)
-                            ->groupBy('weeks.angka_week')
+                            ->groupBy('weeks_kader.angka_week')
                             ->get();
+
         $week = [];
         foreach($jawaban as $j){
             array_push($week,$j->angka_week);
         }
-        $weeks = Week::orderBy('angka_week', 'asc')->whereNotIn('angka_week',$week)->get();
+        $weeks = WeekKader::orderBy('angka_week', 'asc')->whereNotIn('angka_week',$week)->get();
         $company = Company::where('company_code', $this->user->company_code)->first();
         $kaders = Kader::where('company_code', $company->company_code)
             ->orderBy('nama', 'asc')
@@ -85,7 +88,6 @@ class JawabanController extends Controller
     }
     public function feedback_user($angka_week)
     {
-
         $kaders = Jawaban::select('users.name as nama', 'users.type', 'company.company_shortname as bu')
             ->where('weeks.angka_week', $angka_week)
             ->join('weeks', 'jawaban.id_week', 'weeks.id_week')
