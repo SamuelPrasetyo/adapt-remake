@@ -41,14 +41,12 @@ class UserController extends Controller
             })
             ->orderBy('name', 'asc')
             ->get();
-        foreach($users as $user)
-        {
-            if($user->type == 'Kader')
-            {
+        foreach ($users as $user) {
+            if ($user->type == 'Kader') {
                 $kader_existing = [$user->nik];
             }
         }
-        $kaders = Kader::whereNotIn('nik',$kader_existing)->orderBy('nik', 'asc')->get();
+        $kaders = Kader::whereNotIn('nik', $kader_existing)->orderBy('nik', 'asc')->get();
 
         $companys = Company::get();
         return view('pages.user.index', compact('users', 'kaders', 'companys'));
@@ -174,11 +172,63 @@ class UserController extends Controller
 
     public function change_status($userId)
     {
-        $user = User::where('id',$userId)->first();
+        $user = User::where('id', $userId)->first();
         $status = $user->status == 'Aktif' ? 'Tidak Aktif' : 'Aktif';
-        User::where('id',$userId)->update(['status' => $status]);
-        
+        User::where('id', $userId)->update(['status' => $status]);
+
         ActivityLog::activity_log('Berhasil mengubah status user');
+        Alert::success('Success', 'Status Berhasil Diubah');
+        return redirect()->route('user.index');
+    }
+
+    public function generate_kader()
+    {
+        $user_nikkader = [];
+
+        $users = User::where('type', 'Kader')->get();
+
+        foreach ($users as $user) {
+            $kader = Kader::where('nik', $user->nik)->first();
+            $user_nikkader[] = $kader->nik;
+        }
+
+        $kaders = Kader::whereNotIn('nik', $user_nikkader)->get();
+
+        if ($kaders) {
+            foreach ($kaders as $kader) {
+                $data = [
+                    'id'            => Str::uuid(),
+                    'name'          => $kader->nama,
+                    'nik'           => $kader->nik,
+                    'password'      => Hash::make('Kader123!!'),
+                    'type'          => 'Kader',
+                    'company_code'  => $kader->company_code,
+                    'status'        => 'Aktif',
+                    'created_at'    => now(),
+                    'created_by'    => Auth::user()->id
+                ];
+
+                User::insert($data);
+            }
+        }
+
+        ActivityLog::activity_log('Berhasil generate akun kader');
+        Alert::success('Success', 'Generate Akun Kader Berhasil!');
+        return redirect()->route('user.index');
+    }
+
+    public function reset_password($userId)
+    {
+        $user = User::where('id', $userId)->first();
+        $new_password = '';
+        if($user->type == 'Mentor'){
+            $new_password = 'Mentor123!!';
+        }elseif($user->type == 'Kader'){
+            $new_password = 'Kader123!!';
+        }
+
+        User::where('id', $userId)->update(['password' => Hash::make($new_password)]);
+        ActivityLog::activity_log('Berhasil reset password');
         Alert::success('Success', 'Status Berhasil Diubah');
         return redirect()->route('user.index');
     }

@@ -14,6 +14,8 @@
                                     </div>
                                     <div class="col d-flex justify-content-end mb-3">
                                         <!-- Button trigger modal -->
+                                        <a href="{{route('user.generatekader')}}"> <button type="button" class="btn btn-primary" title="Generate Kader">Generate Kader</button></a>
+                                        &nbsp;
                                         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">
                                             Tambah
                                         </button>
@@ -49,13 +51,21 @@
                                                     @endif
                                                 </td>
                                                 @if(Auth::user()->id != $user->id && Auth::user()->type == 'Admin')
-                                                <td class="text-center">
+                                                <td class="text-left">
                                                     <form action="{{ route('change.status', $user->id) }}" method="POST" class="d-inline">
                                                         @csrf
                                                         <input name="_method" type="hidden" value="POST">
                                                         <button type="submit" class="btn btn-sm btn-primary show_confirm_status" data-toggle="tooltip" title='Change Status'>
                                                             <i class="tf-icons bx bxs-edit"></i></button>
                                                     </form>
+                                                    @if($user->type == 'Mentor' || $user->type == 'Kader')
+                                                    <form action="{{ route('reset.password', $user->id) }}" method="POST" class="d-inline">
+                                                        @csrf
+                                                        <input name="_method" type="hidden" value="POST">
+                                                        <button type="submit" class="btn btn-sm btn-primary show_confirm_resetpassword" data-toggle="tooltip" title='Reset Password'>
+                                                            <i class="tf-icons bx bxs-key"></i></button>
+                                                    </form>
+                                                    @endif
                                                     <!-- <form action="{{ route('user.delete', $user->id) }}" method="POST" class="d-inline">
                                                         @method('delete')
                                                         @csrf
@@ -77,7 +87,7 @@
                         </div>
 
                         <!-- Modal -->
-                        <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                        <div class="modal fade modals" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
                             <div class="modal-dialog">
                                 <div class="modal-content">
                                     <div class="modal-header">
@@ -119,7 +129,7 @@
                                             </div>
                                             <div class="form-group" id="input3" style="display:none;">
                                                 <label class="mb-2">Bisnis Unit: </label>
-                                                <select name="company_code" class="form-control">
+                                                <select name="company_code" class="form-control select2">
                                                     <option value="">--Pilih Bisnis Unit--</option>
                                                     @foreach($companys as $company)
                                                     <option value="{{$company->company_code}}">{{$company->company_name}}</option>
@@ -144,14 +154,6 @@
                                                     class="form-control" name="password2">
                                             </div>
                                             <input type="text" id="user-type" hidden name="type">
-                                            <!-- <label class="mb-2">Type: </label> -->
-                                            <!-- <div class="form-group">
-                                                <select class="form-control" name="password">
-                                                    <option value="">--Pilih Tipe User--</option>
-                                                    <option value="Mentor">Mentor</option>
-                                                    <option value="Kader">Kader</option>
-                                                </select>
-                                            </div> -->
                                         </div>
                                         <div class="modal-footer">
                                             <button type="button" class="btn btn-light-secondary"
@@ -223,12 +225,15 @@
             document.getElementById('input3').style.display = 'block';
             document.getElementById('input4').style.display = 'block';
             document.getElementById('input1').style.display = 'none';
+            // $('.select2').select2({});
+
         }
     });
 
     $(document).ready(function() {
+
         $('#example').DataTable({
-            scrollY:        "100%",
+            scrollY: "100%",
             scrollCollapse: true,
             paging: true,
             aaSorting: [],
@@ -291,6 +296,37 @@
         swal({
 
                 title: `Apakah anda yakin ingin mengubah status user ini ?`,
+
+                icon: "warning",
+
+                buttons: true,
+
+                dangerMode: true,
+
+            })
+
+            .then((willDelete) => {
+
+                if (willDelete) {
+
+                    form.submit();
+
+                }
+
+            });
+
+    });
+    $('.show_confirm_resetpassword').click(function(event) {
+
+        var form = $(this).closest("form");
+
+        var name = $(this).data("name");
+
+        event.preventDefault();
+
+        swal({
+
+                title: `Apakah anda yakin ingin mereset password user ini ?`,
 
                 icon: "warning",
 
