@@ -34,7 +34,7 @@ Route::middleware(['can:isAll'])->group(function () {
     Route::controller(LoginController::class)->group(function () {
         Route::post('/logout', 'logout')->name('logout');
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
-        Route::post('/user/change_password/{id}', 'change_password')->name('user.change_password');
+        Route::post('/user/change_password/{id}',[UserController::class, 'change_password'])->name('user.change_password');
     });
 });
 
