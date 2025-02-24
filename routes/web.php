@@ -75,9 +75,11 @@ Route::middleware(['can:isAdmin'])->group(function () {
     Route::controller(UserController::class)->group(function () {
         Route::get('/user', 'index')->name('user.index');
         Route::post('/user/store', 'store')->name('user.store');
+        Route::get('/user/generatekader', 'generate_kader')->name('user.generatekader');
         Route::put('/user/update/{id}', 'update')->name('user.update');
         Route::delete('/user/delete/{id}', 'destroy')->name('user.delete');
         Route::post('/user/change_status/{id}', 'change_status')->name('change.status');
+        Route::post('/user/resetpassword/{id}', 'reset_password')->name('reset.password');
     });
     Route::controller(BatchController::class)->group(function () {
         Route::get('/batch', 'index')->name('batch.index');
@@ -113,6 +115,7 @@ Route::middleware(['can:isAdmin'])->group(function () {
     });
 
     Route::controller(JawabanController::class)->group(function () {
+        // Route::get('/feedback/{usertype}', 'index')->name('feedback.usertype');
         Route::get('/feedback', 'index')->name('jawaban.index');
         Route::put('/feedback/update/{id}', 'update')->name('jawaban.update');
         Route::get('/feedback_user/{week}', 'feedback_user')->name('feedback.user');
