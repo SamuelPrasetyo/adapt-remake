@@ -31,6 +31,7 @@
                                                 <th style="text-align: center;">Type</th>
                                                 <th style="text-align: center;">Bisnis Unit</th>
                                                 <th style="text-align: center;">Status</th>
+                                                <th style="text-align: center;">Online</th>
                                                 <th style="text-align: center;">Action</th>
                                             </tr>
                                         </thead>
@@ -50,6 +51,19 @@
                                                     <span class="badge bg-label-danger me-1">{{$user->status}}</span>
                                                     @endif
                                                 </td>
+                                                <td class="text-center">
+                                                @php
+                                                    $isOnline = \Carbon\Carbon::parse($user->last_activity)->diffInMinutes(now()) < 5 ? 'True' : 'False';
+                                                    if($user->last_activity == null){
+                                                        $isOnline = 'False';
+                                                    }
+                                                @endphp
+                                                @if($isOnline == 'True')
+                                                    <i class="bx bxs-circle text-success" data-toggle="tooltip" title="Online"></i>
+                                                @else
+                                                    <i class="bx bxs-circle text-danger" data-toggle="tooltip" title="Offline"></i>
+                                                @endif
+                                                </td>
                                                 @if(Auth::user()->id != $user->id && Auth::user()->type == 'Admin')
                                                 <td class="text-left">
                                                     <form action="{{ route('change.status', $user->id) }}" method="POST" class="d-inline">
@@ -66,18 +80,13 @@
                                                             <i class="tf-icons bx bxs-key"></i></button>
                                                     </form>
                                                     @endif
-                                                    <!-- <form action="{{ route('user.delete', $user->id) }}" method="POST" class="d-inline">
-                                                        @method('delete')
-                                                        @csrf
-                                                        <input name="_method" type="hidden" value="DELETE">
-                                                        <button type="submit" class="btn btn-sm btn-danger show_confirm" data-toggle="tooltip" title='Delete'><i class="tf-icons bx bxs-trash"></i></button>
-                                                    </form> -->
                                                 </td>
                                                 @else
                                                 <td class="text-center">
                                                     <i class="menu-icon tf-icons bx bxs-circle"></i>
                                                 </td>
                                                 @endif
+                                                
                                             </tr>
                                             @endforeach
                                         </tbody>

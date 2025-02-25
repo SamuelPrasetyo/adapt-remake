@@ -32,6 +32,7 @@ class UserController extends Controller
             'users.name',
             'users.type',
             'users.status',
+            'users.last_activity',
             'company.company_shortname as bu'
         )
             ->leftJoin('company', function ($join) {

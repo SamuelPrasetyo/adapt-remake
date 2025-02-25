@@ -20,5 +20,12 @@ class ActivityLog extends Model
             'created_by' => Auth::user()->id,
         ];
         ActivityLog::insert($data);
+
+        if ($desc == "Berhasil logout") {
+            if (Auth::check()) {
+                $id = Auth::user()->id;
+                User::where('id', $id)->update(['last_activity' => null]);
+            }
+        }
     }
 }

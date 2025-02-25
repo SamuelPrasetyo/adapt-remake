@@ -67,6 +67,10 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 @if(Auth::user() != null)
+@php 
+$id = \Illuminate\Support\Facades\Auth::user()->id;
+\App\Models\User::where('id',$id)->update(['last_activity' => now()]);
+@endphp
 <style>
   canvas {
     max-width: 600px;
