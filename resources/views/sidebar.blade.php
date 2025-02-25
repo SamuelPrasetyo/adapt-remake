@@ -98,7 +98,7 @@
                     </a>
                 </li>
                 <li class="menu-item" id="jawaban">
-                    <a href="{{route('jawaban.index')}}" class="menu-link">
+                    <a href="{{route('feedbackadmin.index')}}" class="menu-link">
                         <i class="menu-icon tf-icons bx bxs-file"></i>
                         <div data-i18n="Jawaban">Feedback</div>
                     </a>
@@ -135,7 +135,7 @@
                         <div data-i18n="reportfeedback">Feedback</div>
                     </a>
                 </li>
-                <li class="menu-item" id="ojt">
+                <li class="menu-item" id="ojtmonitoring">
                     <a href="{{route('weekly.index')}}" class="menu-link">
                         <i class="menu-icon tf-icons bx bxs-chart"></i>
                         <div data-i18n="ojt">OJT Monitoring</div>

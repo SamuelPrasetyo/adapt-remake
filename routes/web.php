@@ -115,14 +115,20 @@ Route::middleware(['can:isAdmin'])->group(function () {
     });
 
     Route::controller(JawabanController::class)->group(function () {
-        // Route::get('/feedback/{usertype}', 'index')->name('feedback.usertype');
-        Route::get('/feedback', 'index')->name('jawaban.index');
+        Route::get('/feedbackadmin/index', 'feedbackadmin_index')->name('feedbackadmin.index');
+        Route::post('/feedbackadmin/store', 'feedbackadmin_store')->name('feedbackadmin.store');
+
+        Route::get('/feedback/{usertype}', 'index')->name('jawaban.index');
         Route::put('/feedback/update/{id}', 'update')->name('jawaban.update');
-        Route::get('/feedback_user/{week}', 'feedback_user')->name('feedback.user');
+        Route::get('/feedback_user/{week}/{usertype}', 'feedback_user')->name('feedback.user');
         Route::post('/feedback/store', 'store')->name('jawaban.store');
         Route::put('/feedback/update/{id}', 'update')->name('jawaban.update');
         Route::get('/feedback/detail/{week}', 'detail')->name('jawaban.detail');
     });
+
+    Route::post('api/fetch-users', [JawabanController::class,'fetchUser'])->name('fetch.user');
+    Route::post('api/fetch-weekfeedback', [JawabanController::class,'fetchWeekFeedback'])->name('fetch.weekfeedback');
+
 });
 Route::middleware(['can:isAdmin&Mentor'])->group(function () {
     Route::controller(ReportController::class)->group(function () {
@@ -144,7 +150,7 @@ Route::middleware(['can:isAdmin&Mentor'])->group(function () {
     });
 });
 
-Route::middleware(['can:isUser'])->group(function () {
+Route::middleware(['can:isAll'])->group(function () {
     Route::controller(JawabanController::class)->group(function () {
         Route::get('/feedback-survey', 'feedback')->name('feedback.index');
         Route::post('/feedback-survey/store', 'feedback_store')->name('feedback.store');

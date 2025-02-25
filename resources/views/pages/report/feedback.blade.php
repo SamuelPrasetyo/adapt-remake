@@ -27,7 +27,7 @@
                                         <thead>
                                             <tr>
                                                 <th style="text-align: center;">No</th>
-                                                <th style="text-align: center;width:100px">Bisnis Unit</th>
+                                                <th style="text-align: center">Bisnis Unit</th>
                                                 <th style="text-align: center;">Divisi</th>
                                                 <th style="text-align: center;">Departement</th>
                                                 <th style="text-align: center;">Mentor</th>
@@ -64,8 +64,8 @@
                                                     <th style="text-align: center;">PERFORMANCE SUMMARY</th>
                                                     <th style="text-align: center;">AVG</th>
                                                     <th style="text-align: center;">GRADE</th>
-                                                    <th style="text-align: center;width:200px"> SUMMARY GRADE</th>
-                                                    <th style="text-align: center;width:200px">Action</th>
+                                                    <th style="text-align: center;"> SUMMARY GRADE</th>
+                                                    <th style="text-align: center;">Action</th>
                                             </tr>
                                         </thead>
 
@@ -73,12 +73,12 @@
                                             @php $no = 1;  @endphp
                                             @foreach($datas as $data)
                                             <tr>
-                                                <td style="text-align: left;font-size:14px">{{$no++}}</td>
-                                                <td style="text-align: left;font-size:14px">{{$data->company_name}}</td>
-                                                <td style="text-align: left;font-size:14px">{{$data->divisi}}</td>
-                                                <td style="text-align: left;font-size:14px">{{$data->departement}}</td>
-                                                <td style="text-align: left;font-size:14px"> {{ is_array($mentor[$data->nik] ?? '') ? implode(', ', $mentor[$data->nik]) : $mentor[$data->nik] ?? '' }}</td>
-                                                <td style="text-align: left;font-size:14px">{{$data->nama}}</td>
+                                                <td style="text-align: center;font-size:14px">{{$no++}}</td>
+                                                <td style="text-align: center;font-size:14px">{{$data->company_name}}</td>
+                                                <td style="text-align: center;font-size:14px">{{$data->divisi}}</td>
+                                                <td style="text-align: center;font-size:14px">{{$data->departement}}</td>
+                                                <td style="text-align: center;font-size:14px"> {{ is_array($mentor[$data->nik] ?? '') ? implode(', ', $mentor[$data->nik]) : $mentor[$data->nik] ?? '' }}</td>
+                                                <td style="text-align: center;font-size:14px">{{$data->nama}}</td>
                                                 @php
                                                 $map = array('M' => 1000, 'CM' => 900, 'D' => 500, 'CD' => 400, 'C' => 100, 'XC' => 90, 'L' => 50, 'XL' => 40, 'X' => 10, 'IX' => 9, 'V' => 5, 'IV' => 4, 'I' => 1);
                                                 $returnValue = '';
@@ -92,10 +92,10 @@
                                                 }
                                                 }
                                                 @endphp
-                                                <td style="text-align: left;font-size:14px">{{$returnValue . ' - ' . $data->tahun_batch}}</td>
-                                                <td style="text-align: left;font-size:14px">{{$data->jenis_kelamin}}</td>
-                                                <td style="text-align: left;font-size:14px">{{$data->iq}}</td>
-                                                <td style="text-align: left;font-size:14px">{{$data->ipk}}</td>
+                                                <td style="text-align: center;font-size:14px">{{$returnValue . ' - ' . $data->tahun_batch}}</td>
+                                                <td style="text-align: center;font-size:14px">{{$data->jenis_kelamin}}</td>
+                                                <td style="text-align: center;font-size:14px">{{$data->iq}}</td>
+                                                <td style="text-align: center;font-size:14px">{{$data->ipk}}</td>
 
                                                 @php
                                                 $rata2_1 = 0;
@@ -116,7 +116,7 @@
                                                     @endforeach
                                                     @endforeach
                                                     @php $rata2_1 = $rata2_1 != 0 ? round($rata2_1/$c, 2) : 0; @endphp
-                                                    <td style="text-align: left;font-size:14px">{{$rata2_1}}</td>
+                                                    <td style="text-align: center;font-size:14px">{{$rata2_1}}</td>
                                                     @php
                                                     $rata2_2 = 0;
                                                     $c2 = 0;
@@ -124,7 +124,7 @@
                                                     @foreach($weeks as $wk)
                                                     @foreach($pertanyaans as $key => $q)
                                                     @if($key == 4)
-                                                    <td style="text-align: left;font-size:14px">{{strip_tags($jawaban[$q->id_pertanyaan][$wk->id_week][$data->nik] ?? 0)}}</td>
+                                                    <td style="text-align: center;font-size:14px">{{strip_tags($jawaban[$q->id_pertanyaan][$wk->id_week][$data->nik] ?? 0)}}</td>
                                                     @php
                                                     $rata2_2 += $jawaban[$q->id_pertanyaan][$wk->id_week][$data->nik] ?? 0;
 
@@ -136,11 +136,11 @@
                                                     @endforeach
                                                     @endforeach
                                                     @php $rata2_2 = $rata2_2 != 0 ? round($rata2_2/$c2, 2) : 0; @endphp
-                                                    <td style="text-align: left;font-size:14px">{{$rata2_2}}</td>
+                                                    <td style="text-align: center;font-size:14px">{{$rata2_2}}</td>
                                                     @foreach($weeks as $wk)
                                                     @foreach($pertanyaans as $key => $q)
                                                     @if($key == 5)
-                                                    <td style="text-align: left;font-size:14px">{{strip_tags($jawaban[$q->id_pertanyaan][$wk->id_week][$data->nik] ?? '-')}}</td>
+                                                    <td style="text-align: center;font-size:14px">{{strip_tags($jawaban[$q->id_pertanyaan][$wk->id_week][$data->nik] ?? '-')}}</td>
                                                     @endif
                                                     @endforeach
                                                     @endforeach
@@ -153,13 +153,13 @@
 
                                                     $performsum = \App\Models\PerformanceSum::where('nik_kader',$data->nik_kader)->where('ojt',$ojt)->first();
                                                     @endphp
-                                                    <td style="text-align: left;font-size:14px">{{$performsum->desc ?? '-'}}</td>
-                                                    <td style="text-align: left;font-size:14px">{{round($rata2_3 , 2) ?? 0}}</td>
+                                                    <td style="text-align: center;font-size:14px">{{$performsum->desc ?? '-'}}</td>
+                                                    <td style="text-align: center;font-size:14px">{{round($rata2_3 , 2) ?? 0}}</td>
                                                     @php
                                                     $norma = \App\Models\Norma::where('nilai1','<',$rata2_3)->where('nilai2','>',$rata2_3)->first();
                                                         @endphp
-                                                        <td style="text-align: left;font-size:14px">{{$norma->grade ?? '-'}}</td>
-                                                        <td style="text-align: left;font-size:14px"> {{ strlen($norma->deskripsi ?? '') > 40 ? substr($norma->deskripsi ?? '-', 0, 40) . '...' : $norma->deskripsi ?? '-' }}
+                                                        <td style="text-align: center;font-size:14px">{{$norma->grade ?? '-'}}</td>
+                                                        <td style="text-align: center;font-size:14px"> {{ strlen($norma->deskripsi ?? '') > 40 ? substr($norma->deskripsi ?? '-', 0, 40) . '...' : $norma->deskripsi ?? '-' }}
                                                         </td>
                                                         <td>
                                                             @php

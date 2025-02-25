@@ -5,8 +5,9 @@
         <div class="col-lg-12 mb-4 order-0">
             <nav style="--bs-breadcrumb-divider: url(&#34;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M2.5 0L1 1.5 3.5 4 1 6.5 2.5 8l4-4-4-4z' fill='currentColor'/%3E%3C/svg%3E&#34;);" aria-label="breadcrumb">
                 <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{route('jawaban.index')}}">List Feedback Week</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">List Feedback User</li>
+                    <li class="breadcrumb-item"><a href="{{route('feedback.usertype')}}">List Feedback User Type</a></li>
+                    <li class="breadcrumb-item"><a href="{{route('jawaban.index',$userType)}}">List Feedback Week</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">List Feedback {{$userType}}</li>
                 </ol>
             </nav>
             <div class="card">
@@ -16,7 +17,7 @@
                             <div class="card-body">
                                 <div class="row">
                                     <div class="col">
-                                        <h5 class="card-title mb-1 text-nowrap">List Feedback User Week {{$week}}</h5>
+                                        <h5 class="card-title mb-1 text-nowrap">List Feedback {{$userType}} Week {{$week}}</h5>
                                     </div>
                                     <div class="col d-flex justify-content-end mb-3">
                                     </div>
@@ -45,7 +46,7 @@
 
                                                 @endphp
                                                 <td class="text-center">
-                                                    <a class="btn btn-sm btn-primary" href="{{route('jawaban.detail',['week'=>$week.'-'.$rep_name])}}">Detail</a>
+                                                    <a class="btn btn-sm btn-primary" href="{{route('jawaban.detail',['week'=>$week.'-'.$rep_name . '-'.$userType])}}">Detail</a>
                                                 </td>
                                             </tr>
                                             @endforeach
@@ -90,7 +91,7 @@
 
 
         $('#example').DataTable({
-            scrollY:        "100%",
+            scrollY: "100%",
             scrollCollapse: true,
             paging: true,
             aaSorting: [],

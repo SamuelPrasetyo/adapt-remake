@@ -8,6 +8,7 @@ use App\Models\Jawaban;
 use App\Models\Kader;
 use App\Models\Nilai;
 use App\Models\Pertanyaan;
+use App\Models\User;
 use App\Models\Week;
 use App\Models\WeekKader;
 use Illuminate\Http\Request;
@@ -34,42 +35,50 @@ class JawabanController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index($usertype)
     {
+        if ($usertype == 'Mentor') {
+            $jawabans = Jawaban::select('weeks.angka_week')
+                // ->rightJoin('pertanyaan', 'pertanyaan.id_pertanyaan', 'jawaban.id_pertanyaan', 'weeks.angka_week')
+                ->join('weeks', 'weeks.id_week', 'jawaban.id_week')
+                ->groupBy('weeks.angka_week')
+                ->get();
+            $weeks = Week::orderBy('angka_week', 'asc')->get();
+        } elseif ($usertype == 'Kader') {
+            $jawabans = Jawaban::select('weeks_kader.angka_week')
+                // ->rightJoin('pertanyaan', 'pertanyaan.id_pertanyaan', 'jawaban.id_pertanyaan', 'weeks_kader.angka_week')
+                ->join('weeks_kader', 'weeks_kader.id_week', 'jawaban.id_week')
+                ->groupBy('weeks_kader.angka_week')
+                ->get();
+            $weeks = WeekKader::orderBy('angka_week', 'asc')->get();
+        }
 
-        $jawabans = Jawaban::select('weeks.angka_week')
-            // ->rightJoin('pertanyaan', 'pertanyaan.id_pertanyaan', 'jawaban.id_pertanyaan', 'weeks.angka_week')
-            ->join('weeks', 'weeks.id_week', 'jawaban.id_week')
-            ->groupBy('weeks.angka_week')
-            ->get();
-        $weeks = Week::orderBy('angka_week', 'asc')->get();
         $kaders = Kader::orderBy('nama', 'asc')->get();
         $pertanyaans = Pertanyaan::get();
 
-        return view('pages.jawaban.index', compact('jawabans', 'weeks', 'kaders', 'pertanyaans'));
+        $userType = $usertype;
+
+        return view('pages.jawaban.index', compact('jawabans', 'weeks', 'kaders', 'pertanyaans', 'userType'));
     }
     public function feedback()
     {
 
-        $subject = Pertanyaan::where('type', 'Subject ' . $this->user->type)->where('status','Aktif')->first();
+        $subject = Pertanyaan::where('type', 'Subject ' . $this->user->type)->where('status', 'Aktif')->first();
         // $subject = Pertanyaan::where('type','Subject Kader')->first();
 
         $jawaban = Jawaban::select('weeks_kader.angka_week')
-                            ->join('weeks_kader','jawaban.id_week','weeks_kader.id_week')
-                            ->where('jawaban.created_by',Auth::user()->id)
-                            ->groupBy('weeks_kader.angka_week')
-                            ->get();
+            ->join('weeks_kader', 'jawaban.id_week', 'weeks_kader.id_week')
+            ->where('jawaban.created_by', Auth::user()->id)
+            ->groupBy('weeks_kader.angka_week')
+            ->first();
 
-        $week = [];
-        foreach($jawaban as $j){
-            array_push($week,$j->angka_week);
-        }
-        $weeks = WeekKader::orderBy('angka_week', 'asc')->whereNotIn('angka_week',$week)->get();
+        $last_week = $jawaban->angka_week ?? 0;
+        $weeks = WeekKader::orderBy('angka_week', 'asc')->where('angka_week', '>', $last_week)->get();
         $company = Company::where('company_code', $this->user->company_code)->first();
         $kaders = Kader::where('company_code', $company->company_code)
             ->orderBy('nama', 'asc')
             ->get();
-        $pertanyaans = Pertanyaan::where('type', $this->user->type)->where('status','Aktif')->orderBy('id_pertanyaan', 'asc')->get();
+        $pertanyaans = Pertanyaan::where('type', $this->user->type)->where('status', 'Aktif')->orderBy('id_pertanyaan', 'asc')->get();
         $no = 1;
         foreach ($pertanyaans as $val) {
             $pertanyaan[$no] = $val->nama_pertanyaan;
@@ -78,16 +87,17 @@ class JawabanController extends Controller
         }
         $counts = count($pertanyaans);
 
-        $nilai = Nilai::orderBy('id_nilai','asc')->get();
+        $nilai = Nilai::orderBy('id_nilai', 'asc')->get();
 
         if ($this->user->type == 'Mentor') {
-            return view('pages.jawaban.feedback', compact('subject', 'weeks', 'kaders', 'counts', 'pertanyaan', 'id_pertanyaan','nilai'));
+            return view('pages.jawaban.feedback', compact('subject', 'weeks', 'kaders', 'counts', 'pertanyaan', 'id_pertanyaan', 'nilai'));
         } elseif ($this->user->type == 'Kader') {
             return view('pages.jawaban.feedback_kader', compact('subject', 'weeks', 'kaders', 'counts', 'pertanyaan', 'id_pertanyaan'));
         }
     }
-    public function feedback_user($angka_week)
+    public function feedback_user($angka_week, $usertype)
     {
+
         $kaders = Jawaban::select('users.name as nama', 'users.type', 'company.company_shortname as bu')
             ->where('weeks.angka_week', $angka_week)
             ->join('weeks', 'jawaban.id_week', 'weeks.id_week')
@@ -95,6 +105,7 @@ class JawabanController extends Controller
             ->join('users', 'jawaban.created_by', 'users.id')
             ->join('company', 'kader.company_code', 'company.company_code')
             ->whereNull('jawaban.nama_mentor')
+            ->where('users.type', $usertype)
             ->groupBy('users.name', 'users.type', 'company.company_shortname');
         $mentors = Jawaban::select('jawaban.nama_mentor as nama', 'users.type', 'company.company_shortname as bu')
             ->where('weeks.angka_week', $angka_week)
@@ -102,11 +113,13 @@ class JawabanController extends Controller
             ->join('users', 'jawaban.created_by', 'users.id')
             ->join('company', 'users.company_code', 'company.company_code')
             ->whereNotNull('jawaban.nama_mentor')
+            ->where('users.type', $usertype)
             ->groupBy('jawaban.nama_mentor', 'users.type', 'company.company_shortname');
 
         $users = $kaders->unionAll($mentors)->get();
         $week = $angka_week;
-        return view('pages.jawaban.feedback_user', compact('users', 'week'));
+        $userType = $usertype;
+        return view('pages.jawaban.feedback_user', compact('users', 'week', 'userType'));
     }
     public function feedback_store(Request $request)
     {
@@ -120,20 +133,19 @@ class JawabanController extends Controller
             $jawaban_mentor['4'] = $request->pertanyaan4_mentor;
             $jawaban_mentor['5'] = $request->pertanyaan5_mentor;
             $jawaban_mentor['6'] = $request->pertanyaan6_mentor;
-            $count_pertanyaan = Pertanyaan::where('type', 'Mentor')->where('status','Aktif')->get()->count();
+            $count_pertanyaan = Pertanyaan::where('type', 'Mentor')->where('status', 'Aktif')->get()->count();
             for ($i = 1; $i <= $count_pertanyaan; $i++) {
                 log::info($i);
                 $jawaban = $jawaban_mentor[$i];
-               
+
                 // if ($i < 5 OR $i) {
                 //     $jawaban = $jawaban_mentor[$i];
                 // }
                 // if($i <= 6) {
                 //     $jawaban = $request->pertanyaan_mentor[$i];
                 // }
-                if($i == 5){
-                    switch($jawaban_mentor[$i])
-                    {
+                if ($i == 5) {
+                    switch ($jawaban_mentor[$i]) {
                         case 'Sangat Kurang':
                             $jawaban = 1;
                             break;
@@ -184,7 +196,7 @@ class JawabanController extends Controller
             $file = explode('.', $file);
             $ext_name = end($file);
             $nama_file =  $name . '_' . $bu->company_shortname . '_' . $week->angka_week . '.' . $ext_name;
-            $count_pertanyaan = Pertanyaan::where('type', 'Kader')->where('status','Aktif')->get()->count();
+            $count_pertanyaan = Pertanyaan::where('type', 'Kader')->where('status', 'Aktif')->get()->count();
 
             for ($i = 1; $i <= $count_pertanyaan; $i++) {
                 // dd($request['id_pertanyaan'.$i]);
@@ -219,7 +231,7 @@ class JawabanController extends Controller
         $angka_week = $split[0];
         $user_name = str_replace('_', ' ', $split[1]);
 
-        $jawabans = Jawaban::select('jawaban.*','kader.nama as nama_kader', 'weeks.angka_week', 'pertanyaan.nama_pertanyaan', 'weeks.angka_week')
+        $jawabans = Jawaban::select('jawaban.*', 'kader.nama as nama_kader', 'weeks.angka_week', 'pertanyaan.nama_pertanyaan', 'weeks.angka_week')
             ->join('pertanyaan', 'pertanyaan.id_pertanyaan', 'jawaban.id_pertanyaan')
             ->join('weeks', 'weeks.id_week', 'jawaban.id_week')
             ->join('users', 'jawaban.created_by', 'users.id')
@@ -252,19 +264,53 @@ class JawabanController extends Controller
     public function fetchWeek(Request $request)
     {
         $jawaban = Jawaban::select('weeks.angka_week')
-                            ->join('weeks','jawaban.id_week','weeks.id_week')
-                            ->where('jawaban.nik_kader',$request->id_kader)
-                            ->whereNotNull('jawaban.nama_mentor')
-                            ->groupBy('weeks.angka_week')
-                            ->get();
-        $week = [];
-        foreach($jawaban as $j){
-            array_push($week,$j->angka_week);
-        }
-        $data['weeks'] = Week::orderBy('angka_week', 'asc')->whereNotIn('angka_week',$week)->get();
-        // $data['weeks'] = Week::where("country_id", $request->country_id)
+            ->join('weeks', 'jawaban.id_week', 'weeks.id_week')
+            ->where('jawaban.nik_kader', $request->id_kader)
+            ->whereNotNull('jawaban.nama_mentor')
+            ->groupBy('weeks.angka_week')
+            ->orderBy('weeks.angka_week', 'desc')
+            ->first();
 
-        //     ->get(["name", "id"]);
+        $last_week = $jawaban->angka_week ?? 0;
+        $data['weeks'] = Week::orderBy('angka_week', 'asc')->where('angka_week', '>', $last_week)->get();
+
+        return response()->json($data);
+    }
+
+    public function fetchUser(Request $request)
+    {
+        $data['users'] = User::where('type', $request->usertype)->get();
+        return response()->json($data);
+    }
+
+    public function fetchWeekFeedback(Request $request)
+    {
+        $user = User::where('id', $request->id_user)->first();
+        if ($user->type == 'Mentor') {
+            $jawaban = Jawaban::select('weeks.angka_week')
+                ->join('weeks', 'jawaban.id_week', 'weeks.id_week')
+                ->where('jawaban.created_by', $user->id)
+                ->whereNotNull('jawaban.nama_mentor')
+                ->groupBy('weeks.angka_week')
+                ->get();
+        } elseif ($user->type == 'Kader') {
+            $jawaban = Jawaban::select('weeks_kader.angka_week')
+                ->join('weeks_kader', 'jawaban.id_week', 'weeks_kader.id_week')
+                ->where('jawaban.created_by', $user->id)
+                ->whereNull('jawaban.nama_mentor')
+                ->groupBy('weeks_kader.angka_week')
+                ->get();
+        }
+
+        $week = [];
+        foreach ($jawaban as $j) {
+            array_push($week, $j->angka_week);
+        }
+        if ($user->type == 'Mentor') {
+            $data['weeks'] = Week::orderBy('angka_week', 'asc')->whereIn('angka_week', $week)->get();
+        } elseif ($user->type == 'Kader') {
+            $data['weeks'] = WeekKader::orderBy('angka_week', 'asc')->whereIn('angka_week', $week)->get();
+        }
 
         return response()->json($data);
     }
@@ -308,83 +354,72 @@ class JawabanController extends Controller
         }
     }
 
-    /**
-     * Display the specified resource.
-     *
-     * @param  \App\Models\Jawaban  $jawaban
-     * @return \Illuminate\Http\Response
-     */
-    public function show(Jawaban $jawaban)
+    public function feedbackadmin_index()
     {
-        //
+        return view('pages.jawaban.feedback_index');
     }
-
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  \App\Models\Jawaban  $jawaban
-     * @return \Illuminate\Http\Response
-     */
-    public function edit(Jawaban $jawaban)
+    public function feedbackadmin_store(Request $request)
     {
-        //
-    }
+        $user = User::where('id', $request->id_user)->first();
+        $user_name = $user->name;
+        if ($request->usertype == 'Mentor') {
+            $week = Week::where('id_week', $request->id_week)->first();
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\Jawaban  $jawaban
-     * @return \Illuminate\Http\Response
-     */
-    public function update(Request $request, $id_jawaban)
-    {
-        Jawaban::where('id_jawaban', $id_jawaban)
-            ->update(['essay_revisi' => $request->essay_revisi]);
-        Alert::success('Success', 'Data berhasil diupdate!');
-        return redirect()->back();
-        // $jawaban = Jawaban::where('id_pertanyaan', $id_pertanyaan)->first();
-
-
-        // if ($jawaban) {
-        //     $data = [
-        //         'id_week'           => $request->id_week ??  $jawaban->id_week,
-        //         'id_pertanyaan'     => $request->id_pertanyaan ?? $jawaban->id_pertanyaan,
-        //         'nama_mentor'       => $request->nama_mentor ?? $jawaban->nama_mentor,
-        //         'nik_kader'         => $request->nik_kader ?? $jawaban->nik_kader,
-        //         'jawaban'           => $request->jawaban ?? $jawaban->jawaban,
-        //         'created_at'        => now(),
-        //         'updated_at'        => now(),
-        //         'created_by'        => Auth::user()->id,
-        //     ];
-
-        //     Jawaban::where('id_pertanyaan', $id_pertanyaan)
-        //         ->update($data);
-        // } else {
-        //     $data = [
-        //         'id_week'           => $jawaban->id_week ?? $request->id_week,
-        //         'id_pertanyaan'     => $jawaban->id_pertanyaan ?? $request->id_pertanyaan,
-        //         'nama_mentor'       => $jawaban->nama_mentor ?? $request->nama_mentor,
-        //         'nik_kader'         => $jawaban->nik_kader ?? $request->nik_kader,
-        //         'jawaban'           => $jawaban->jawaban ?? $request->jawaban,
-        //         'created_at'        => now(),
-        //         'updated_at'        => now(),
-        //         'created_by'        => Auth::user()->id,
-        //     ];
-        //     Jawaban::create($data);
-        // }
+            $jawabans = Jawaban::select('jawaban.*', 'kader.nama as nama_kader', 'weeks.angka_week', 'pertanyaan.nama_pertanyaan', 'weeks.angka_week')
+                ->join('pertanyaan', 'pertanyaan.id_pertanyaan', 'jawaban.id_pertanyaan')
+                ->join('weeks', 'weeks.id_week', 'jawaban.id_week')
+                ->join('users', 'jawaban.created_by', 'users.id')
+                ->join('kader', 'jawaban.nik_kader', 'kader.nik')
+                ->where(function ($query) use ($user_name) {
+                    $query->where('jawaban.nama_mentor', $user_name)
+                        ->orWhere('users.name', $user_name);
+                })
+                ->where('weeks.angka_week', $week->angka_week)
+                ->get();
 
 
-    }
+            $title = Jawaban::select('jawaban.*', 'kader.nama as nama_kader', 'users.name as nama_mentor', 'users.type')
+                ->join('weeks', 'weeks.id_week', 'jawaban.id_week')
+                ->join('kader', 'jawaban.nik_kader', 'kader.nik')
+                ->join('users', 'jawaban.created_by', 'users.id')
+                ->where('weeks.angka_week', $week->angka_week)
+                ->where(function ($query) use ($user_name) {
+                    $query->where('jawaban.nama_mentor', $user_name)
+                        ->orWhere('users.name', $user_name);
+                })
+                ->first();
+            $week = $week->angka_week;
+        } elseif ($request->usertype == 'Kader') {
+            $week = WeekKader::where('id_week', $request->id_week)->first();
 
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  \App\Models\Jawaban  $jawaban
-     * @return \Illuminate\Http\Response
-     */
-    public function destroy(Jawaban $jawaban)
-    {
-        //
+            $jawabans = Jawaban::select('jawaban.*', 'kader.nama as nama_kader', 'weeks_kader.angka_week', 'pertanyaan.nama_pertanyaan', 'weeks_kader.angka_week')
+                ->join('pertanyaan', 'pertanyaan.id_pertanyaan', 'jawaban.id_pertanyaan')
+                ->join('weeks_kader', 'weeks_kader.id_week', 'jawaban.id_week')
+                ->join('users', 'jawaban.created_by', 'users.id')
+                ->join('kader', 'jawaban.nik_kader', 'kader.nik')
+                ->where(function ($query) use ($user_name) {
+                    $query->where('jawaban.nama_mentor', $user_name)
+                        ->orWhere('users.name', $user_name);
+                })
+                ->where('weeks_kader.angka_week', $week->angka_week)
+                ->get();
+
+
+            $title = Jawaban::select('jawaban.*', 'kader.nama as nama_kader', 'users.name as nama_mentor', 'users.type')
+                ->join('weeks_kader', 'weeks_kader.id_week', 'jawaban.id_week')
+                ->join('kader', 'jawaban.nik_kader', 'kader.nik')
+                ->join('users', 'jawaban.created_by', 'users.id')
+                ->where('weeks_kader.angka_week', $week->angka_week)
+                ->where(function ($query) use ($user_name) {
+                    $query->where('jawaban.nama_mentor', $user_name)
+                        ->orWhere('users.name', $user_name);
+                })
+                ->first();
+
+            $week = $week->angka_week;
+        }
+
+
+        return view('pages.jawaban.detail', compact('jawabans', 'week', 'title'));
     }
 }

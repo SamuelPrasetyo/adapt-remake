@@ -5,6 +5,7 @@
         <div class="col-lg-12 mb-4 order-0">
         <nav style="--bs-breadcrumb-divider: url(&#34;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M2.5 0L1 1.5 3.5 4 1 6.5 2.5 8l4-4-4-4z' fill='currentColor'/%3E%3C/svg%3E&#34;);" aria-label="breadcrumb">
                 <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{route('feedback.usertype')}}">List Feedback User Type</a></li>
                     <li class="breadcrumb-item active" aria-current="page">List Feedback Week</li>
                 </ol>
             </nav>
@@ -15,7 +16,8 @@
                             <div class="card-body">
                                 <div class="row">
                                     <div class="col">
-                                        <h5 class="card-title mb-1 text-nowrap">List Feedback Week</h5>
+                                        <h5 class="card-title mb-2 text-nowrap">List Feedback Week</h5>
+                                        <h6 class="card-title mb-1 text-nowrap">{{strtoupper($userType)}}</h6>
                                     </div>
                                     <div class="col d-flex justify-content-end mb-3">
                                         <!-- Button trigger modal -->
@@ -40,7 +42,7 @@
                                                 <td style="text-align: center">{{$no++}}</td>
                                                 <td style="text-align: center;font-size:14px">{{$jawaban->angka_week}}</td>
                                                 <td class="text-center">
-                                                    <a class="btn btn-sm btn-primary" href="{{route('feedback.user',$jawaban->angka_week)}}">Detail</a>
+                                                    <a class="btn btn-sm btn-primary" href="{{route('feedback.user',['week'=>$jawaban->angka_week,'usertype'=>$userType])}}">Detail</a>
                                                 </td>
                                             </tr>
                                             @endforeach

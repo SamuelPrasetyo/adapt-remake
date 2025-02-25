@@ -325,6 +325,9 @@
       case 'feedback':
         $("#feedback").addClass('active');
         $("#modul").addClass('active open');
+      case 'feedbackadmin':
+        $("#jawaban").addClass('active');
+        $("#modul").addClass('active open');
         break;
       case 'learning-growth':
         $("#learning_growth").addClass('active');
@@ -335,8 +338,9 @@
         $("#report").addClass('active open');
         break;
       case 'ojt-index':
-        $("#ojt").addClass('active');
+        $("#ojtmonitoring").addClass('active');
         $("#report").addClass('active open');
+        break
       case 'reportfeedback':
         $("#reportfeedback").addClass('active');
         $("#report").addClass('active open');
@@ -350,12 +354,12 @@
         $("#report").addClass('active open');
         break;
       case 'ojt-monitoring':
-        $("#ojt").addClass('active');
+        $("#ojtmonitoring").addClass('active');
         $("#report").addClass('active open');
         break;
       case 'activity-log':
         $("#activity_log").addClass('active');
-        $("#report").addClass('active open');
+        $("#modul").addClass('active open');
         break;
       default:
         break;

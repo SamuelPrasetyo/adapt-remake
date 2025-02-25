@@ -5,8 +5,7 @@
         <div class="col-lg-12 mb-4 order-0">
             <nav style="--bs-breadcrumb-divider: url(&#34;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M2.5 0L1 1.5 3.5 4 1 6.5 2.5 8l4-4-4-4z' fill='currentColor'/%3E%3C/svg%3E&#34;);" aria-label="breadcrumb">
                 <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{route('jawaban.index')}}">List Feedback Week</a></li>
-                    <li class="breadcrumb-item"><a href="{{route('feedback.user',$week)}}">List Feedback User</a></li>
+                    <li class="breadcrumb-item"><a href="{{route('feedbackadmin.index')}}">List Feedback</a></li>
                     <li class="breadcrumb-item active" aria-current="page">Detail Feedback</li>
                 </ol>
             </nav>
@@ -21,7 +20,6 @@
                                         @if($title->type == 'Mentor')
                                         <h6 class="card-subtitle mb-1 text-nowrap">Mentor : {{$title->nama_mentor}}</h6>
                                         @endif
-                                        <!-- <h6 class="card-subtitle text-nowrap">Kader : {{$title->nama_kader}}</h6> -->
                                     </div>
                                     <div class="col d-flex justify-content-end mb-3">
                                     </div>
@@ -45,7 +43,7 @@
                                             @foreach($jawabans as $jawaban)
                                             <tr>
                                                 <td style="text-align: center">{{$no++}}</td>
-                                                <td style="text-align: center;font-size:14px">{{strip_tags($jawaban->nama_kader)}}</td>
+                                                <td style="text-align: left;font-size:14px">{{strip_tags($jawaban->nama_kader)}}</td>
                                                 <td style="text-align: center;font-size:14px">{{strip_tags($jawaban->nama_pertanyaan)}}</td>
                                                 @if(str_contains($jawaban->jawaban,'pdf') OR str_contains($jawaban->jawaban,'xlsx') OR str_contains($jawaban->jawaban,'xls'))
                                                 @php
