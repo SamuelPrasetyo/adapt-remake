@@ -40,7 +40,7 @@ class UserController extends Controller
                     $join2->on('users.company_code', 'company.company_code');
                 });
             })
-            ->orderBy('name', 'asc')
+            ->orderBy('last_activity', 'desc')
             ->get();
         foreach ($users as $user) {
             if ($user->type == 'Kader') {

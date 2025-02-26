@@ -22,7 +22,7 @@
                                                 <th style="text-align: center;">No</th>
                                                 <th style="text-align: center;">Desc</th>
                                                 <th style="text-align: center;">Created By</th>
-                                                <th style="text-align: center;">Action</th>
+                                                <th style="text-align: center;">Created At</th>
                                             </tr>
                                         </thead>
                                         <tbody>
