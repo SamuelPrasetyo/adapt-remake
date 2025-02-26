@@ -320,9 +320,13 @@ class JawabanController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function create()
+    public function update(Request $request, $id)
     {
-        //
+        Jawaban::where('id_jawaban', $id)->update(['essay_revisi' => $request->essay_revisi]);
+
+        ActivityLog::activity_log('Admin berhasil mengubah revisi essay');
+        Alert::success('Terima Kasih', 'Revisi Essay berhasil diubah!');
+        return redirect()->route('feedbackadmin.index');
     }
 
     /**

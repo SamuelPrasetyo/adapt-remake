@@ -122,7 +122,6 @@ Route::middleware(['can:isAdmin'])->group(function () {
         Route::put('/feedback/update/{id}', 'update')->name('jawaban.update');
         Route::get('/feedback_user/{week}/{usertype}', 'feedback_user')->name('feedback.user');
         Route::post('/feedback/store', 'store')->name('jawaban.store');
-        Route::put('/feedback/update/{id}', 'update')->name('jawaban.update');
         Route::get('/feedback/detail/{week}', 'detail')->name('jawaban.detail');
     });
 

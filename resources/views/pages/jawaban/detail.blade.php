@@ -44,6 +44,7 @@
                                             <tr>
                                                 <td style="text-align: center">{{$no++}}</td>
                                                 <td style="text-align: left;font-size:14px">{{strip_tags($jawaban->nama_kader)}}</td>
+                                                @php $jawaban->jawaban = html_entity_decode($jawaban->jawaban);  @endphp
                                                 <td style="text-align: center;font-size:14px">{{strip_tags($jawaban->nama_pertanyaan)}}</td>
                                                 @if(str_contains($jawaban->jawaban,'pdf') OR str_contains($jawaban->jawaban,'xlsx') OR str_contains($jawaban->jawaban,'xls'))
                                                 @php
@@ -53,6 +54,7 @@
                                                 @else
                                                 <td style="text-align: center;font-size:14px">{{strip_tags($jawaban->jawaban)}}</td>
                                                 @if($title->type == 'Mentor')
+                                                @php $jawaban->essay_revisi = html_entity_decode($jawaban->essay_revisi);  @endphp
                                                 <td style="text-align: center;font-size:14px">{{strip_tags($jawaban->essay_revisi ?? '-')}}</td>
                                                     @if($jawaban->id_pertanyaan == '6')
                                                     <td style="text-align: center;font-size:14px"><button class="btn btn-sm btn-primary" data-bs-toggle="modal"
