@@ -24,7 +24,7 @@
                                     @csrf
                                     <label class="mb-2">User Type: </label>
                                     <div class="form-group mb-1">
-                                        <select class="form-control" name="usertype" id="usertype">
+                                        <select class="form-control select2" name="usertype" id="usertype">
                                             <option value="">--Pilih User Type--</option>
                                             <option value="Mentor">Mentor</option>
                                             <option value="Kader">Kader</option>
@@ -32,13 +32,13 @@
                                     </div>
                                     <label class="mb-2">User Name: </label>
                                     <div class="form-group mb-1">
-                                        <select class="form-control" name="id_user" id="id_user">
+                                        <select class="form-control select2" name="id_user" id="id_user">
                                             <option value="">--Pilih User--</option>
                                         </select>
                                     </div>
                                     <label class="mb-2">Week: </label>
                                     <div class="form-group mb-1">
-                                        <select class="form-control" name="id_week" id="id_week">
+                                        <select class="form-control select2" name="id_week" id="id_week">
                                             <option value="">--Pilih Week--</option>
                                         </select>
                                     </div>
@@ -60,7 +60,9 @@
 <script type="text/javascript">
     var i = 0;
     $(document).ready(function() {
-
+        $('.select2').select2({
+            allowClear: true
+        });
     });
 
     $('#usertype').on('change', function() {

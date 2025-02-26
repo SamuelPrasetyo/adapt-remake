@@ -41,7 +41,7 @@
                                 </div>
                                 <label class="mb-2">OJT: </label>
                                 <div class="form-group mb-1">
-                                    <select class="form-control" name="ojt" required>
+                                    <select class="form-control select2" name="ojt" required>
                                         <option value="">--Pilih OJT--</option>
                                         <option value="1">1</option>
                                         <option value="2">2</option>
@@ -57,7 +57,7 @@
                                 @csrf
                                 <label class="mb-2">OJT: </label>
                                 <div class="form-group mb-1">
-                                    <select class="form-control" name="ojt" required>
+                                    <select class="form-control select2" name="ojt" required>
                                         <option value="">--Pilih OJT--</option>
                                         <option value="1">1</option>
                                         <option value="2">2</option>
@@ -80,7 +80,9 @@
 @section('addon-script')
 <script type="text/javascript">
     $(document).ready(function() {
-
+        $('.select2').select2({
+            allowClear: true
+        });
     });
 </script>
 @endsection
