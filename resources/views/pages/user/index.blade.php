@@ -14,7 +14,7 @@
                                     </div>
                                     <div class="col d-flex justify-content-end mb-3">
                                         <!-- Button trigger modal -->
-                                        <a href="{{route('user.generatekader')}}"> <button type="button" class="btn btn-primary" title="Generate Kader">Generate Kader</button></a>
+                                        <button data-bs-toggle="modal" data-bs-target="#modalAlert" type="button" class="btn btn-primary" title="Generate Kader">Generate Kader</button>
                                         &nbsp;
                                         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">
                                             Tambah
@@ -52,17 +52,17 @@
                                                     @endif
                                                 </td>
                                                 <td class="text-center">
-                                                @php
-                                                    $isOnline = \Carbon\Carbon::parse($user->last_activity)->diffInMinutes(now()) < 5 ? 'True' : 'False';
-                                                    if($user->last_activity == null){
+                                                    @php
+                                                    $isOnline = \Carbon\Carbon::parse($user->last_activity)->diffInMinutes(now()) < 5 ? 'True' : 'False' ;
+                                                        if($user->last_activity == null){
                                                         $isOnline = 'False';
-                                                    }
-                                                @endphp
-                                                @if($isOnline == 'True')
-                                                    <i class="bx bxs-circle text-success" data-toggle="tooltip" title="Online"></i>
-                                                @else
-                                                    <i class="bx bxs-circle text-danger" data-toggle="tooltip" title="Offline"></i>
-                                                @endif
+                                                        }
+                                                        @endphp
+                                                        @if($isOnline == 'True')
+                                                        <i class="bx bxs-circle text-success" data-toggle="tooltip" title="Online"></i>
+                                                        @else
+                                                        <i class="bx bxs-circle text-danger" data-toggle="tooltip" title="Offline"></i>
+                                                        @endif
                                                 </td>
                                                 @if(Auth::user()->id != $user->id && Auth::user()->type == 'Admin')
                                                 <td class="text-left">
@@ -86,7 +86,7 @@
                                                     <i class="menu-icon tf-icons bx bxs-circle"></i>
                                                 </td>
                                                 @endif
-                                                
+
                                             </tr>
                                             @endforeach
                                         </tbody>
@@ -210,6 +210,55 @@
                             </div>
                         </div>
                         @endforeach
+
+                        <div class="modal fade modals" id="modalAlert" tabindex="-1" aria-labelledby="modalAlertLabel" aria-hidden="true">
+                            <div class="modal-dialog">
+                                @php
+                                $user_nikkader = [];
+
+                                $users = \App\Models\User::where('type', 'Kader')->get();
+
+                                foreach ($users as $user) {
+                                $kader = \App\Models\Kader::where('nik', $user->nik)->first();
+                                $user_nikkader[] = $kader->nik;
+                                }
+
+                                $kaders = \App\Models\Kader::whereNotIn('nik', $user_nikkader)->get();
+                                @endphp
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                    @if(!$kaders->isEmpty())
+                                        <h5 class="modal-title text-center w-100" id="exampleModalLabel"> <i class="fas fa-question-circle fa-3x" style="color: #0d6efd;"></i>
+                                        </h5>
+                                        @else
+                                        <h5 class="modal-title text-center w-100" id="exampleModalLabel"> <i class="fas fa-exclamation-circle fa-3x" style="color: #0d6efd;"></i>
+                                        </h5>
+                                        @endif
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+
+                                        @foreach($kaders as $kader)
+                                        <ul>
+                                            <li>{{$kader->nama}}</li>
+                                        </ul>
+                                        @endforeach
+                                        @if(!$kaders->isEmpty())
+                                        <h6 class="mb-0">Kader tersebut belum ada akun, apakah ingin dibuatkan?</h6>
+                                        @else
+                                        <h6 class="mb-0">Semua Kader Sudah Memiliki Akun</h6>
+                                        @endif
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                        <a href="{{route('user.generatekader')}}">
+                                            <button type="button" class="btn btn-primary">Generate</button>
+                                        </a>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

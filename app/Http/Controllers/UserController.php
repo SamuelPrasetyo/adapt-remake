@@ -194,8 +194,9 @@ class UserController extends Controller
         }
 
         $kaders = Kader::whereNotIn('nik', $user_nikkader)->get();
-
+        $total = 0;
         if ($kaders) {
+        $total = $kaders->count();
             foreach ($kaders as $kader) {
                 $data = [
                     'id'            => Str::uuid(),
@@ -214,7 +215,7 @@ class UserController extends Controller
         }
 
         ActivityLog::activity_log('Berhasil generate akun kader');
-        Alert::success('Success', 'Generate Akun Kader Berhasil!');
+        Alert::success('Success', $total.' Akun Kader Berhasil Dibuat! ');
         return redirect()->route('user.index');
     }
 
