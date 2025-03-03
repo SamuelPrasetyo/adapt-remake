@@ -87,14 +87,14 @@
                         <div class="card mb-2">
                             <div class="card-body">
                                 <div class="row">
-                                    <div class="col-3">
-                                        <h6 class="mb-2">4. {{ strip_tags($pertanyaan[4]) }}</h6>
+                                    <div class="col-4">
+                                        <h6 class="mb-2">4. {{ strip_tags($pertanyaan[4]) . ' (PDF)'}}</h6>
                                         <input type="text" hidden name="id_pertanyaan4" value="{{ $id_pertanyaan[4] }}">
                                         <div class="form-group mb-1">
-                                            <input type="file" name="jawaban_kader[4]">
+                                            <input type="file" accept=".pdf" name="jawaban_kader[4]">
                                         </div>
                                     </div>
-                                    <div class="col-9">
+                                    <div class="col-8">
                                         @php
                                             $url_form = asset('assets/file/WeeklyReport.xlsx');
                                         @endphp
