@@ -227,7 +227,7 @@
                                 @endphp
                                 <div class="modal-content">
                                     <div class="modal-header">
-                                    @if(!$kaders->isEmpty())
+                                        @if(!$kaders->isEmpty())
                                         <h5 class="modal-title text-center w-100" id="exampleModalLabel"> <i class="fas fa-question-circle fa-3x" style="color: #0d6efd;"></i>
                                         </h5>
                                         @else
@@ -236,13 +236,14 @@
                                         @endif
                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                     </div>
-                                    <div class="modal-body">
-
+                                    <div class="modal-body mb-0 pb-0" style="max-height: 200px;overflow-y: auto;">
                                         @foreach($kaders as $kader)
                                         <ul>
                                             <li>{{$kader->nama}}</li>
                                         </ul>
                                         @endforeach
+                                    </div>
+                                    <div class="modal-body">
                                         @if(!$kaders->isEmpty())
                                         <h6 class="mb-0">Kader tersebut belum ada akun, apakah ingin dibuatkan?</h6>
                                         @else
