@@ -70,7 +70,7 @@
                                         </thead>
 
                                         <tbody>
-                                            @php $no = 1;  @endphp
+                                            @php $no = 1; @endphp
                                             @foreach($datas as $data)
                                             <tr>
                                                 <td style="text-align: center;font-size:14px">{{$no++}}</td>
@@ -167,7 +167,7 @@
                                                             @endphp
                                                             @if($performSums)
                                                             <button class="btn btn-sm btn-primary" data-bs-toggle="modal"
-                                                                data-bs-target="#edit-data{{$data->nik_kader . $ojt}}">Edit</button>
+                                                                data-bs-target="#edit-data{{$performSums->id . $ojt}}">Edit</button>
                                                             @else
                                                             <button class="btn btn-sm btn-primary" data-bs-toggle="modal"
                                                                 data-bs-target="#add-data{{$data->nik_kader}}">Add</button>
@@ -175,15 +175,12 @@
                                                         </td>
 
                                             </tr>
-                                            @php
-                                            @endphp
 
                                             @endforeach
 
                                         </tbody>
                                     </table>
                                 </div>
-
                                 @foreach($datas as $data)
                                 <!-- Modal -->
                                 <div class="modal fade" id="add-data{{$data->nik_kader}}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
@@ -222,7 +219,7 @@
                                 <!-- Modal Edit -->
 
                                 @foreach($performance_sums as $performance_sum)
-                                <div class="modal fade" id="edit-data{{$performance_sum->nik_kader.$performance_sum->ojt}}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                <div class="modal fade" id="edit-data{{$performance_sum->id.$performance_sum->ojt}}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
                                     <div class="modal-dialog">
                                         <div class="modal-content">
                                             <div class="modal-header">

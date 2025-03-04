@@ -371,12 +371,12 @@ class ReportController extends Controller
     public function report_feedback_back($ojt)
     {
         $datas = Kader::select('kader.nama', 'kader.jenis_kelamin', 'kader.iq', 'kader.ipk', 'company.company_name', 'divisis.nama as divisi', 'departemens.nama as departement', 'batch.nama_batch', 'batch.tahun_batch', 'kader.nik', 'jawaban.nik_kader')
-            ->join('company', 'kader.company_code', 'company.company_code')
-            ->join('divisis', 'kader.id_divisi', 'divisis.id')
-            ->join('departemens', 'kader.id_departemen', 'departemens.id')
-            ->join('batch', 'kader.id_batch', 'batch.id_batch')
-            ->join('jawaban', 'kader.nik', 'jawaban.nik_kader')
-            // ->join('users','jawaban.created_by','users.id')
+            ->leftJoin('company', 'kader.company_code', 'company.company_code')
+            ->leftJoin('divisis', 'kader.id_divisi', 'divisis.id')
+            ->leftJoin('departemens', 'kader.id_departemen', 'departemens.id')
+            ->leftJoin('batch', 'kader.id_batch', 'batch.id_batch')
+            ->leftJoin('jawaban', 'kader.nik', 'jawaban.nik_kader')
+            // ->join('performance_summary','kader.nik','performance_summary.nik_kader')
             ->groupBy('kader.nama', 'kader.jenis_kelamin', 'kader.iq', 'kader.ipk', 'company.company_name', 'divisis.nama', 'departemens.nama', 'jawaban.nik_kader', 'kader.nik', 'batch.nama_batch', 'batch.tahun_batch')
             ->get();
         $mentor[] = [];
@@ -401,21 +401,25 @@ class ReportController extends Controller
         $weeks = Week::whereIn('angka_week', $arr_week)->get();
 
         foreach ($datas as $value) {
-            $data_mentor = User::select('users.name', 'users.id')
-                ->join('jawaban', 'users.id', 'jawaban.created_by')
+            $data_mentor = Jawaban::select('jawaban.nama_mentor', 'jawaban.nik_kader')
                 ->where('jawaban.nik_kader', $value->nik)
-                ->where('users.type', 'Mentor')
-                ->first();
+                ->groupBy('jawaban.nama_mentor', 'jawaban.nik_kader')
+                ->get();
+
+            foreach ($data_mentor as $dt) {
+                if (!isset($mentor[$dt->nik_kader])) {
+                    $mentor[$dt->nik_kader] = []; // Initialize as an array if not set
+                }
+                array_push($mentor[$dt->nik_kader], $dt->nama_mentor);
+            }
 
             $data_jawaban = Jawaban::select('jawaban.*', 'pertanyaan.nama_pertanyaan', 'pertanyaan.type')
                 ->where('nik_kader', $value->nik)
-                ->where('jawaban.created_by', $data_mentor->id)
+                // ->where('jawaban.created_by', $data_mentor->id)
                 ->join('pertanyaan', 'jawaban.id_pertanyaan', 'pertanyaan.id_pertanyaan')
                 ->get();
-            $mentor[$value->nik] = $data_mentor->name ?? '';
 
             foreach ($data_jawaban as $key => $jwb) {
-                // $jawaban[$value->nik][$jwb->id_week][$jwb->id_pertanyaan] = $jwb->jawaban;
                 $jawaban[$jwb->id_pertanyaan][$jwb->id_week][$value->nik] = $jwb->jawaban;
                 $revisi[$jwb->id_pertanyaan][$jwb->id_week][$value->nik] = $jwb->essay_revisi;
             }
@@ -459,6 +463,7 @@ class ReportController extends Controller
         ActivityLog::activity_log('Mengubah data Performance Summary');
         Alert::success('Success', 'Data berhasil diupdate!');
         return redirect()->route('report.feedback.back', $request->ojt);
+        // return back()->withInput(['ojt' => $request->ojt]);
     }
 
     public function export_reportfeedback($ojt)
