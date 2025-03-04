@@ -344,6 +344,7 @@ class ReportController extends Controller
                     $mentor[$dt->nik_kader] = []; // Initialize as an array if not set
                 }
                 array_push($mentor[$dt->nik_kader], $dt->nama_mentor);
+                unset($mentor[$dt->nik_kader][0]);
             }
 
             $data_jawaban = Jawaban::select('jawaban.*', 'pertanyaan.nama_pertanyaan', 'pertanyaan.type')

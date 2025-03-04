@@ -70,6 +70,7 @@ class ReportFeedbackExport implements FromView, WithColumnWidths
                     $mentor[$dt->nik_kader] = []; // Initialize as an array if not set
                 }
                 array_push($mentor[$dt->nik_kader], $dt->nama_mentor);
+                unset($mentor[$dt->nik_kader][0]);
             }
 
             $data_jawaban = Jawaban::select('jawaban.*', 'pertanyaan.nama_pertanyaan', 'pertanyaan.type')
@@ -104,14 +105,63 @@ class ReportFeedbackExport implements FromView, WithColumnWidths
 
     public function columnWidths(): array
     {
-        $headers = ['No','Bisnis UnitDivisi','DepartementMentorKader','Batch','L/P','Iq','Inch','Routine Job(2)','Assignment(2)','Pemahaman SOP(2)','Project(2)','Routine Job(4)','Assignment(4)','Pemahaman SOP(4)','Project(4)','Routine Job(6)','Assignment(6)','Pemahaman SOP(6)','Project(6)','Routine Job(8)','Assignment(8)','Pemahaman SOP(8)','Project(8)','Routine Job(10)','Assignment(10)','Pemahaman SOP(10)','Project(10)','Routine Job(12)','Assignment(12)','Pemahaman SOP(12)','Project(12)','Rata-rata','I & M(2)','I & M(4)','I & M(6)','I & M(8)','I & M(10)','I & M(12)','Rata-rata','Input Week (2)','Input Week (4)','Input Week (6)','Input Week (8)','Input Week (10)','Input Week (12)','PERFORMANCE SUMMARY','AVG','GRADE','SUMMARY GRADE'
-    ]; // Sesuaikan dengan header Anda
+        $headers = [
+            'No',
+            'Bisnis UnitDivisi',
+            'DepartementMentorKader',
+            'Batch',
+            'L/P',
+            'Iq',
+            'Inch',
+            'Routine Job(2)',
+            'Assignment(2)',
+            'Pemahaman SOP(2)',
+            'Project(2)',
+            'Routine Job(4)',
+            'Assignment(4)',
+            'Pemahaman SOP(4)',
+            'Project(4)',
+            'Routine Job(6)',
+            'Assignment(6)',
+            'Pemahaman SOP(6)',
+            'Project(6)',
+            'Routine Job(8)',
+            'Assignment(8)',
+            'Pemahaman SOP(8)',
+            'Project(8)',
+            'Routine Job(10)',
+            'Assignment(10)',
+            'Pemahaman SOP(10)',
+            'Project(10)',
+            'Routine Job(12)',
+            'Assignment(12)',
+            'Pemahaman SOP(12)',
+            'Project(12)',
+            'Rata-rata',
+            'I & M(2)',
+            'I & M(4)',
+            'I & M(6)',
+            'I & M(8)',
+            'I & M(10)',
+            'I & M(12)',
+            'Rata-rata',
+            'Input Week (2)',
+            'Input Week (4)',
+            'Input Week (6)',
+            'Input Week (8)',
+            'Input Week (10)',
+            'Input Week (12)',
+            'PERFORMANCE SUMMARY',
+            'AVG',
+            'GRADE',
+            'SUMMARY GRADE'
+        ]; // Sesuaikan dengan header Anda
         $widths = [];
 
         foreach ($headers as $index => $header) {
             $columnIndex = Coordinate::stringFromColumnIndex($index + 1); // Konversi angka ke huruf kolom (1 = A, 2 = B, dst.)
             $widths[$columnIndex] = strlen($header) + 7; // Tambahkan padding untuk estetika
-            if($index == 0){
+            if ($index == 0) {
                 $widths[$columnIndex] = strlen($header) + 3;
             }
         }
