@@ -127,7 +127,7 @@ class ReportController extends Controller
                 break;
         }
         // dd($week_arr);
-        $reports = Jawaban::selectRaw("pertanyaan.nama_pertanyaan,pertanyaan.id_pertanyaan,jawaban,nik_kader,weeks.angka_week as week, jawaban.nama_mentor as nama_mentor")
+        $reports = Jawaban::selectRaw("pertanyaan.nama_pertanyaan,pertanyaan.id_pertanyaan,jawaban,nik_kader,weeks.angka_week as week, jawaban.nama_mentor as nama_mentor,essay_revisi")
             ->join('weeks', 'jawaban.id_week', 'weeks.id_week')
             ->join('pertanyaan', 'jawaban.id_pertanyaan', 'pertanyaan.id_pertanyaan')
             ->join('users', 'jawaban.created_by', 'users.id')
@@ -173,7 +173,7 @@ class ReportController extends Controller
                 }
             }
             if ($val->id_pertanyaan == '6') {
-                $data3[$val->week] = $val->jawaban;
+                $data3[$val->week] = $val->essay_revisi ?? $val->jawaban;
             }else{
                 if (is_numeric($val->jawaban)) {
                     $avg_week[$val->week] = ($avg_week[$val->week] ?? 0) + $val->jawaban / 4;
