@@ -56,39 +56,38 @@ class ReportFeedbackExport implements FromView, WithColumnWidths
                 break;
         }
         $mentor = [];
+        $jawaban = [];
 
         $weeks = Week::whereIn('angka_week', $arr_week)->get();
         foreach ($datas as $value) {
-            $data_mentor = Jawaban::select('jawaban.nama_mentor','jawaban.nik_kader')
+            $data_mentor = Jawaban::select('jawaban.nama_mentor', 'jawaban.nik_kader')
                 ->where('jawaban.nik_kader', $value->nik)
-                ->groupBy('jawaban.nama_mentor','jawaban.nik_kader')
+                ->groupBy('jawaban.nama_mentor', 'jawaban.nik_kader')
                 ->get();
 
-                foreach($data_mentor as $dt)
-                {
-                    if (!isset($mentor[$dt->nik_kader])) {
-                        $mentor[$dt->nik_kader] = []; // Initialize as an array if not set
-                    }
-                    array_push($mentor[$dt->nik_kader],$dt->nama_mentor);
+            foreach ($data_mentor as $dt) {
+                if (!isset($mentor[$dt->nik_kader])) {
+                    $mentor[$dt->nik_kader] = []; // Initialize as an array if not set
                 }
+                array_push($mentor[$dt->nik_kader], $dt->nama_mentor);
+            }
 
             $data_jawaban = Jawaban::select('jawaban.*', 'pertanyaan.nama_pertanyaan', 'pertanyaan.type')
                 ->where('nik_kader', $value->nik)
                 // ->where('jawaban.created_by', $data_mentor->id)
                 ->join('pertanyaan', 'jawaban.id_pertanyaan', 'pertanyaan.id_pertanyaan')
                 ->get();
-            
-            $jawaban = [];
-            $revisi = [];
+
             foreach ($data_jawaban as $key => $jwb) {
                 $jawaban[$jwb->id_pertanyaan][$jwb->id_week][$value->nik] = $jwb->jawaban;
                 $revisi[$jwb->id_pertanyaan][$jwb->id_week][$value->nik] = $jwb->essay_revisi;
             }
         }
 
-        $pertanyaans = Pertanyaan::where('type','Mentor')->get();
+        $pertanyaans = Pertanyaan::where('type', 'Mentor')->get();
 
-        $performance_sums = PerformanceSum::where('ojt',$ojt)->get();
+        $performance_sums = PerformanceSum::where('ojt', $ojt)->get();
+
 
 
         return view('exports.reportfeedback_export', [
