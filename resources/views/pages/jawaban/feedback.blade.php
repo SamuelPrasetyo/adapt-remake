@@ -18,12 +18,12 @@
                                         <div class="form-group mb-1">
                                             <!-- <label class="mb-2"><strong>{{Auth::user()->name}}</strong></label> -->
                                             <label class="mb-2">Nama Mentor: </label>
-                                             <input type="text" class="form-control" placeholder="nama mentor" name="nama_mentor" id="">
+                                             <input type="text" class="form-control" placeholder="nama mentor" name="nama_mentor" required id="">
                                         </div>
                                         @if(Auth::user()->type != 'Kader')
                                         <label class="mb-2">Nama Kader: </label>
                                         <div class="form-group mb-1">
-                                            <select class="form-control select2" id="id_kader" name="nik_kader">
+                                            <select class="form-control select2" id="id_kader" name="nik_kader" required>
                                                 <option value="">--Pilih kader--</option>
                                                 @foreach($kaders as $kader)
                                                 <option value="{{$kader->nik}}">{{ $kader->nik .' - '.$kader->nama }}</option>
@@ -33,7 +33,7 @@
                                         @endif
                                         <label class="mb-2">Week: </label>
                                         <div class="form-group mb-1">
-                                            <select class="form-control" id="week" name="id_week">
+                                            <select class="form-control" required id="week" name="id_week">
                                                 <option value="">--Pilih Week--</option>
                                             </select>
                                         </div>
@@ -59,7 +59,7 @@
                                 <div class="row justify-content-center">
                                     @for($j=1;$j<=10;$j++)
                                         <div class="col-1 text-center">
-                                        <input class="form-check-input text-center" type="radio" style="border:grey 1px solid" name="pertanyaan1_mentor" id="flexRadioDefault{{$j}}" value="{{$j}}">
+                                        <input class="form-check-input text-center" type="radio" style="border:grey 1px solid" required name="pertanyaan1_mentor" id="flexRadioDefault{{$j}}" value="{{$j}}">
                                 </div>
                                 @endfor
                             </div>
@@ -85,7 +85,7 @@
                         <div class="row justify-content-center">
                             @for($l=1;$l<=10;$l++)
                                 <div class="col-1 text-center">
-                                <input class="form-check-input text-center" type="radio" style="border:grey 1px solid" name="pertanyaan2_mentor" id="flexRadioDefault{{$l}}" value="{{$l}}">
+                                <input class="form-check-input text-center" required type="radio" style="border:grey 1px solid" name="pertanyaan2_mentor" id="flexRadioDefault{{$l}}" value="{{$l}}">
                         </div>
                         @endfor
                     </div>
@@ -111,7 +111,7 @@
                 <div class="row justify-content-center">
                     @for($n=1;$n<=10;$n++)
                         <div class="col-1 text-center">
-                        <input class="form-check-input text-center" type="radio" style="border:grey 1px solid" name="pertanyaan3_mentor" id="flexRadioDefault{{$n}}" value="{{$n}}">
+                        <input class="form-check-input text-center" type="radio" style="border:grey 1px solid" name="pertanyaan3_mentor" required id="flexRadioDefault{{$n}}" value="{{$n}}">
                 </div>
                 @endfor
             </div>
@@ -137,7 +137,7 @@
             <div class="row justify-content-center">
                 @for($q=1;$q<=10;$q++)
                     <div class="col-1 text-center">
-                    <input class="form-check-input text-center" type="radio" style="border:grey 1px solid" name="pertanyaan4_mentor" id="flexRadioDefault{{$q}}" value="{{$q}}">
+                    <input class="form-check-input text-center" type="radio" style="border:grey 1px solid" name="pertanyaan4_mentor" required id="flexRadioDefault{{$q}}" value="{{$q}}">
             </div>
             @endfor
         </div>
@@ -153,7 +153,7 @@
                 <!-- <textarea type="text" placeholder="jawaban"
                                     class="form-control" id="ckeditor" name="pertanyaan_mentor[5]"></textarea> -->
                                     <input type="text" hidden name="id_pertanyaan5" value="{{$id_pertanyaan[5]}}">
-                <select name="pertanyaan5_mentor" id="" class="form-control">
+                <select name="pertanyaan5_mentor" required id="" class="form-control">
                     <option value="">--Pilih Nilai--</option>
                     @foreach($nilai as $val)
                     <option value="{{$val->nama_nilai}}">{{$val->nama_nilai}}</option>
