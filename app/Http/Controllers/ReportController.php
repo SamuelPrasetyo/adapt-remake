@@ -34,7 +34,12 @@ class ReportController extends Controller
      */
     public function learning_index()
     {
-        $kaders = Kader::orderBy('nama', 'asc')->get();
+        $kaders = Kader::select('kader.nama','kader.nik')
+                        ->join('jawaban', 'kader.nik', 'jawaban.nik_kader')
+                        ->whereNotNull('jawaban.nama_mentor')
+                        ->groupBy('kader.nama','kader.nik')
+                        ->orderBy('nama', 'asc')
+                        ->get();
         $user = Auth::user();
         if ($user->type == 'Mentor') {
             $kaders = Kader::select('kader.nik', 'kader.nama')
@@ -278,7 +283,12 @@ class ReportController extends Controller
 
     public function weekly_index()
     {
-        $kaders = Kader::orderBy('nama', 'asc')->get();
+        $kaders = Kader::select('kader.nama','kader.nik')
+                        ->join('jawaban', 'kader.nik', 'jawaban.nik_kader')
+                        ->whereNotNull('jawaban.nama_mentor')
+                        ->groupBy('kader.nama','kader.nik')
+                        ->orderBy('nama', 'asc')
+                        ->get();
         $user = Auth::user();
         if ($user->type == 'Mentor') {
             $kaders = Kader::select('kader.nik', 'kader.nama')
