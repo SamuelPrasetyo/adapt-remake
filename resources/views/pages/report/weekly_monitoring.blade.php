@@ -224,7 +224,7 @@
                                             @foreach($week_arr as $w)
                                             <tr>
                                                 <th style="padding:1vh;font-size: 9px;border:1px black solid;background-color:white;padding-bottom:1vh; text-align:left;width:12%;vertical-align: middle;">{{'Week '.$w}}</th>
-                                                <th style="font-size: 10px;text-align:left;border:1px black solid;vertical-align: middle;    "> {{ isset($data3[$w]) ? strip_tags($data3[$w]) : '-' }}</th>
+                                                <th style="font-size: 10px;text-align:left;border:1px black solid;vertical-align: middle;    "> {{ isset($data3[$w]) ? html_entity_decode(strip_tags($data3[$w])) : '-' }}</th>
                                             </tr>
                                             @endforeach
                                         </thead>
