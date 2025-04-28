@@ -364,66 +364,105 @@ class JawabanController extends Controller
     }
     public function feedbackadmin_store(Request $request)
     {
-        $user = User::where('id', $request->id_user)->first();
-        $user_name = $user->name;
+        $isUserOnly = False;
+        $title = '';
+        $week = '';
         if ($request->usertype == 'Mentor') {
-            $week = Week::where('id_week', $request->id_week)->first();
+            if (!isset($request->id_user) && !isset($request->id_week)) {
+                $isUserOnly = True;
+                return redirect()->route('feedbackadmin.index');
+                // $jawabans = Jawaban::select('jawaban.jawaban','jawaban.nama_mentor', 'kader.nama as nama_kader', 'weeks.angka_week', 'pertanyaan.nama_pertanyaan', 'weeks.angka_week','jawaban.nik_kader')
+                //     ->join('pertanyaan', 'pertanyaan.id_pertanyaan', 'jawaban.id_pertanyaan')
+                //     ->join('weeks', 'weeks.id_week', 'jawaban.id_week')
+                //     ->join('users', 'jawaban.created_by', 'users.id')
+                //     ->join('kader', 'jawaban.nik_kader', 'kader.nik')
+                //     ->where('kader.nik','test.kader.mai')
+                //     // ->where('weeks.angka_week','8')
+                //     ->whereNull('jawaban.nama_mentor')
+                //     ->orderBy('weeks.angka_week','asc')
+                //     ->orderBy('jawaban.id_pertanyaan','asc')
+                //     ->get()
+                //     ->groupBy('nik_kader');
+                // dd($jawabans);
 
-            $jawabans = Jawaban::select('jawaban.*', 'kader.nama as nama_kader', 'weeks.angka_week', 'pertanyaan.nama_pertanyaan', 'weeks.angka_week')
-                ->join('pertanyaan', 'pertanyaan.id_pertanyaan', 'jawaban.id_pertanyaan')
-                ->join('weeks', 'weeks.id_week', 'jawaban.id_week')
-                ->join('users', 'jawaban.created_by', 'users.id')
-                ->join('kader', 'jawaban.nik_kader', 'kader.nik')
-                ->where(function ($query) use ($user_name) {
-                    $query->where('jawaban.nama_mentor', $user_name)
-                        ->orWhere('users.name', $user_name);
-                })
-                ->where('weeks.angka_week', $week->angka_week)
-                ->get();
+            } else {
+                $user = User::where('id', $request->id_user)->first();
+                $user_name = $user->name;
+                $week = Week::where('id_week', $request->id_week)->first();
+
+                $jawabans = Jawaban::select('jawaban.*', 'kader.nama as nama_kader', 'weeks.angka_week', 'pertanyaan.nama_pertanyaan', 'weeks.angka_week')
+                    ->join('pertanyaan', 'pertanyaan.id_pertanyaan', 'jawaban.id_pertanyaan')
+                    ->join('weeks', 'weeks.id_week', 'jawaban.id_week')
+                    ->join('users', 'jawaban.created_by', 'users.id')
+                    ->join('kader', 'jawaban.nik_kader', 'kader.nik')
+                    ->where(function ($query) use ($user_name) {
+                        $query->where('jawaban.nama_mentor', $user_name)
+                            ->orWhere('users.name', $user_name);
+                    })
+                    ->where('weeks.angka_week', $week->angka_week)
+                    ->get();
 
 
-            $title = Jawaban::select('jawaban.*', 'kader.nama as nama_kader', 'users.name as nama_mentor', 'users.type')
-                ->join('weeks', 'weeks.id_week', 'jawaban.id_week')
-                ->join('kader', 'jawaban.nik_kader', 'kader.nik')
-                ->join('users', 'jawaban.created_by', 'users.id')
-                ->where('weeks.angka_week', $week->angka_week)
-                ->where(function ($query) use ($user_name) {
-                    $query->where('jawaban.nama_mentor', $user_name)
-                        ->orWhere('users.name', $user_name);
-                })
-                ->first();
-            $week = $week->angka_week;
+                $title = Jawaban::select('jawaban.*', 'kader.nama as nama_kader', 'users.name as nama_mentor', 'users.type')
+                    ->join('weeks', 'weeks.id_week', 'jawaban.id_week')
+                    ->join('kader', 'jawaban.nik_kader', 'kader.nik')
+                    ->join('users', 'jawaban.created_by', 'users.id')
+                    ->where('weeks.angka_week', $week->angka_week)
+                    ->where(function ($query) use ($user_name) {
+                        $query->where('jawaban.nama_mentor', $user_name)
+                            ->orWhere('users.name', $user_name);
+                    })
+                    ->first();
+                $week = $week->angka_week;
+            }
         } elseif ($request->usertype == 'Kader') {
-            $week = WeekKader::where('id_week', $request->id_week)->first();
+            if (!isset($request->id_user) && !isset($request->id_week)) {
+                $isUserOnly = True;
+                $jawabans = Jawaban::select('jawaban.jawaban','jawaban.nama_mentor', 'kader.nama as nama_kader', 'weeks.angka_week', 'pertanyaan.nama_pertanyaan', 'weeks.angka_week','jawaban.nik_kader')
+                    ->join('pertanyaan', 'pertanyaan.id_pertanyaan', 'jawaban.id_pertanyaan')
+                    ->join('weeks', 'weeks.id_week', 'jawaban.id_week')
+                    ->join('users', 'jawaban.created_by', 'users.id')
+                    ->join('kader', 'jawaban.nik_kader', 'kader.nik')
+                    // ->where('kader.nik','test.kader.mai')
+                    // ->where('weeks.angka_week','8')
+                    ->whereNull('jawaban.nama_mentor')
+                    ->orderBy('weeks.angka_week','asc')
+                    ->orderBy('jawaban.id_pertanyaan','asc')
+                    ->get()
+                    ->groupBy('nama_kader');
+            } else {
 
-            $jawabans = Jawaban::select('jawaban.*', 'kader.nama as nama_kader', 'weeks_kader.angka_week', 'pertanyaan.nama_pertanyaan', 'weeks_kader.angka_week')
-                ->join('pertanyaan', 'pertanyaan.id_pertanyaan', 'jawaban.id_pertanyaan')
-                ->join('weeks_kader', 'weeks_kader.id_week', 'jawaban.id_week')
-                ->join('users', 'jawaban.created_by', 'users.id')
-                ->join('kader', 'jawaban.nik_kader', 'kader.nik')
-                ->where(function ($query) use ($user_name) {
-                    $query->where('jawaban.nama_mentor', $user_name)
-                        ->orWhere('users.name', $user_name);
-                })
-                ->where('weeks_kader.angka_week', $week->angka_week)
-                ->get();
+                $user = User::where('id', $request->id_user)->first();
+                $user_name = $user->name;
+                $week = WeekKader::where('id_week', $request->id_week)->first();
+
+                $jawabans = Jawaban::select('jawaban.*', 'kader.nama as nama_kader', 'weeks_kader.angka_week', 'pertanyaan.nama_pertanyaan', 'weeks_kader.angka_week')
+                    ->join('pertanyaan', 'pertanyaan.id_pertanyaan', 'jawaban.id_pertanyaan')
+                    ->join('weeks_kader', 'weeks_kader.id_week', 'jawaban.id_week')
+                    ->join('users', 'jawaban.created_by', 'users.id')
+                    ->join('kader', 'jawaban.nik_kader', 'kader.nik')
+                    ->where(function ($query) use ($user_name) {
+                        $query->where('jawaban.nama_mentor', $user_name)
+                            ->orWhere('users.name', $user_name);
+                    })
+                    ->where('weeks_kader.angka_week', $week->angka_week)
+                    ->get();
 
 
-            $title = Jawaban::select('jawaban.*', 'kader.nama as nama_kader', 'users.name as nama_mentor', 'users.type')
-                ->join('weeks_kader', 'weeks_kader.id_week', 'jawaban.id_week')
-                ->join('kader', 'jawaban.nik_kader', 'kader.nik')
-                ->join('users', 'jawaban.created_by', 'users.id')
-                ->where('weeks_kader.angka_week', $week->angka_week)
-                ->where(function ($query) use ($user_name) {
-                    $query->where('jawaban.nama_mentor', $user_name)
-                        ->orWhere('users.name', $user_name);
-                })
-                ->first();
+                $title = Jawaban::select('jawaban.*', 'kader.nama as nama_kader', 'users.name as nama_mentor', 'users.type')
+                    ->join('weeks_kader', 'weeks_kader.id_week', 'jawaban.id_week')
+                    ->join('kader', 'jawaban.nik_kader', 'kader.nik')
+                    ->join('users', 'jawaban.created_by', 'users.id')
+                    ->where('weeks_kader.angka_week', $week->angka_week)
+                    ->where(function ($query) use ($user_name) {
+                        $query->where('jawaban.nama_mentor', $user_name)
+                            ->orWhere('users.name', $user_name);
+                    })
+                    ->first();
 
-            $week = $week->angka_week;
+                $week = $week->angka_week;
+            }
         }
-
-
-        return view('pages.jawaban.detail', compact('jawabans', 'week', 'title'));
+        return view('pages.jawaban.detail', compact('jawabans', 'week', 'title','isUserOnly'));
     }
 }

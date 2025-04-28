@@ -1,7 +1,7 @@
 <aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme">
     <div class="app-brand demo justify-content-center">
         <a href="{{route('dashboard.index')}}" class="app-brand-link">
-            <h6 class="mt-2"><span class="card-header fw-bold">TALENT & DEVELOPMENT</span></h5>
+            <h6 class="mt-2"><span class="card-header fw-bold">TALENT & DEVELOPMENT</span></h6>
         </a>
 
         <a href="javascript:void(0);" class="layout-menu-toggle menu-link text-large ms-auto d-block d-xl-none">
@@ -112,9 +112,10 @@
                     </a>
                 </li>
                 @endcanany
+                
             </ul>
         </li>
-        @canany(['isAdmin','isMentor'])
+        @canany(['isAdmin','isMentor','isKader'])
 
         <li class="menu-item" id="report">
             <a href="javascript:void(0);" class="menu-link menu-toggle">
@@ -122,12 +123,14 @@
                 <div data-i18n="Layouts">Report</div>
             </a>
             <ul class="menu-sub">
+                @canany(['isAdmin','isMentor'])
                 <li class="menu-item" id="learning_growth">
                     <a href="{{route('learning.index')}}" class="menu-link">
                         <i class="menu-icon tf-icons bx bxs-detail"></i>
                         <div data-i18n="learning_growth">Learning Growth</div>
                     </a>
                 </li>
+                @endcanany
                 @canany(['isAdmin'])
                 <li class="menu-item" id="reportfeedback">
                     <a href="{{route('reportfeedback.index')}}" class="menu-link">
@@ -139,6 +142,22 @@
                     <a href="{{route('weekly.index')}}" class="menu-link">
                         <i class="menu-icon tf-icons bx bxs-chart"></i>
                         <div data-i18n="ojt">OJT Monitoring</div>
+                    </a>
+                </li>
+                @endcanany
+                @canany(['isKader'])
+                <li class="menu-item" id="fm_kader">
+                    <a href="{{route('fm.kader.index')}}" class="menu-link">
+                        <i class="menu-icon tf-icons bx bxs-archive-in"></i>
+                        <div data-i18n="Feedback">Feedback MAI</div>
+                    </a>
+                </li>
+                @endcanany
+                @canany(['isMentor'])
+                <li class="menu-item" id="fm_mentor">
+                    <a href="{{route('fm.mentor.index')}}" class="menu-link">
+                        <i class="menu-icon tf-icons bx bxs-archive-in"></i>
+                        <div data-i18n="Feedback">Feedback MAI</div>
                     </a>
                 </li>
                 @endcanany

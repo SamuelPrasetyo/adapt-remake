@@ -4,7 +4,7 @@
     <nav style="--bs-breadcrumb-divider: url(&#34;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M2.5 0L1 1.5 3.5 4 1 6.5 2.5 8l4-4-4-4z' fill='currentColor'/%3E%3C/svg%3E&#34;);" aria-label="breadcrumb">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="{{route('reportfeedback.index')}}">Back</a></li>
-            <li class="breadcrumb-item active" aria-current="page">Report Feedback</li>
+            <li class="breadcrumb-item active" aria-current="page">Report Feedback Kader</li>
         </ol>
     </nav>
     <div class="row">
@@ -20,13 +20,14 @@
                                     </div>
                                     <div class="col d-flex justify-content-end gap-2 mb-3">
                                         <a class="btn btn-primary" href="{{ route('reportfeedback.exportexcel',$ojt) }}">Export</a>
-                                        <button data-bs-toggle="modal" data-bs-target="#addM-fm" class="btn btn-sm btn-primary">
+                                        <button data-bs-toggle="modal" data-bs-target="#add-fm" class="btn btn-sm btn-primary">
                                             <i class="bi bi-plus-lg"></i> Feedback MAI
                                         </button>
-                                        <button data-bs-toggle="modal" data-bs-target="#editM-fm" class="btn btn-sm btn-primary">
+                                        <button data-bs-toggle="modal" data-bs-target="#edit-fm" class="btn btn-sm btn-primary">
                                             <i class="bi bi-pencil-fill"></i> Feedback MAI
                                         </button>
                                     </div>
+
                                 </div>
                                 <div class="table table-striped">
                                     <table id="example" class="datatables-basic table border-top table-striped">
@@ -42,37 +43,21 @@
                                                 <th style="text-align: center;">L/P</th>
                                                 <th style="text-align: center;">Iq</th>
                                                 <th style="text-align: center;">Inch</th>
-
                                                 @foreach($weeks as $wk)
                                                 @foreach($pertanyaans as $key => $q)
-                                                @if($key < 4)
-                                                    <th style="text-align: center;">{{strip_tags($q->nama_pertanyaan).'('.$wk->angka_week.')'}}</th>
-                                                    @endif
-                                                    @endforeach
-                                                    @endforeach
-                                                    <th style="text-align: center;">Rata-rata</th>
-                                                    @foreach($weeks as $wk)
-                                                    @foreach($pertanyaans as $key => $q)
-                                                    @if($key == 4)
-                                                    <th style="text-align: center;">{{'I & M'.'('.$wk->angka_week.')'}}</th>
-                                                    @endif
-                                                    @endforeach
-                                                    @endforeach
-                                                    <th style="text-align: center;">Rata-rata</th>
-                                                    @foreach($weeks as $wk)
-                                                    @foreach($pertanyaans as $key => $q)
-                                                    @if($key == 4)
-                                                    <th style="text-align: center;">{{'Input Week '.'('.$wk->angka_week.')'}}</th>
-                                                    @endif
-                                                    @endforeach
-                                                    @endforeach
-
-                                                    <th style="text-align: center;">PERFORMANCE SUMMARY</th>
-                                                    <th style="text-align: center;">AVG</th>
-                                                    <th style="text-align: center;">GRADE</th>
-                                                    <th style="text-align: center;"> SUMMARY GRADE</th>
+                                                <th style="text-align: center;" title="{{strip_tags($q->nama_pertanyaan) ?? ''}}">
+                                                    {{
+                                                                strlen(strip_tags($q->nama_pertanyaan) ?? '') > 15 
+                                                                    ? substr(strip_tags($q->nama_pertanyaan) ?? '-', 0, 15) . '...' 
+                                                                    : strip_tags($q->nama_pertanyaan) ?? '-'
+                                                            }} ({{ $wk->angka_week }})
+                                                </th>
+                                                @endforeach
+                                                @endforeach
+                                                <th style="text-align: center;">Feedback MAI</th>
                                             </tr>
                                         </thead>
+
                                         <tbody>
                                             @php $no = 1; @endphp
                                             @foreach($datas as $data)
@@ -106,41 +91,29 @@
                                                 $c = 0;
                                                 @endphp
                                                 @foreach($weeks as $wk)
+                                                @php $a = 0; @endphp
                                                 @foreach($pertanyaans as $key => $q)
-                                                @if($key < 4)
-                                                    <td style="text-align: center;">{{strip_tags($jawaban[$q->id_pertanyaan][$wk->id_week][$data->nik] ?? 0)}}</td>
+                                                @if($key < 3)
                                                     @php
-                                                    $rata2_1 += $jawaban[$q->id_pertanyaan][$wk->id_week][$data->nik] ?? 0;
+                                                    $text=html_entity_decode(strip_tags($jawaban[$q->id_pertanyaan][$wk->id_week][$data->nik] ?? ''));
 
-                                                    if(!empty($jawaban[$q->id_pertanyaan][$wk->id_week][$data->nik])){
-                                                    $c+=1;
-                                                    }
                                                     @endphp
+                                                    <td style="text-align: center;">{{ strlen($text) > 30 ? substr($text, 0, 30) . '...' : $text }}</td>
+                                                    @else
+                                                    @php
+                                                    $url = asset('/assets/file/' . strip_tags($jawaban[$q->id_pertanyaan][$wk->id_week][$data->nik] ?? ''));
+                                                    @endphp
+                                                    <td style="text-align: center;"><a href="{{$url}}" target="_blank" rel="noopener noreferrer">{{strip_tags($jawaban[$q->id_pertanyaan][$wk->id_week][$data->nik] ?? '')}}</a></td>
                                                     @endif
                                                     @endforeach
                                                     @endforeach
-                                                    @php $rata2_1 = $rata2_1 != 0 ? round($rata2_1/$c, 2) : 0; @endphp
-                                                    <td style="text-align: center;font-size:14px">{{$rata2_1}}</td>
-                                                    @php
-                                                    $rata2_2 = 0;
-                                                    $c2 = 0;
-                                                    @endphp
                                                     @foreach($weeks as $wk)
                                                     @foreach($pertanyaans as $key => $q)
                                                     @if($key == 4)
                                                     <td style="text-align: center;font-size:14px">{{strip_tags($jawaban[$q->id_pertanyaan][$wk->id_week][$data->nik] ?? 0)}}</td>
-                                                    @php
-                                                    $rata2_2 += $jawaban[$q->id_pertanyaan][$wk->id_week][$data->nik] ?? 0;
-
-                                                    if(!empty($jawaban[$q->id_pertanyaan][$wk->id_week][$data->nik])){
-                                                    $c2+=1;
-                                                    }
-                                                    @endphp
                                                     @endif
                                                     @endforeach
                                                     @endforeach
-                                                    @php $rata2_2 = $rata2_2 != 0 ? round($rata2_2/$c2, 2) : 0; @endphp
-                                                    <td style="text-align: center;font-size:14px">{{$rata2_2}}</td>
                                                     @foreach($weeks as $wk)
                                                     @foreach($pertanyaans as $key => $q)
                                                     @if($key == 5)
@@ -148,124 +121,64 @@
                                                     @endif
                                                     @endforeach
                                                     @endforeach
-                                                    @php
-                                                    if($rata2_1 != 0 OR $rata2_2 != 0 ){
-                                                    $rata2_3 = ($rata2_1 + $rata2_2) / 2;
-                                                    }else{
-                                                    $rata2_3 = 0;
-                                                    }
-
-                                                    $performsum = \App\Models\PerformanceSum::where('nik_kader',$data->nik_kader)->where('ojt',$ojt)->first();
-                                                    @endphp
-                                                    <!-- <td style="text-align: center;font-size:14px">{{$performsum->desc ?? '-'}}</td> -->
-                                                    <td class="text-center">
-                                                        @php
-                                                        $performSums = \App\Models\PerformanceSum::where('nik_kader',$data->nik_kader)->where('ojt',$ojt)->first();
-                                                        @endphp
-                                                        @if($performSums)
-                                                        <a class="text-decoration-none text-dark" href="" data-bs-toggle="modal"
-                                                            data-bs-target="#edit-data{{$performSums->id . $ojt}}">{{$performsum->desc}}</a>
-                                                        @else
-                                                        <a class="text-decoration-none" href="" data-bs-toggle="modal"
-                                                            data-bs-target="#add-data{{$data->nik_kader}}"><i class="fa-solid fa-plus"></i> Add</a>
-                                                        @endif
+                                                    <td style="text-align: center;font-size:14px"><button data-bs-toggle="modal"
+                                                            data-bs-target="#add-data{{$data->id}}" class="btn btn-sm btn-primary">Add</button>
+                                                        <button data-bs-toggle="modal"
+                                                            data-bs-target="#edit-data{{$data->id}}" class="btn btn-sm btn-primary">Edit</button>
                                                     </td>
-                                                    <td style="text-align: center;font-size:14px">{{round($rata2_3 , 2) ?? 0}}</td>
-                                                    @php
-                                                    $norma = \App\Models\Norma::where('nilai1','<',$rata2_3)->where('nilai2','>',$rata2_3)->first();
-                                                        @endphp
-                                                        <td style="text-align: center;font-size:14px">{{$norma->grade ?? '-'}}</td>
-                                                        <td style="text-align: center;font-size:14px"> {{ strlen($norma->deskripsi ?? '') > 40 ? substr($norma->deskripsi ?? '-', 0, 40) . '...' : $norma->deskripsi ?? '-' }}
-                                                        </td>
                                             </tr>
                                             @endforeach
-
                                         </tbody>
                                     </table>
                                 </div>
-                                @foreach($datas as $data)
-                                <!-- Modal -->
-                                <div class="modal fade" id="add-data{{$data->nik_kader}}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                                    <div class="modal-dialog">
+                                <div class="modal fade" id="edit-fm" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
+                                    <div class="modal-dialog modal-lg">
                                         <div class="modal-content">
                                             <div class="modal-header">
-                                                <h5 class="modal-title" id="exampleModalLabel">Tambah Data</h5>
+                                                <h5 class="modal-title" id="detailModalLabel">Edit Feedback MAI</h5>
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                             </div>
-                                            <form action="{{route('performsum.add')}}" method="POST">
-                                                @csrf
-                                                <input type="hidden" name="nik_kader" value="{{$data->nik_kader}}">
-                                                <input type="hidden" name="ojt" value="{{$ojt}}">
-                                                <div class="modal-body">
-                                                    <label class="mb-2">Performance Summary: </label>
-                                                    <div class="form-group">
-                                                        <textarea type="text"
-                                                            class="form-control" name="perform_sum"></textarea>
+                                            <div class="modal-body overflow-auto" style="max-height: 500px;">
+                                                @php $kader = \App\Models\Kader::where('nik',$data->nik_kader)->first(); @endphp
+                                                <div class="row">
+                                                    <div class="col-6">
+                                                        <label class="mb-2">Kader: </label>
+                                                        <div class="form-group mb-2">
+                                                            <select name="nik_kader" id="select-kader" class="form-control">
+                                                                <option value="">--Pilih Kader--</option>
+                                                                @foreach($datas as $data)
+                                                                <option value="{{ $data->nik_kader }}">{{ $data->nama }}</option>
+                                                                @endforeach
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <div class="mb-2">
+                                                            <label class="mb-2" for="">Pilih Week : </label>
+                                                            <select id="week-select" class="form-select mb-3">
+                                                                <option value="">-- Pilih Week --</option>
+                                                                @foreach($weeks as $week)
+                                                                <option value="{{ $week->angka_week }}">{{ $week->angka_week }}</option>
+                                                                @endforeach
+                                                            </select>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-light-secondary"
-                                                        data-bs-dismiss="modal">
-                                                        <i class="bx bx-x d-block d-sm-none"></i>
-                                                        <span class="d-none d-sm-block">Close</span>
-                                                    </button>
-                                                    <button class="btn btn-primary ml-1" type="submit">Submit
-                                                    </button>
-                                                </div>
-                                            </form>
+                                                <div id="feedback-container"></div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                                @endforeach
-
-                                <!-- Modal Edit -->
-
-                                @foreach($performance_sums as $performance_sum)
-                                <div class="modal fade" id="edit-data{{$performance_sum->id.$performance_sum->ojt}}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                                    <div class="modal-dialog">
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h5 class="modal-title" id="exampleModalLabel">Edit Data</h5>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                            </div>
-                                            <form action="{{route('performsum.edit',$performance_sum->id)}}" method="POST">
-                                                @csrf
-                                                @method('put')
-                                                <input type="hidden" name="ojt" value="{{$ojt}}">
-                                                <div class="modal-body">
-                                                    <label class="mb-2">Nama performance_sum: </label>
-                                                    <div class="form-group">
-                                                        <textarea type="text" placeholder="nama performance_sum"
-                                                            class="form-control" name="perform_sum">{{$performance_sum->desc}}</textarea>
-                                                    </div>
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-light-secondary"
-                                                        data-bs-dismiss="modal">
-                                                        <i class="bx bx-x d-block d-sm-none"></i>
-                                                        <span class="d-none d-sm-block">Close</span>
-                                                    </button>
-                                                    <button class="btn btn-primary ml-1" type="submit">Update
-                                                    </button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-                                @endforeach
-                                @foreach($datas as $data)
-                                <!-- Modal -->
-                                <div class="modal fade" id="addM-fm" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                <!-- Modal Add FM-->
+                                <div class="modal fade" id="add-fm" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
                                     <div class="modal-dialog modal-lg">
                                         <div class="modal-content">
                                             <div class="modal-header">
                                                 <h5 class="modal-title" id="exampleModalLabel">Tambah Feedback MAI</h5>
-                                                <!-- <input value="{{is_array($mentor[$data->nik] ?? '') ? implode(', ', $mentor[$data->nik]) : $mentor[$data->nik] ?? ''}}" readonly class="form-control" type="text"> -->
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                             </div>
-                                            <form action="{{route('feedbackmaiM')}}" method="POST">
+                                            <form action="{{route('feedbackmai')}}" method="POST">
                                                 @csrf
-                                                <input type="hidden" name="nik_kader" value="{{$data->nik_kader}}">
                                                 <input type="hidden" name="ojt" value="{{$ojt}}">
                                                 <div class="modal-body">
                                                     <div class="row">
@@ -286,44 +199,80 @@
                                                                 <select name="id_week" id="" class="form-control">
                                                                     <option value="">--Pilih Week--</option>
                                                                     @foreach($weeks as $week)
-                                                                    <option value="{{$week->angka_week}}">{{$week->angka_week}}</option>
+                                                                    <option value="{{ $week->angka_week }}">{{ $week->angka_week }}</option>
                                                                     @endforeach
                                                                 </select>
                                                             </div>
                                                         </div>
                                                     </div>
                                                     <div class="row">
-                                                        <label class="mb-2"><b>Tingkat Keterlibatan dan Motivasi</b></label>
-                                                        <div class="col-11">
-                                                            <div class="form-group mb-2">
-                                                                <textarea name="tk_keterlibatan" class="form-control"></textarea>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="row">
-                                                        <label class="mb-2"><b>Area untuk Peningkatan</b></label>
-                                                        <div id="peningkatan-wrapper">
-                                                            <div class="row peningkatan-item mb-2">
+                                                        <label class="mb-2"><b>I. Keterampilan baru yang dipelajari</b></label>
+                                                        <div id="keterampilan-wrapper">
+                                                            <div class="row keterampilan-item mb-2">
                                                                 <div class="col-5">
                                                                     <div class="form-group">
                                                                         <label class="mb-2">Variable: </label>
-                                                                        <input placeholder="variable" name="peningkatan[0][var]" class="form-control" type="text">
+                                                                        <input placeholder="variable" name="keterampilan[0][var]" class="form-control" type="text">
                                                                     </div>
                                                                 </div>
                                                                 <div class="col-6">
                                                                     <div class="form-group">
                                                                         <label class="mb-2">Deskripsi: </label>
-                                                                        <textarea name="peningkatan[0][desc]" class="form-control"></textarea>
+                                                                        <textarea name="keterampilan[0][desc]" class="form-control"></textarea>
                                                                     </div>
                                                                 </div>
                                                                 <div class="col-1 d-flex align-items-end">
-                                                                    <button type="button" class="btn btn-primary" onclick="tambahPeningkatan(this)">+</button>
+                                                                    <button type="button" class="btn btn-primary" onclick="tambahKeterampilan(this)">+</button>
                                                                 </div>
                                                             </div>
                                                         </div>
                                                     </div>
                                                     <div class="row">
-                                                        <label class="mb-2"><b>Kesimpulan</b></label>
+                                                        <label class="mb-2"><b>II. Tantangan Terbesar</b></label>
+                                                        <div id="tantangan-wrapper">
+                                                            <div class="row tantangan-item mb-2">
+                                                                <div class="col-5">
+                                                                    <div class="form-group">
+                                                                        <label class="mb-2">Variable: </label>
+                                                                        <input placeholder="variable" name="tantangan[0][var]" class="form-control" type="text">
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-6">
+                                                                    <div class="form-group">
+                                                                        <label class="mb-2">Deskripsi: </label>
+                                                                        <textarea name="tantangan[0][desc]" class="form-control"></textarea>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-1 d-flex align-items-end">
+                                                                    <button type="button" class="btn btn-primary" onclick="tambahTantangan(this)">+</button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="row">
+                                                        <label class="mb-2"><b>III. Harapan Untuk Minggu Depan</b></label>
+                                                        <div id="harapan-wrapper">
+                                                            <div class="row harapan-item mb-2">
+                                                                <div class="col-5">
+                                                                    <div class="form-group">
+                                                                        <label class="mb-2">Variable: </label>
+                                                                        <input placeholder="variable" name="harapan[0][var]" class="form-control" type="text">
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-6">
+                                                                    <div class="form-group">
+                                                                        <label class="mb-2">Deskripsi: </label>
+                                                                        <textarea name="harapan[0][desc]" class="form-control"></textarea>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-1 d-flex align-items-end">
+                                                                    <button type="button" class="btn btn-primary" onclick="tambahHarapan(this)">+</button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="row">
+                                                        <label class="mb-2"><b>IV. Kesimpulan</b></label>
                                                         <div class="col-11">
                                                             <div class="form-group mb-2">
                                                                 <textarea name="kesimpulan" class="form-control"></textarea>
@@ -344,48 +293,6 @@
                                         </div>
                                     </div>
                                 </div>
-                                @endforeach
-                                @foreach($feedbacks as $feedback)
-                                <!-- Modal Detail -->
-                                <div class="modal fade" id="editM-fm" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
-                                    <div class="modal-dialog modal-lg">
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h5 class="modal-title" id="detailModalLabel">Edit Feedback MAI</h5>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                            </div>
-                                            <div class="modal-body overflow-auto" style="max-height: 500px;">
-                                                <div class="row">
-                                                    <div class="col-6">
-                                                        <label class="mb-2" for="">Pilih Kader : </label>
-                                                        <select name="nik_kader" id="select-kaderM" class="form-control">
-                                                            <option value="">--Pilih Kader--</option>
-                                                            @foreach($datas as $data)
-                                                            <option value="{{ $data->nik_kader }}">{{ $data->nama }}</option>
-                                                            @endforeach
-                                                        </select>
-                                                    </div>
-                                                    <div class="col-6">
-                                                        <div class="mb-3">
-                                                            <label class="mb-2" for="">Pilih Week : </label>
-                                                            <select id="biweek-select" class="form-select mb-3">
-                                                                <option value="">-- Pilih Week --</option>
-                                                                @foreach($weeks as $week)
-                                                                <option value="{{ $week->angka_week }}">{{ $week->angka_week }}</option>
-                                                                @endforeach
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div id="feedbackM-container"></div>
-                                            </div>
-                                            <!-- <div class="modal-footer">
-                                                <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">Close</button>
-                                            </div> -->
-                                        </div>
-                                    </div>
-                                </div>
-                                @endforeach
                             </div>
                         </div>
                     </div>
@@ -394,38 +301,121 @@
         </div>
     </div>
 </div>
+</div>
 @endsection
 @section('addon-script')
 <script type="text/javascript">
-    let peningkatanIndex = 1;
+    function buatInput(groupId, dataArray, id, prefix) {
+        let html = '';
+        dataArray.forEach((item, index) => {
+            html += `
+        <div class="row ${prefix}-item mb-2">
+            <div class="col-5">
+                <input class="form-control" type="text" name="${prefix}[${index}][var]" value="${item.var}" placeholder="variable">
+            </div>
+            <div class="col-6">
+                <textarea class="form-control" name="${prefix}[${index}][desc]">${item.desc}</textarea>
+            </div>
+            <div class="col-1 d-flex align-items-end">
+                <button type="button" class="btn btn-primary" onclick="tambah${prefix.charAt(0).toUpperCase() + prefix.slice(1)}(this)">+</button>
+            </div>
+        </div>`;
+        });
 
-    function tambahPeningkatan(btn) {
-        const currentItem = btn.closest('.peningkatan-item');
+        $(`#${groupId}${id}`).html(html);
+    }
+
+    let keterampilanIndex = 1;
+    let tantanganIndex = 1;
+    let harapanIndex = 1;
+
+    function tambahKeterampilan(btn) {
+        const currentItem = btn.closest('.keterampilan-item');
         const newItem = document.createElement('div');
-        newItem.className = 'row peningkatan-item mb-2';
+        newItem.className = 'row keterampilan-item mb-2';
         newItem.innerHTML = `
         <div class="col-5">
             <div class="form-group">
-                <input placeholder="variable" name="peningkatan[${peningkatanIndex}][var]" class="form-control" type="text">
+                <input placeholder="variable" name="keterampilan[${keterampilanIndex}][var]" class="form-control" type="text">
             </div>
         </div>
         <div class="col-6">
             <div class="form-group">
-                <textarea name="peningkatan[${peningkatanIndex}][desc]" class="form-control"></textarea>
+                <textarea name="keterampilan[${keterampilanIndex}][desc]" class="form-control"></textarea>
             </div>
         </div>
         <div class="col-1 d-flex align-items-end">
-            <button type="button" class="btn btn-danger" onclick="hapusPeningkatan(this)">-</button>
+            <button type="button" class="btn btn-danger" onclick="hapusKeterampilan(this)">-</button>
         </div>
     `;
-        peningkatanIndex++;
+        keterampilanIndex++;
 
         // Sisipkan setelah elemen yang diklik
         currentItem.parentNode.insertBefore(newItem, currentItem.nextSibling);
     }
 
-    function hapusPeningkatan(btn) {
-        const item = btn.closest('.peningkatan-item');
+    function hapusKeterampilan(btn) {
+        const item = btn.closest('.keterampilan-item');
+        item.remove();
+    }
+
+    function tambahTantangan(btn) {
+        const currentItem = btn.closest('.tantangan-item');
+        const newItem = document.createElement('div');
+        newItem.className = 'row tantangan-item mb-2';
+        newItem.innerHTML = `
+        <div class="col-5">
+            <div class="form-group">
+                <input placeholder="variable" name="tantangan[${tantanganIndex}][var]" class="form-control" type="text">
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="form-group">
+                <textarea name="tantangan[${tantanganIndex}][desc]" class="form-control"></textarea>
+            </div>
+        </div>
+        <div class="col-1 d-flex align-items-end">
+            <button type="button" class="btn btn-danger" onclick="hapusTantangan(this)">-</button>
+        </div>
+    `;
+        tantanganIndex++;
+
+        // Sisipkan setelah elemen yang diklik
+        currentItem.parentNode.insertBefore(newItem, currentItem.nextSibling);
+    }
+
+    function hapusTantangan(btn) {
+        const item = btn.closest('.tantangan-item');
+        item.remove();
+    }
+
+    function tambahHarapan(btn) {
+        const currentItem = btn.closest('.harapan-item');
+        const newItem = document.createElement('div');
+        newItem.className = 'row harapan-item mb-2';
+        newItem.innerHTML = `
+        <div class="col-5">
+            <div class="form-group">
+                <input placeholder="variable" name="harapan[${harapanIndex}][var]" class="form-control" type="text">
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="form-group">
+                <textarea name="harapan[${harapanIndex}][desc]" class="form-control"></textarea>
+            </div>
+        </div>
+        <div class="col-1 d-flex align-items-end">
+            <button type="button" class="btn btn-danger" onclick="hapusHarapan(this)">-</button>
+        </div>
+    `;
+        harapanIndex++;
+
+        // Sisipkan setelah elemen yang diklik
+        currentItem.parentNode.insertBefore(newItem, currentItem.nextSibling);
+    }
+
+    function hapusHarapan(btn) {
+        const item = btn.closest('.harapan-item');
         item.remove();
     }
 
@@ -523,29 +513,34 @@
         item.remove();
     }
 
+
     $(document).ready(function() {
-        $('#select-kaderM').on('change', function() {
-            $('#biweek-select').val('');
+        $('#select-kader').on('change', function() {
+            $('#week-select').val('');
         });
 
-        $('#biweek-select').on('change', function() {
+        $('#week-select').on('change', function() {
             let week = $(this).val();
-            let id_kader = $('#select-kaderM').val();
+            let id_kader = $('#select-kader').val();
             if (week !== '') {
                 $.ajax({
-                    url: "{{ route('get.feedback.by.weekM') }}",
+                    url: "{{ route('get.feedback.by.week') }}",
                     type: "GET",
                     data: {
                         week: week,
-                        id_kader, id_kader
+                        id_kader: id_kader
                     },
                     success: function(response) {
-                        $('#feedbackM-container').html(response); // response is html with modals & buttons
+                        $('#feedback-container').html(response); // response is html with modals & buttons
                     }
                 });
             } else {
-                $('#feedbackM-container').empty();
+                $('#feedback-container').empty();
             }
+        });
+
+        $('.select2').select2({
+            allowClear: true
         });
 
         $('#example').DataTable({

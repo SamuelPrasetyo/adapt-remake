@@ -1,9 +1,11 @@
 <?php
 
 use App\Http\Controllers\BatchController;
+use App\Http\Controllers\Controller;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DepartemenController;
 use App\Http\Controllers\DivisiController;
+use App\Http\Controllers\FeedbackMaiController;
 use App\Http\Controllers\JawabanController;
 use App\Http\Controllers\KaderController;
 use App\Http\Controllers\LoginController;
@@ -34,7 +36,7 @@ Route::middleware(['can:isAll'])->group(function () {
     Route::controller(LoginController::class)->group(function () {
         Route::post('/logout', 'logout')->name('logout');
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
-        Route::post('/user/change_password/{id}',[UserController::class, 'change_password'])->name('user.change_password');
+        Route::post('/user/change_password/{id}', [UserController::class, 'change_password'])->name('user.change_password');
     });
 });
 
@@ -42,6 +44,12 @@ Route::middleware(['can:isKader'])->group(function () {
     Route::controller(DashboardController::class)->group(function () {
         Route::get('/dashboard-kader', 'dashboard_kader')->name('dashboard.kader');
     });
+    Route::get('/feedback_mai-kader', [FeedbackMaiController::class, 'fm_kader_index'])->name('fm.kader.index');
+    Route::get('/feedback_mai-kader/export/{id_week}', [FeedbackMaiController::class, 'fm_kader_export'])->name('fm.kader.export');
+});
+Route::middleware(['can:isMentor'])->group(function () {
+    Route::get('/feedback_mai-mentor', [FeedbackMaiController::class, 'fm_mentor_index'])->name('fm.mentor.index');
+    Route::get('/feedback_mai-mentor/export/{id_week}/{nik_kader}', [FeedbackMaiController::class, 'fm_mentor_export'])->name('fm.mentor.export');
 });
 
 Route::controller(LoginController::class)->group(function () {
@@ -125,9 +133,9 @@ Route::middleware(['can:isAdmin'])->group(function () {
         Route::get('/feedback/detail/{week}', 'detail')->name('jawaban.detail');
     });
 
-    Route::post('api/fetch-users', [JawabanController::class,'fetchUser'])->name('fetch.user');
-    Route::post('api/fetch-weekfeedback', [JawabanController::class,'fetchWeekFeedback'])->name('fetch.weekfeedback');
 
+    Route::post('api/fetch-users', [JawabanController::class, 'fetchUser'])->name('fetch.user');
+    Route::post('api/fetch-weekfeedback', [JawabanController::class, 'fetchWeekFeedback'])->name('fetch.weekfeedback');
 });
 Route::middleware(['can:isAdmin&Mentor'])->group(function () {
     Route::controller(ReportController::class)->group(function () {
@@ -138,15 +146,27 @@ Route::middleware(['can:isAdmin&Mentor'])->group(function () {
 
         Route::get('/learning-growth/export-pdf/{nik}', 'exportLearningGrowthPdf')->name('learning.export_pdf');
         Route::post('/export-pdf', 'exportPdf')->name('exportPdf');
-        
+
         Route::get('/reportfeedback-index', 'feedback_index')->name('reportfeedback.index');
-        Route::match(['get', 'post'],'/reportfeedback', 'report_feedback')->name('report.feedback');
-        Route::match(['get', 'post'],'/reportfeedback-back/{ojt}', 'report_feedback_back')->name('report.feedback.back');
+
+        Route::match(['get', 'post'], '/reportfeedback', 'report_feedback')->name('report.feedback');
+        Route::match(['get', 'post'], '/reportfeedback-back/{ojt}', 'report_feedback_back')->name('report.feedback.back');
         Route::get('/reportfeedback/export/{ojt}', 'export_reportfeedback')->name('reportfeedback.exportexcel');
 
         Route::post('/performsum', 'perform_sum_add')->name('performsum.add');
         Route::put('/performsum-edit/{id}', 'perform_sum_edit')->name('performsum.edit');
     });
+
+    // FEEDBACK MAI ADMIN
+    Route::post('/feedbackmai/store', [FeedbackMaiController::class, 'feedbackmai'])->name('feedbackmai');
+    Route::put('/feedbackmai/{id}', [FeedbackMaiController::class, 'feedbackmai_update'])->name('feedbackmai.update');
+    Route::get('/get-feedback-by-week', [FeedbackMaiController::class, 'getByWeek'])->name('get.feedback.by.week');
+    Route::get('/feedback/export-pdf/{id}', [FeedbackMaiController::class, 'exportPdf'])->name('feedbackmai.exportPdf');
+
+    Route::post('/feedbackmai-m/store', [FeedbackMaiController::class, 'feedbackmaiM'])->name('feedbackmaiM');
+    Route::put('/feedbackmai-m/{id}', [FeedbackMaiController::class, 'feedbackmai_updateM'])->name('feedbackmai.updateM');
+    Route::get('/get-feedback-m-by-week', [FeedbackMaiController::class, 'getByWeekM'])->name('get.feedback.by.weekM');
+    Route::get('/feedback-m/export-pdf/{id}', [FeedbackMaiController::class, 'exportPdfM'])->name('feedbackmai.exportPdfM');
 });
 
 Route::middleware(['can:isAll'])->group(function () {

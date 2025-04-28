@@ -9,6 +9,7 @@
                     <li class="breadcrumb-item active" aria-current="page">Detail Feedback</li>
                 </ol>
             </nav>
+
             <div class="card">
                 <div class="d-flex align-items-end row">
                     <div class="col-sm-12">
@@ -17,7 +18,7 @@
                                 <div class="row">
                                     <div class="col">
                                         <h5 class="card-title mb-4 text-nowrap">Detail Feedback Week {{$week}}</h5>
-                                        @if($title->type == 'Mentor')
+                                        @if($title != '' && $title->type == 'Mentor')
                                         <h6 class="card-subtitle mb-1 text-nowrap">Mentor : {{$title->nama_mentor}}</h6>
                                         @endif
                                     </div>
@@ -25,6 +26,51 @@
                                     </div>
                                 </div>
                                 <div class="table table-striped">
+                                    @if($isUserOnly)
+                                    <table id="example" class="datatables-basic table border-top table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th style="text-align: center;">No</th>
+                                                <th style="text-align: center;">Nama</th>
+                                                @foreach($jawabans as $key => $jawaban)
+                                                @php $i=1; @endphp
+                                                @foreach($jawaban as $val)
+                                                @php
+                                                if ($i % 5 == 0) {
+                                                $i = 1;
+                                                }
+                                                @endphp
+
+                                                <th style="text-align: center;">{{'(W'.$val->angka_week.') Pertanyaan ' .$i++}}</th>
+                                                @endforeach
+                                                @endforeach
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @php $no = 1; @endphp
+                                            @foreach($jawabans as $key => $jawaban)
+                                            <tr>
+                                                <th style="text-align: center;">{{$no++}}</th>
+                                                <th style="text-align: center;">{{$key}}</th>
+                                                @foreach($jawabans as $key => $jawaban)
+
+                                                @foreach($jawaban as $val)
+                                                @php $val->jawaban = html_entity_decode($val->jawaban); @endphp
+                                                @if(str_contains($val->jawaban,'pdf') OR str_contains($val->jawaban,'xlsx') OR str_contains($val->jawaban,'xls'))
+                                                @php
+                                                $url = asset('/assets/file/' . $val->jawaban);
+                                                @endphp
+                                                <td style="text-align: left;font-size:14px;text-decoration:none"><a href="{{$url}}" target="_blank" rel="noopener noreferrer">{{strip_tags($val->jawaban)}}</a></td>
+                                                @else
+                                                <th style="text-align: left;font-size:12px;">{{strip_tags(mb_strimwidth($val->jawaban, 0, 50, '...'))}}</th>
+                                                @endif
+                                                @endforeach
+                                                @endforeach
+                                            </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                    @else
                                     <table id="example" class="datatables-basic table border-top table-striped">
                                         <thead>
                                             <tr>
@@ -44,7 +90,7 @@
                                             <tr>
                                                 <td style="text-align: center">{{$no++}}</td>
                                                 <td style="text-align: left;font-size:14px">{{strip_tags($jawaban->nama_kader)}}</td>
-                                                @php $jawaban->jawaban = html_entity_decode($jawaban->jawaban);  @endphp
+                                                @php $jawaban->jawaban = html_entity_decode($jawaban->jawaban); @endphp
                                                 <td style="text-align: center;font-size:14px">{{strip_tags($jawaban->nama_pertanyaan)}}</td>
                                                 @if(str_contains($jawaban->jawaban,'pdf') OR str_contains($jawaban->jawaban,'xlsx') OR str_contains($jawaban->jawaban,'xls'))
                                                 @php
@@ -54,27 +100,31 @@
                                                 @else
                                                 <td style="text-align: center;font-size:14px">{{strip_tags($jawaban->jawaban)}}</td>
                                                 @if($title->type == 'Mentor')
-                                                @php $jawaban->essay_revisi = html_entity_decode($jawaban->essay_revisi);  @endphp
+                                                @php $jawaban->essay_revisi = html_entity_decode($jawaban->essay_revisi); @endphp
                                                 <td style="text-align: center;font-size:14px">{{strip_tags($jawaban->essay_revisi ?? '-')}}</td>
-                                                    @if($jawaban->id_pertanyaan == '6')
-                                                    <td style="text-align: center;font-size:14px"><button class="btn btn-sm btn-primary" data-bs-toggle="modal"
-                                                            data-bs-target="#edit-data{{$jawaban->id_jawaban}}">Edit</button></td>
-                                                    @else
-                                                    <td></td>
-                                                    @endif
+                                                @if($jawaban->id_pertanyaan == '6')
+                                                <td style="text-align: center;font-size:14px"><button class="btn btn-sm btn-primary" data-bs-toggle="modal"
+                                                        data-bs-target="#edit-data{{$jawaban->id_jawaban}}">Edit</button></td>
+                                                @else
+                                                <td></td>
+                                                @endif
                                                 @endif
                                                 @endif
                                             </tr>
                                             @endforeach
                                         </tbody>
                                     </table>
+                                    @endif
+
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
             <!-- Modal Edit -->
+            @if(!$isUserOnly)
             @foreach($jawabans as $jawaban)
             <div class="modal fade modalsx" id="edit-data{{$jawaban->id_jawaban}}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
                 <div class="modal-dialog">
@@ -107,6 +157,8 @@
                 </div>
             </div>
             @endforeach
+            @endif
+
         </div>
     </div>
 </div>
@@ -153,12 +205,29 @@
             }
         });
         $('#example').DataTable({
-            scrollY:        "100%",
+            scrollY: "100%",
             scrollCollapse: true,
             paging: true,
             aaSorting: [],
-            "lengthMenu": [10, 25, 50, 100, ],
+            "lengthMenu": [10, 25, 50, 100],
+            layout: {
+                topStart: {
+                    buttons: [{
+                        extend: 'excel',
+                        title: 'Feedback Kader',
+                        titleAttr: 'Feedback Kader',
+                        exportOptions: {
+                            modifier: {
+                                search: 'applied', // Mengekspor data yang sesuai dengan filter pencarian
+                                order: 'applied', // Mengekspor sesuai dengan urutan saat ini
+                                page: 'all' // Mengekspor semua halaman, bukan hanya yang terlihat
+                            }
+                        }
+                    }]
+                }
+            }
         });
+
     });
 </script>
 @endsection

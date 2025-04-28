@@ -13,6 +13,8 @@ use App\Models\Batch;
 use App\Models\Company;
 use App\Models\Departemen;
 use App\Models\Divisi;
+use App\Models\FeedbackMai;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Validators\ValidationException;
@@ -154,4 +156,6 @@ class KaderController extends Controller
     {
         //
     }
+
+    
 }
