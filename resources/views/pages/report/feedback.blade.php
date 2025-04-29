@@ -139,7 +139,7 @@
                                                     @endif
                                                     @endforeach
                                                     @endforeach
-                                                    @php $rata2_2 = $rata2_2 != 0 ? round($rata2_2/$c2, 2) : 0; @endphp
+                                                    @php $rata2_2 = $rata2_2 != 0 ? round(($rata2_2/$c2)*2, 2) : 0; @endphp
                                                     <td style="text-align: center;font-size:14px">{{$rata2_2}}</td>
                                                     @foreach($weeks as $wk)
                                                     @foreach($pertanyaans as $key => $q)
@@ -269,10 +269,10 @@
                                                 <input type="hidden" name="ojt" value="{{$ojt}}">
                                                 <div class="modal-body">
                                                     <div class="row">
-                                                        <div class="col-5">
+                                                        <div class="col-4">
                                                             <label class="mb-2">Kader: </label>
                                                             <div class="form-group mb-2">
-                                                                <select name="nik_kader" id="" class="form-control">
+                                                                <select name="nik_kader" id="nik-kaderM" class="form-control">
                                                                     <option value="">--Pilih Kader--</option>
                                                                     @foreach($datas as $data)
                                                                     <option value="{{ $data->nik_kader }}">{{ $data->nama }}</option>
@@ -280,16 +280,20 @@
                                                                 </select>
                                                             </div>
                                                         </div>
-                                                        <div class="col-6">
+                                                        <div class="col-3">
                                                             <label class="mb-2">Week: </label>
                                                             <div class="form-group mb-2">
-                                                                <select name="id_week" id="" class="form-control">
+                                                                <select name="id_week_add" id="add-select-weekM" class="form-control">
                                                                     <option value="">--Pilih Week--</option>
                                                                     @foreach($weeks as $week)
-                                                                    <option value="{{$week->angka_week}}">{{$week->angka_week}}</option>
+                                                                    <option value="">{{$week->angka_week}}</option>
                                                                     @endforeach
                                                                 </select>
                                                             </div>
+                                                        </div>
+                                                        <div class="col-4">
+                                                        <label class="mb-2">Mentor: </label>
+                                                        <input type="text" class="form-control" name="nama_mentor">
                                                         </div>
                                                     </div>
                                                     <div class="row">
@@ -524,6 +528,45 @@
     }
 
     $(document).ready(function() {
+        $('#add-select-weekM').on('change', function() {
+            let week = $(this).val();
+            let id_kader = $('#nik-kaderM').val();
+            if (week !== '') {
+                $.ajax({
+                    url: "{{ route('getMentor') }}",
+                    type: "GET",
+                    data: {
+                        week: week,
+                        id_kader, id_kader
+                    },
+                    success: function(response) {
+                        console.log(response);
+                    }
+                });
+            }
+        });
+
+        $('#nik-kaderM').change(function(){
+            var nik_kader = $(this).val();
+            if(nik_kader != ''){
+                $.ajax({
+                    url: '{{ route("getWeeksM") }}', // bikin route ini
+                    type: 'GET',
+                    data: {nik_kader: nik_kader},
+                    success: function(response){
+                        $('#add-select-weekM').empty();
+                        $('#add-select-weekM').append('<option value="">--Pilih Week--</option>');
+                        $.each(response, function(id, angka_week){
+                            $('#add-select-weekM').append('<option value="'+id+'">'+angka_week+'</option>');
+                        });
+                    }
+                });
+            } else {
+                $('#add-select-weekM').empty();
+                $('#add-select-weekM').append('<option value="">--Pilih Week--</option>');
+            }
+        });
+
         $('#select-kaderM').on('change', function() {
             $('#biweek-select').val('');
         });

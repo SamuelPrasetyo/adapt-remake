@@ -185,7 +185,7 @@
                                                         <div class="col-5">
                                                             <label class="mb-2">Kader: </label>
                                                             <div class="form-group mb-2">
-                                                                <select name="nik_kader" id="" class="form-control">
+                                                                <select name="nik_kader" id="nik-kader" class="form-control">
                                                                     <option value="">--Pilih Kader--</option>
                                                                     @foreach($datas as $data)
                                                                     <option value="{{ $data->nik_kader }}">{{ $data->nama }}</option>
@@ -196,7 +196,7 @@
                                                         <div class="col-6">
                                                             <label class="mb-2">Week: </label>
                                                             <div class="form-group mb-2">
-                                                                <select name="id_week" id="" class="form-control">
+                                                                <select name="id_week" id="add-select-week" class="form-control">
                                                                     <option value="">--Pilih Week--</option>
                                                                     @foreach($weeks as $week)
                                                                     <option value="{{ $week->angka_week }}">{{ $week->angka_week }}</option>
@@ -515,6 +515,27 @@
 
 
     $(document).ready(function() {
+        $('#nik-kader').change(function(){
+            var nik_kader = $(this).val();
+            if(nik_kader != ''){
+                $.ajax({
+                    url: '{{ route("getWeeks") }}', // bikin route ini
+                    type: 'GET',
+                    data: {nik_kader: nik_kader},
+                    success: function(response){
+                        $('#add-select-week').empty();
+                        $('#add-select-week').append('<option value="">--Pilih Week--</option>');
+                        $.each(response, function(key, value){
+                            $('#add-select-week').append('<option value="'+value+'">'+value+'</option>');
+                        });
+                    }
+                });
+            } else {
+                $('#add-select-week').empty();
+                $('#add-select-week').append('<option value="">--Pilih Week--</option>');
+            }
+        });
+
         $('#select-kader').on('change', function() {
             $('#week-select').val('');
         });

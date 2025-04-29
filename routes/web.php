@@ -167,7 +167,13 @@ Route::middleware(['can:isAdmin&Mentor'])->group(function () {
     Route::put('/feedbackmai-m/{id}', [FeedbackMaiController::class, 'feedbackmai_updateM'])->name('feedbackmai.updateM');
     Route::get('/get-feedback-m-by-week', [FeedbackMaiController::class, 'getByWeekM'])->name('get.feedback.by.weekM');
     Route::get('/feedback-m/export-pdf/{id}', [FeedbackMaiController::class, 'exportPdfM'])->name('feedbackmai.exportPdfM');
+
+    Route::get('/get-weeks', [FeedbackMaiController::class, 'getWeeks'])->name('getWeeks');
+    Route::get('/get-weeksM', [FeedbackMaiController::class, 'getWeeksM'])->name('getWeeksM');
+    Route::get('/get-mentor', [FeedbackMaiController::class, 'getMentor'])->name('getMentor');
 });
+
+
 
 Route::middleware(['can:isAll'])->group(function () {
     Route::controller(JawabanController::class)->group(function () {

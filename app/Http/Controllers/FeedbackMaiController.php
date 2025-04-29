@@ -7,6 +7,8 @@ use App\Models\cr;
 use App\Models\FeedbackMai;
 use App\Models\FmDetail;
 use App\Models\Jawaban;
+use App\Models\Week;
+use App\Models\WeekKader;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -72,7 +74,7 @@ class FeedbackMaiController extends Controller
         return view('pages.feedbackmai.fm_mentor', compact('feedbacks'));
     }
 
-    public function fm_mentor_export($id_week,$nik_kader)
+    public function fm_mentor_export($id_week, $nik_kader)
     {
         $user = Auth::user();
 
@@ -145,6 +147,7 @@ class FeedbackMaiController extends Controller
 
     public function feedbackmaiM(Request $request)
     {
+        dd($request);
         $data_mentor = Jawaban::select('nama_mentor as nama')
             ->where('nik_kader', $request->nik_kader)
             ->where('id_week', $request->id_week)
@@ -185,7 +188,6 @@ class FeedbackMaiController extends Controller
             }
         }
 
-
         ActivityLog::activity_log('Menambah data Feedback MAI pada Mentor');
         Alert::success('Success', 'Data berhasil ditambahkan!');
         return redirect()->route('reportfeedback.index');
@@ -200,7 +202,6 @@ class FeedbackMaiController extends Controller
             ->join('weeks_kader', 'feedback_mai.id_week', 'weeks_kader.id_week')
             ->join('batch', 'kader.id_batch', 'batch.id_batch')
             ->where('id_feedbackmai', $id)
-            // ->with(['details','kaders'])
             ->first();
         $file_name = 'fm-kader-' . $feedback->nama_kader . '-Week' . $feedback->angka_week . '-' . now() . '.pdf';
         $pdf = PDF::loadView('pdf.feedbackmai', compact('feedback'));
@@ -217,7 +218,6 @@ class FeedbackMaiController extends Controller
             ->join('weeks_kader', 'feedback_mai.id_week', 'weeks_kader.id_week')
             ->join('batch', 'kader.id_batch', 'batch.id_batch')
             ->where('id_feedbackmai', $id)
-            // ->with(['details','kaders'])
             ->first();
         $nm_mentor = $feedback->nama_mentor ?? 'NULL';
         $file_name = 'fm-mentor-' . $nm_mentor . '-Week' . $feedback->angka_week . '-' . now() . '.pdf';
@@ -248,24 +248,8 @@ class FeedbackMaiController extends Controller
             ->where('id_week', $week)
             ->where('nik_kader', $id_kader)
             ->get();
-
-        // $mentor = FeedbackMai::select('jawaban.nama_mentor')
-        //                         ->join('kader', 'feedback_mai.nik_kader', '=', 'kader.nik')
-        //                         ->join('jawaban', 'kader.nik', '=', 'jawaban.nik_kader')
-        //                         ->with(['details', 'kaders'])
-        //                         ->where('feedback_mai.id_week', $week)
-        //                         ->where('jawaban.nik_kader', $id_kader)
-        //                         ->whereNotNull('jawaban.nama_mentor')
-        //                         ->groupBy('jawaban.nama_mentor')
-        //                         ->get();
-
-        // $nama_mentor = [];
-        // foreach ($mentors as $key => $value) {
-        //     $nama_mentor[] = $value->nama_mentor;
-        // }
         return view('partials.feedbackM-modal', compact('feedbacks'))->render();
     }
-
 
     public function feedbackmai_update(Request $request, $id)
     {
@@ -332,5 +316,64 @@ class FeedbackMaiController extends Controller
         ActivityLog::activity_log('Mengubah data Feedback MAI pada Mentor');
         Alert::success('Success', 'Data berhasil Diupdate!');
         return redirect()->route('reportfeedback.index');
+    }
+
+    public function getWeeks(Request $request)
+    {
+        $nik_kader = $request->nik_kader;
+
+        // Week yang sudah diambil kader ini
+        $week_fm = FeedbackMai::where('user_type', 'kader')
+            ->where('nik_kader', $nik_kader)
+            ->pluck('id_week')
+            ->toArray();
+
+        // Semua week yang belum dipakai kader ini
+        $weeks = WeekKader::whereNotIn('angka_week', $week_fm)
+            ->pluck('angka_week');
+
+        return response()->json($weeks);
+    }
+    
+    public function getWeeksM(Request $request)
+    {
+        switch ($request->ojt) {
+            case '1':
+                $arr_week = ['2', '4', '6', '8', '10', '12'];
+                break;
+            case '2':
+                $arr_week = ['14', '16', '18', '20', '22', '24'];
+                break;
+            case '3':
+                $arr_week = ['26', '28', '30', '32', '34', '36'];
+                break;
+            case '4':
+                $arr_week = ['38', '40', '42', '44', '46', '48'];
+                break;
+            default:
+                $arr_week = [];
+                break;
+        }
+
+        $nik_kader = $request->nik_kader;
+
+        // Week yang sudah diambil kader ini
+        $week_fm = FeedbackMai::where('user_type', 'mentor')
+            ->where('nik_kader', $nik_kader)
+            ->pluck('id_week')
+            ->toArray();
+
+        // Semua week yang belum dipakai kader ini
+        $weeks = Week::whereNotIn('id_week', $week_fm)
+                ->pluck('angka_week', 'id_week');
+        return response()->json($weeks);
+    }
+
+    public function getMentor(Request $request)
+    {
+        // $data_mentor = Jawaban::where('id_week',$request->id_week)
+        //                         ->where('nik_kader',$request->nik_kader)
+        //                         ->get();
+        // dd($data_mentor,$request);
     }
 }
