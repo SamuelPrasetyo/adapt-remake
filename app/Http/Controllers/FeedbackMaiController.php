@@ -309,6 +309,24 @@ class FeedbackMaiController extends Controller
 
     public function getWeeks(Request $request)
     {
+        switch ($request->ojt) {
+            case '1':
+                $arr_week = range(1, 12);
+                break;
+            case '2':
+                $arr_week = range(13, 24);
+                break;
+            case '3':
+                $arr_week = range(25, 36);
+                break;
+            case '4':
+                $arr_week = range(37, 48);
+                break;
+            default:
+                $arr_week = [];
+                break;
+        }
+
         $nik_kader = $request->nik_kader;
 
         // Week yang sudah diambil kader ini
@@ -318,7 +336,42 @@ class FeedbackMaiController extends Controller
             ->toArray();
 
         // Semua week yang belum dipakai kader ini
-        $weeks = WeekKader::whereNotIn('id_week', $week_fm)
+        $weeks = WeekKader::whereIn('angka_week', $arr_week)
+            ->whereNotIn('id_week', $week_fm)
+            ->orderBy('angka_week', 'asc')
+            ->pluck('angka_week', 'id_week');
+        return response()->json($weeks);
+    }
+
+    public function getWeeksEditM(Request $request)
+    {
+        $nik_kader = $request->nik_kader;
+
+        // Week yang sudah diambil kader ini
+        $week_fm = FeedbackMai::where('user_type', 'mentor')
+            ->where('nik_kader', $nik_kader)
+            ->pluck('id_week')
+            ->toArray();
+
+        // Semua week yang belum dipakai kader ini
+        $weeks = Week::whereIn('id_week', $week_fm)
+            ->orderBy('angka_week', 'asc')
+            ->pluck('angka_week', 'id_week');
+        return response()->json($weeks);
+    }
+
+    public function getWeeksEditK(Request $request)
+    {
+        $nik_kader = $request->nik_kader;
+
+        // Week yang sudah diambil kader ini
+        $week_fm = FeedbackMai::where('user_type', 'kader')
+            ->where('nik_kader', $nik_kader)
+            ->pluck('id_week')
+            ->toArray();
+
+        // Semua week yang belum dipakai kader ini
+        $weeks = WeekKader::whereIn('id_week', $week_fm)
             ->orderBy('angka_week', 'asc')
             ->pluck('angka_week', 'id_week');
         return response()->json($weeks);
@@ -353,7 +406,7 @@ class FeedbackMaiController extends Controller
             ->toArray();
 
         // Semua week yang belum dipakai kader ini
-        $weeks = Week::whereNotIn('id_week', $week_fm)
+        $weeks = Week::whereIn('angka_week',$arr_week)->whereNotIn('id_week', $week_fm)
             ->orderBy('angka_week', 'asc')
             ->pluck('angka_week', 'id_week');
         return response()->json($weeks);
@@ -362,11 +415,11 @@ class FeedbackMaiController extends Controller
     public function getMentor(Request $request)
     {
         $nama_mentor = Jawaban::select('nama_mentor')
-                                ->where('id_week',$request->id_week)
-                                ->where('nik_kader',$request->id_kader)
-                                ->whereNotNull('nama_mentor')
-                                ->groupBy('nama_mentor')
-                                ->pluck('nama_mentor');
+            ->where('id_week', $request->id_week)
+            ->where('nik_kader', $request->id_kader)
+            ->whereNotNull('nama_mentor')
+            ->groupBy('nama_mentor')
+            ->pluck('nama_mentor');
         return response()->json($nama_mentor);
     }
 }

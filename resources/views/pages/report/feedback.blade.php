@@ -265,7 +265,7 @@
                                             <form action="{{route('feedbackmaiM')}}" method="POST">
                                                 @csrf
                                                 <input type="hidden" name="nik_kader" value="{{$data->nik_kader}}">
-                                                <input type="hidden" name="ojt" value="{{$ojt}}">
+                                                <input type="hidden" id="ojt" name="ojt" value="{{$ojt}}">
                                                 <div class="modal-body">
                                                     <div class="row">
                                                         <div class="col-4">
@@ -364,7 +364,12 @@
                                                         <select name="nik_kader" id="select-kaderM" class="form-control">
                                                             <option value="">--Pilih Kader--</option>
                                                             @foreach($datas as $data)
+                                                            @php
+                                                                $fm_mentor = \App\Models\FeedbackMai::where('user_type','mentor')->where('nik_kader',$data->nik_kader)->first();
+                                                            @endphp
+                                                            @if($fm_mentor)
                                                             <option value="{{ $data->nik_kader }}">{{ $data->nama }}</option>
+                                                            @endif
                                                             @endforeach
                                                         </select>
                                                     </div>
@@ -372,10 +377,7 @@
                                                         <div class="mb-3">
                                                             <label class="mb-2" for="">Pilih Week : </label>
                                                             <select id="biweek-select" class="form-select mb-3">
-                                                                <option value="">-- Pilih Week --</option>
-                                                                @foreach($weeks as $week)
-                                                                <option value="{{ $week->id_week }}">{{ $week->angka_week }}</option>
-                                                                @endforeach
+                                                                <option value="">--Pilih Week--</option>
                                                             </select>
                                                         </div>
                                                     </div>
@@ -557,12 +559,14 @@
 
         $('#nik-kaderM').change(function() {
             var nik_kader = $(this).val();
+            var ojt = $('#ojt').val();
             if (nik_kader != '') {
                 $.ajax({
                     url: '{{ route("getWeeksM") }}', // bikin route ini
                     type: 'GET',
                     data: {
-                        nik_kader: nik_kader
+                        nik_kader: nik_kader,
+                        ojt:ojt
                     },
                     success: function(response) {
                         $('#add-select-weekM').empty();
@@ -579,7 +583,27 @@
         });
 
         $('#select-kaderM').on('change', function() {
-            $('#biweek-select').val('');
+            // $('#biweek-select').val('');
+            var nik_kader = $(this).val();
+            if (nik_kader != '') {
+                $.ajax({
+                    url: '{{ route("getWeeksEditM") }}', // bikin route ini
+                    type: 'GET',
+                    data: {
+                        nik_kader: nik_kader
+                    },
+                    success: function(response) {
+                        $('#biweek-select').empty();
+                        $('#biweek-select').append('<option value="">--Pilih Week--</option>');
+                        $.each(response, function(id, angka_week) {
+                            $('#biweek-select').append('<option value="' + id + '">' + angka_week + '</option>');
+                        });
+                    }
+                });
+            } else {
+                $('#add-select-weekM').empty();
+                $('#add-select-weekM').append('<option value="">--Pilih Week--</option>');
+            }
         });
 
         $('#biweek-select').on('change', function() {

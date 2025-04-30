@@ -171,6 +171,8 @@ Route::middleware(['can:isAdmin&Mentor'])->group(function () {
     Route::get('/get-weeks', [FeedbackMaiController::class, 'getWeeks'])->name('getWeeks');
     Route::get('/get-weeksM', [FeedbackMaiController::class, 'getWeeksM'])->name('getWeeksM');
     Route::get('/get-mentor', [FeedbackMaiController::class, 'getMentor'])->name('getMentor');
+    Route::get('/get-weeks-editM', [FeedbackMaiController::class, 'getWeeksEditM'])->name('getWeeksEditM');
+    Route::get('/get-weeks-editK', [FeedbackMaiController::class, 'getWeeksEditK'])->name('getWeeksEditK');
 });
 
 
