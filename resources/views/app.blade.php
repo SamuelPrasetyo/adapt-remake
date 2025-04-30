@@ -366,6 +366,14 @@ $id = \Illuminate\Support\Facades\Auth::user()->id;
         $("#activity_log").addClass('active');
         $("#modul").addClass('active open');
         break;
+      case 'feedback_mai-kader':
+        $("#fm_kader").addClass('active');
+        $("#report").addClass('active open');
+        break;
+      case 'feedback_mai-mentor':
+        $("#fm_mentor").addClass('active');
+        $("#report").addClass('active open');
+        break;
       default:
         break;
     }

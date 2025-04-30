@@ -4,7 +4,12 @@
     @method('PUT') {{-- penting untuk method PUT --}}
     <input type="hidden" name="nik_kader" value="{{ $feedback->nik_kader }}">
     <input type="hidden" name="id_week" value="{{ $feedback->id_week }}">
-
+    <div class="row mb-2">
+        <div class="col-6">
+            <label for="">Mentor :</label>
+            <input type="text" name="nama_mentor" class="form-control" value="{{ $feedback->nama_mentor }}">
+        </div>
+    </div>
     {{-- KETERAMPILAN --}}
     <div class="row">
         <label class="mb-2"><b>I. Keterampilan baru yang dipelajari</b></label>

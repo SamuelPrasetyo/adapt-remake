@@ -64,8 +64,8 @@ class FeedbackMaiController extends Controller
             ->pluck('nik_kader')
             ->toArray();
 
-        $feedbacks = FeedbackMai::select('feedback_mai.*', 'weeks_kader.angka_week')
-            ->join('weeks_kader', 'feedback_mai.id_week', 'weeks_kader.id_week')
+        $feedbacks = FeedbackMai::select('feedback_mai.*', 'weeks.angka_week')
+            ->join('weeks', 'feedback_mai.id_week', 'weeks.id_week')
             ->whereIn('feedback_mai.nik_kader', $kader)
             ->where('feedback_mai.user_type', 'mentor')
             ->get();
@@ -78,11 +78,11 @@ class FeedbackMaiController extends Controller
     {
         $user = Auth::user();
 
-        $feedback = FeedbackMai::select('feedback_mai.*', 'company.company_name', 'departemens.nama as nama_dept', 'kader.nama as nama_kader', 'weeks_kader.angka_week', 'batch.nama_batch')
+        $feedback = FeedbackMai::select('feedback_mai.*', 'company.company_name', 'departemens.nama as nama_dept', 'kader.nama as nama_kader', 'weeks.angka_week', 'batch.nama_batch')
             ->join('kader', 'feedback_mai.nik_kader', 'kader.nik')
             ->join('company', 'kader.company_code', 'company.company_code')
             ->join('departemens', 'kader.id_departemen', 'departemens.id')
-            ->join('weeks_kader', 'feedback_mai.id_week', 'weeks_kader.id_week')
+            ->join('weeks', 'feedback_mai.id_week', 'weeks.id_week')
             ->join('batch', 'kader.id_batch', 'batch.id_batch')
             ->where('feedback_mai.id_week', $id_week)
             ->where('feedback_mai.nik_kader', $nik_kader)
@@ -97,22 +97,18 @@ class FeedbackMaiController extends Controller
 
     public function feedbackmai(Request $request)
     {
-        $data_mentor = Jawaban::select('nama_mentor as nama')
-            ->where('nik_kader', $request->nik_kader)
-            ->where('id_week', $request->id_week)
-            ->groupBy('nama_mentor')
-            ->first();
 
         $feedbackmai = [
             'id_feedbackmai'    => Str::uuid(),
             'id_week'           => $request->id_week,
             'nik_kader'         => $request->nik_kader,
-            'nama_mentor'       => $data_mentor->nama ?? null,
+            'nama_mentor'       => $request->nama_mentor ?? null,
             'tk_keterlibatan'   => $request->tk_keterlibatan ?? null,
             'kesimpulan'        => $request->kesimpulan ?? null,
             'user_type'         => 'kader',
             'created_at'        => now()
         ];
+
         $id_feedbackmai = $feedbackmai['id_feedbackmai'];
         FeedbackMai::create($feedbackmai);
 
@@ -147,23 +143,16 @@ class FeedbackMaiController extends Controller
 
     public function feedbackmaiM(Request $request)
     {
-        dd($request);
-        $data_mentor = Jawaban::select('nama_mentor as nama')
-            ->where('nik_kader', $request->nik_kader)
-            ->where('id_week', $request->id_week)
-            ->groupBy('nama_mentor')
-            ->first();
         $feedbackmaiM = [
             'id_feedbackmai'    => Str::uuid(),
-            'id_week'           => $request->id_week,
+            'id_week'           => $request->id_week_add,
             'nik_kader'         => $request->nik_kader,
-            'nama_mentor'       => $data_mentor->nama ?? null,
+            'nama_mentor'       => $request->nama_mentor ?? null,
             'tk_keterlibatan'   => $request->tk_keterlibatan ?? null,
             'kesimpulan'        => $request->kesimpulan ?? null,
             'user_type'         => 'mentor',
             'created_at'        => now()
         ];
-
         $id_feedbackmai = $feedbackmaiM['id_feedbackmai'];
         FeedbackMai::create($feedbackmaiM);
 
@@ -211,11 +200,11 @@ class FeedbackMaiController extends Controller
 
     public function exportPdfM($id)
     {
-        $feedback = FeedbackMai::select('feedback_mai.*', 'company.company_name', 'departemens.nama as nama_dept', 'kader.nama as nama_kader', 'weeks_kader.angka_week', 'batch.nama_batch')
+        $feedback = FeedbackMai::select('feedback_mai.*', 'company.company_name', 'departemens.nama as nama_dept', 'kader.nama as nama_kader', 'weeks.angka_week', 'batch.nama_batch')
             ->join('kader', 'feedback_mai.nik_kader', 'kader.nik')
             ->join('company', 'kader.company_code', 'company.company_code')
             ->join('departemens', 'kader.id_departemen', 'departemens.id')
-            ->join('weeks_kader', 'feedback_mai.id_week', 'weeks_kader.id_week')
+            ->join('weeks', 'feedback_mai.id_week', 'weeks.id_week')
             ->join('batch', 'kader.id_batch', 'batch.id_batch')
             ->where('id_feedbackmai', $id)
             ->first();
@@ -229,11 +218,11 @@ class FeedbackMaiController extends Controller
 
     public function getByWeek(Request $request)
     {
-        $week = $request->week;
+        $id_week = $request->id_week;
         $id_kader = $request->id_kader;
         $feedbacks = FeedbackMai::with(['details', 'kaders'])
             ->where('user_type', 'kader')
-            ->where('id_week', $week)
+            ->where('id_week', $id_week)
             ->where('nik_kader', $id_kader)
             ->get();
 
@@ -241,11 +230,11 @@ class FeedbackMaiController extends Controller
     }
     public function getByWeekM(Request $request)
     {
-        $week = $request->week;
+        $id_week = $request->id_week;
         $id_kader = $request->id_kader;
         $feedbacks = FeedbackMai::with(['details', 'kaders'])
             ->where('user_type', 'mentor')
-            ->where('id_week', $week)
+            ->where('id_week', $id_week)
             ->where('nik_kader', $id_kader)
             ->get();
         return view('partials.feedbackM-modal', compact('feedbacks'))->render();
@@ -253,12 +242,12 @@ class FeedbackMaiController extends Controller
 
     public function feedbackmai_update(Request $request, $id)
     {
-        // dd($request, $id);
         $feedback_mai = FeedbackMai::where('id_feedbackmai', $id)->first();
         // Update kesimpulan
         FeedbackMai::where('id_feedbackmai', $id)
             ->update([
                 'kesimpulan' => $request->kesimpulan ?? $feedback_mai->kesimpulan,
+                'nama_mentor' => $request->nama_mentor ?? $feedback_mai->nama_mentor,
             ]);
 
         // Update detail berdasarkan jenis
@@ -286,13 +275,13 @@ class FeedbackMaiController extends Controller
 
     public function feedbackmai_updateM(Request $request, $id)
     {
-        // dd($request, $id);
         // Update kesimpulan
         $feedback_mai = FeedbackMai::where('id_feedbackmai', $id)->first();
         FeedbackMai::where('id_feedbackmai', $id)
             ->update([
                 'tk_keterlibatan'   => $request->tk_keterlibatan ?? $feedback_mai->tk_keterlibatan,
                 'kesimpulan'        => $request->kesimpulan ?? $feedback_mai->kesimpulan,
+                'nama_mentor'        => $request->nama_mentor ?? $feedback_mai->nama_mentor,
             ]);
 
         // Update detail berdasarkan jenis
@@ -329,12 +318,12 @@ class FeedbackMaiController extends Controller
             ->toArray();
 
         // Semua week yang belum dipakai kader ini
-        $weeks = WeekKader::whereNotIn('angka_week', $week_fm)
-            ->pluck('angka_week');
-
+        $weeks = WeekKader::whereNotIn('id_week', $week_fm)
+            ->orderBy('angka_week', 'asc')
+            ->pluck('angka_week', 'id_week');
         return response()->json($weeks);
     }
-    
+
     public function getWeeksM(Request $request)
     {
         switch ($request->ojt) {
@@ -365,15 +354,19 @@ class FeedbackMaiController extends Controller
 
         // Semua week yang belum dipakai kader ini
         $weeks = Week::whereNotIn('id_week', $week_fm)
-                ->pluck('angka_week', 'id_week');
+            ->orderBy('angka_week', 'asc')
+            ->pluck('angka_week', 'id_week');
         return response()->json($weeks);
     }
 
     public function getMentor(Request $request)
     {
-        // $data_mentor = Jawaban::where('id_week',$request->id_week)
-        //                         ->where('nik_kader',$request->nik_kader)
-        //                         ->get();
-        // dd($data_mentor,$request);
+        $nama_mentor = Jawaban::select('nama_mentor')
+                                ->where('id_week',$request->id_week)
+                                ->where('nik_kader',$request->id_kader)
+                                ->whereNotNull('nama_mentor')
+                                ->groupBy('nama_mentor')
+                                ->pluck('nama_mentor');
+        return response()->json($nama_mentor);
     }
 }

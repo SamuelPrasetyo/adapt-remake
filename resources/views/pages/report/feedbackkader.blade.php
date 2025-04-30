@@ -135,7 +135,7 @@
                                     <div class="modal-dialog modal-lg">
                                         <div class="modal-content">
                                             <div class="modal-header">
-                                                <h5 class="modal-title" id="detailModalLabel">Edit Feedback MAI</h5>
+                                                <h5 class="modal-title" id="detailModalLabel">Edit Feedback MAI Kader</h5>
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                             </div>
                                             <div class="modal-body overflow-auto" style="max-height: 500px;">
@@ -158,7 +158,7 @@
                                                             <select id="week-select" class="form-select mb-3">
                                                                 <option value="">-- Pilih Week --</option>
                                                                 @foreach($weeks as $week)
-                                                                <option value="{{ $week->angka_week }}">{{ $week->angka_week }}</option>
+                                                                <option value="{{ $week->id_week }}">{{ $week->angka_week }}</option>
                                                                 @endforeach
                                                             </select>
                                                         </div>
@@ -174,7 +174,7 @@
                                     <div class="modal-dialog modal-lg">
                                         <div class="modal-content">
                                             <div class="modal-header">
-                                                <h5 class="modal-title" id="exampleModalLabel">Tambah Feedback MAI</h5>
+                                                <h5 class="modal-title" id="exampleModalLabel">Tambah Feedback MAI Kader</h5>
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                             </div>
                                             <form action="{{route('feedbackmai')}}" method="POST">
@@ -182,7 +182,7 @@
                                                 <input type="hidden" name="ojt" value="{{$ojt}}">
                                                 <div class="modal-body">
                                                     <div class="row">
-                                                        <div class="col-5">
+                                                        <div class="col-4">
                                                             <label class="mb-2">Kader: </label>
                                                             <div class="form-group mb-2">
                                                                 <select name="nik_kader" id="nik-kader" class="form-control">
@@ -193,16 +193,20 @@
                                                                 </select>
                                                             </div>
                                                         </div>
-                                                        <div class="col-6">
+                                                        <div class="col-3">
                                                             <label class="mb-2">Week: </label>
                                                             <div class="form-group mb-2">
                                                                 <select name="id_week" id="add-select-week" class="form-control">
                                                                     <option value="">--Pilih Week--</option>
                                                                     @foreach($weeks as $week)
-                                                                    <option value="{{ $week->angka_week }}">{{ $week->angka_week }}</option>
+                                                                    <option value="{{ $week->id_week }}">{{ $week->angka_week }}</option>
                                                                     @endforeach
                                                                 </select>
                                                             </div>
+                                                        </div>
+                                                        <div class="col-4">
+                                                            <label class="mb-2">Mentor: </label>
+                                                            <input type="text" id="fmK_mentor" class="form-control" name="nama_mentor">
                                                         </div>
                                                     </div>
                                                     <div class="row">
@@ -515,6 +519,29 @@
 
 
     $(document).ready(function() {
+        $('#add-select-week').on('change', function() {
+            let id_week = $(this).val();
+            let id_kader = $('#nik-kader').val();
+            if (id_week !== '') {
+                $.ajax({
+                    url: "{{ route('getMentor') }}",
+                    type: "GET",
+                    data: {
+                        id_week: id_week,
+                        id_kader:id_kader
+                    },
+                    success: function(response) {
+                        if(response[0]){
+                            console.log(response[0]);
+                            $('#fmK_mentor').val(response[0]);
+                        }else{
+                            $('#fmK_mentor').val('');
+                        }
+                    }
+                });
+            }
+        });
+
         $('#nik-kader').change(function(){
             var nik_kader = $(this).val();
             if(nik_kader != ''){
@@ -525,8 +552,8 @@
                     success: function(response){
                         $('#add-select-week').empty();
                         $('#add-select-week').append('<option value="">--Pilih Week--</option>');
-                        $.each(response, function(key, value){
-                            $('#add-select-week').append('<option value="'+value+'">'+value+'</option>');
+                        $.each(response, function(id, angka_week){
+                            $('#add-select-week').append('<option value="'+id+'">'+angka_week+'</option>');
                         });
                     }
                 });
@@ -541,14 +568,14 @@
         });
 
         $('#week-select').on('change', function() {
-            let week = $(this).val();
+            let id_week = $(this).val();
             let id_kader = $('#select-kader').val();
             if (week !== '') {
                 $.ajax({
                     url: "{{ route('get.feedback.by.week') }}",
                     type: "GET",
                     data: {
-                        week: week,
+                        id_week: id_week,
                         id_kader: id_kader
                     },
                     success: function(response) {

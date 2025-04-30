@@ -347,7 +347,7 @@ class ReportController extends Controller
             $mentor = [];
             $jawaban = [];
 
-            $weeks = Week::whereIn('angka_week', $arr_week)->get();
+            $weeks = Week::whereIn('angka_week', $arr_week)->orderBy('angka_week','asc')->get();
             foreach ($datas as $value) {
                 $data_mentor = Jawaban::select('jawaban.nama_mentor', 'jawaban.nik_kader')
                     ->where('jawaban.nik_kader', $value->nik)
@@ -422,7 +422,7 @@ class ReportController extends Controller
             }
             $mentor = [];
             $jawaban = [];
-            $weeks = WeekKader::whereIn('angka_week', $arr_week)->get();
+            $weeks = WeekKader::whereIn('angka_week', $arr_week)->orderBy('angka_week','asc')->get();
             foreach ($datas as $value) {
                 $data_mentor = Jawaban::select('jawaban.nama_mentor', 'jawaban.nik_kader')
                     ->where('jawaban.nik_kader', $value->nik)

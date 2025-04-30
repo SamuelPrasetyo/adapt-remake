@@ -259,8 +259,7 @@
                                     <div class="modal-dialog modal-lg">
                                         <div class="modal-content">
                                             <div class="modal-header">
-                                                <h5 class="modal-title" id="exampleModalLabel">Tambah Feedback MAI</h5>
-                                                <!-- <input value="{{is_array($mentor[$data->nik] ?? '') ? implode(', ', $mentor[$data->nik]) : $mentor[$data->nik] ?? ''}}" readonly class="form-control" type="text"> -->
+                                                <h5 class="modal-title" id="exampleModalLabel">Tambah Feedback MAI Mentor</h5>
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                             </div>
                                             <form action="{{route('feedbackmaiM')}}" method="POST">
@@ -272,7 +271,7 @@
                                                         <div class="col-4">
                                                             <label class="mb-2">Kader: </label>
                                                             <div class="form-group mb-2">
-                                                                <select name="nik_kader" id="nik-kaderM" class="form-control">
+                                                                <select name="nik_kader" id="nik-kaderM" class="form-control select2">
                                                                     <option value="">--Pilih Kader--</option>
                                                                     @foreach($datas as $data)
                                                                     <option value="{{ $data->nik_kader }}">{{ $data->nama }}</option>
@@ -286,14 +285,14 @@
                                                                 <select name="id_week_add" id="add-select-weekM" class="form-control">
                                                                     <option value="">--Pilih Week--</option>
                                                                     @foreach($weeks as $week)
-                                                                    <option value="">{{$week->angka_week}}</option>
+                                                                    <option value="{{$week->id_week}}">{{$week->angka_week}}</option>
                                                                     @endforeach
                                                                 </select>
                                                             </div>
                                                         </div>
                                                         <div class="col-4">
-                                                        <label class="mb-2">Mentor: </label>
-                                                        <input type="text" class="form-control" name="nama_mentor">
+                                                            <label class="mb-2">Mentor: </label>
+                                                            <input type="text" id="fmM_mentor" class="form-control" name="nama_mentor">
                                                         </div>
                                                     </div>
                                                     <div class="row">
@@ -355,12 +354,12 @@
                                     <div class="modal-dialog modal-lg">
                                         <div class="modal-content">
                                             <div class="modal-header">
-                                                <h5 class="modal-title" id="detailModalLabel">Edit Feedback MAI</h5>
+                                                <h5 class="modal-title" id="detailModalLabel">Edit Feedback MAI Mentor</h5>
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                             </div>
                                             <div class="modal-body overflow-auto" style="max-height: 500px;">
-                                                <div class="row">
-                                                    <div class="col-6">
+                                                <div class="row mb-1">
+                                                    <div class="col-6 mb-0">
                                                         <label class="mb-2" for="">Pilih Kader : </label>
                                                         <select name="nik_kader" id="select-kaderM" class="form-control">
                                                             <option value="">--Pilih Kader--</option>
@@ -375,7 +374,7 @@
                                                             <select id="biweek-select" class="form-select mb-3">
                                                                 <option value="">-- Pilih Week --</option>
                                                                 @foreach($weeks as $week)
-                                                                <option value="{{ $week->angka_week }}">{{ $week->angka_week }}</option>
+                                                                <option value="{{ $week->id_week }}">{{ $week->angka_week }}</option>
                                                                 @endforeach
                                                             </select>
                                                         </div>
@@ -420,8 +419,7 @@
         </div>
         <div class="col-1 d-flex align-items-end">
             <button type="button" class="btn btn-danger" onclick="hapusPeningkatan(this)">-</button>
-        </div>
-    `;
+        </div>`;
         peningkatanIndex++;
 
         // Sisipkan setelah elemen yang diklik
@@ -454,8 +452,7 @@
         </div>
         <div class="col-1 d-flex align-items-end">
             <button type="button" class="btn btn-danger" onclick="UphapusKeterampilan(this)">-</button>
-        </div>
-    `;
+        </div>`;
         UpketerampilanIndex++;
 
         // Sisipkan setelah elemen yang diklik
@@ -484,8 +481,7 @@
         </div>
         <div class="col-1 d-flex align-items-end">
             <button type="button" class="btn btn-danger" onclick="UphapusTantangan(this)">-</button>
-        </div>
-    `;
+        </div>`;
         UptantanganIndex++;
 
         // Sisipkan setelah elemen yang diklik
@@ -514,8 +510,7 @@
         </div>
         <div class="col-1 d-flex align-items-end">
             <button type="button" class="btn btn-danger" onclick="UphapusHarapan(this)">-</button>
-        </div>
-    `;
+        </div>`;
         UpharapanIndex++;
 
         // Sisipkan setelah elemen yang diklik
@@ -528,36 +523,52 @@
     }
 
     $(document).ready(function() {
+        $('#addM-fm').on('shown.bs.modal', function() {
+            // Pastikan tidak inisialisasi berkali-kali
+            $('.select2').each(function() {
+                $(this).select2({
+                    dropdownParent: $(this).closest('.modal')
+                });
+            });
+        });
+
         $('#add-select-weekM').on('change', function() {
-            let week = $(this).val();
+            let id_week = $(this).val();
             let id_kader = $('#nik-kaderM').val();
-            if (week !== '') {
+            if (id_week !== '') {
                 $.ajax({
                     url: "{{ route('getMentor') }}",
                     type: "GET",
                     data: {
-                        week: week,
-                        id_kader, id_kader
+                        id_week: id_week,
+                        id_kader: id_kader
                     },
                     success: function(response) {
-                        console.log(response);
+                        if (response[0]) {
+                            console.log(response[0]);
+                            $('#fmM_mentor').val(response[0]);
+                        } else {
+                            $('#fmM_mentor').val('');
+                        }
                     }
                 });
             }
         });
 
-        $('#nik-kaderM').change(function(){
+        $('#nik-kaderM').change(function() {
             var nik_kader = $(this).val();
-            if(nik_kader != ''){
+            if (nik_kader != '') {
                 $.ajax({
                     url: '{{ route("getWeeksM") }}', // bikin route ini
                     type: 'GET',
-                    data: {nik_kader: nik_kader},
-                    success: function(response){
+                    data: {
+                        nik_kader: nik_kader
+                    },
+                    success: function(response) {
                         $('#add-select-weekM').empty();
                         $('#add-select-weekM').append('<option value="">--Pilih Week--</option>');
-                        $.each(response, function(id, angka_week){
-                            $('#add-select-weekM').append('<option value="'+id+'">'+angka_week+'</option>');
+                        $.each(response, function(id, angka_week) {
+                            $('#add-select-weekM').append('<option value="' + id + '">' + angka_week + '</option>');
                         });
                     }
                 });
@@ -572,15 +583,16 @@
         });
 
         $('#biweek-select').on('change', function() {
-            let week = $(this).val();
+            let id_week = $(this).val();
             let id_kader = $('#select-kaderM').val();
             if (week !== '') {
                 $.ajax({
                     url: "{{ route('get.feedback.by.weekM') }}",
                     type: "GET",
                     data: {
-                        week: week,
-                        id_kader, id_kader
+                        id_week: id_week,
+                        id_kader,
+                        id_kader
                     },
                     success: function(response) {
                         $('#feedbackM-container').html(response); // response is html with modals & buttons
