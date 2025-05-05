@@ -365,7 +365,7 @@
                                                             <option value="">--Pilih Kader--</option>
                                                             @foreach($datas as $data)
                                                             @php
-                                                                $fm_mentor = \App\Models\FeedbackMai::where('user_type','mentor')->where('nik_kader',$data->nik_kader)->first();
+                                                            $fm_mentor = \App\Models\FeedbackMai::where('user_type','mentor')->where('nik_kader',$data->nik_kader)->first();
                                                             @endphp
                                                             @if($fm_mentor)
                                                             <option value="{{ $data->nik_kader }}">{{ $data->nama }}</option>
@@ -404,8 +404,8 @@
 <script type="text/javascript">
     let peningkatanIndex = 1;
 
-    function tambahPeningkatan(btn) {
-        const currentItem = btn.closest('.peningkatan-item');
+    function tambahPeningkatan() {
+        const wrapper = document.getElementById('peningkatan-wrapper');
         const newItem = document.createElement('div');
         newItem.className = 'row peningkatan-item mb-2';
         newItem.innerHTML = `
@@ -421,14 +421,51 @@
         </div>
         <div class="col-1 d-flex align-items-end">
             <button type="button" class="btn btn-danger" onclick="hapusPeningkatan(this)">-</button>
-        </div>`;
+        </div>
+    `;
         peningkatanIndex++;
-
-        // Sisipkan setelah elemen yang diklik
-        currentItem.parentNode.insertBefore(newItem, currentItem.nextSibling);
+        wrapper.appendChild(newItem); // Tambahkan ke bawah
     }
 
     function hapusPeningkatan(btn) {
+        const item = btn.closest('.peningkatan-item');
+        item.remove();
+    }
+
+    async function UptambahPeningkatan(btn, id) {
+        let new_index;
+        try {
+            const response = await fetch(`/get-fmdetail/${id}`);
+            const data = await response.json();
+            new_index = data;
+        } catch (error) {
+            console.error('Error:', error);
+        }
+        const currentItem = btn.closest('.peningkatan-item');
+        const newItem = document.createElement('div');
+        newItem.className = 'row peningkatan-item mb-2';
+        newItem.innerHTML = `
+        <div class="col-5">
+            <div class="form-group">
+                <input placeholder="variable" name="peningkatan[${new_index}][var]" class="form-control" type="text">
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="form-group">
+                <textarea name="peningkatan[${new_index}][desc]" class="form-control"></textarea>
+            </div>
+        </div>
+        <div class="col-1 d-flex align-items-end">
+            <button type="button" class="btn btn-danger" onclick="hapusPeningkatan(this)">-</button>
+        </div>`;
+        new_index++;
+
+        // Sisipkan setelah elemen yang diklik
+        currentItem.parentNode.appendChild(newItem);
+
+    }
+
+    function UphapusPeningkatan(btn) {
         const item = btn.closest('.peningkatan-item');
         item.remove();
     }
@@ -566,7 +603,7 @@
                     type: 'GET',
                     data: {
                         nik_kader: nik_kader,
-                        ojt:ojt
+                        ojt: ojt
                     },
                     success: function(response) {
                         $('#add-select-weekM').empty();

@@ -148,7 +148,7 @@
                                                                 <option value="">--Pilih Kader--</option>
                                                                 @foreach($datas as $data)
                                                                 @php
-                                                                    $fm_kader = \App\Models\FeedbackMai::where('user_type','kader')->where('nik_kader',$data->nik_kader)->first();
+                                                                $fm_kader = \App\Models\FeedbackMai::where('user_type','kader')->where('nik_kader',$data->nik_kader)->first();
                                                                 @endphp
                                                                 @if($fm_kader)
                                                                 <option value="{{ $data->nik_kader }}">{{ $data->nama }}</option>
@@ -331,22 +331,25 @@
         $(`#${groupId}${id}`).html(html);
     }
 
-    let keterampilanIndex = 1;
     let tantanganIndex = 1;
     let harapanIndex = 1;
 
-    function tambahKeterampilan(btn) {
-        const currentItem = btn.closest('.keterampilan-item');
+    let keterampilanIndex = 1;
+
+    function tambahKeterampilan() {
+        const wrapper = document.getElementById('keterampilan-wrapper');
         const newItem = document.createElement('div');
         newItem.className = 'row keterampilan-item mb-2';
         newItem.innerHTML = `
         <div class="col-5">
             <div class="form-group">
+                <label class="mb-2">Variable: </label>
                 <input placeholder="variable" name="keterampilan[${keterampilanIndex}][var]" class="form-control" type="text">
             </div>
         </div>
         <div class="col-6">
             <div class="form-group">
+                <label class="mb-2">Deskripsi: </label>
                 <textarea name="keterampilan[${keterampilanIndex}][desc]" class="form-control"></textarea>
             </div>
         </div>
@@ -355,18 +358,17 @@
         </div>
     `;
         keterampilanIndex++;
-
-        // Sisipkan setelah elemen yang diklik
-        currentItem.parentNode.insertBefore(newItem, currentItem.nextSibling);
+        wrapper.appendChild(newItem); // Tambahkan ke akhir wrapper
     }
+
 
     function hapusKeterampilan(btn) {
         const item = btn.closest('.keterampilan-item');
         item.remove();
     }
 
-    function tambahTantangan(btn) {
-        const currentItem = btn.closest('.tantangan-item');
+    function tambahTantangan() {
+        const wrapper = document.getElementById('tantangan-wrapper');
         const newItem = document.createElement('div');
         newItem.className = 'row tantangan-item mb-2';
         newItem.innerHTML = `
@@ -385,9 +387,7 @@
         </div>
     `;
         tantanganIndex++;
-
-        // Sisipkan setelah elemen yang diklik
-        currentItem.parentNode.insertBefore(newItem, currentItem.nextSibling);
+        wrapper.appendChild(newItem); // Tambahkan ke akhir wrapper
     }
 
     function hapusTantangan(btn) {
@@ -395,8 +395,8 @@
         item.remove();
     }
 
-    function tambahHarapan(btn) {
-        const currentItem = btn.closest('.harapan-item');
+    function tambahHarapan() {
+        const wrapper = document.getElementById('harapan-wrapper');
         const newItem = document.createElement('div');
         newItem.className = 'row harapan-item mb-2';
         newItem.innerHTML = `
@@ -415,9 +415,7 @@
         </div>
     `;
         harapanIndex++;
-
-        // Sisipkan setelah elemen yang diklik
-        currentItem.parentNode.insertBefore(newItem, currentItem.nextSibling);
+        wrapper.appendChild(newItem); // Tambah ke paling bawah
     }
 
     function hapusHarapan(btn) {
@@ -429,29 +427,37 @@
     let UptantanganIndex = 1;
     let UpharapanIndex = 1;
 
-    function UptambahKeterampilan(btn) {
+    async function UptambahKeterampilan(btn, id) {
+        let new_index;
+        try {
+            const response = await fetch(`/get-fmdetail/${id}`);
+            const data = await response.json();
+            new_index = data;
+        } catch (error) {
+            console.error('Error:', error);
+        }
         const currentItem = btn.closest('.keterampilan-item');
         const newItem = document.createElement('div');
         newItem.className = 'row keterampilan-item mb-2';
         newItem.innerHTML = `
         <div class="col-5">
             <div class="form-group">
-                <input placeholder="variable" name="keterampilan[${UpketerampilanIndex}][var]" class="form-control" type="text">
+                <input placeholder="variable" name="keterampilan[${new_index}][var]" class="form-control" type="text">
             </div>
         </div>
         <div class="col-6">
             <div class="form-group">
-                <textarea name="keterampilan[${UpketerampilanIndex}][desc]" class="form-control"></textarea>
+                <textarea name="keterampilan[${new_index}][desc]" class="form-control"></textarea>
             </div>
         </div>
         <div class="col-1 d-flex align-items-end">
             <button type="button" class="btn btn-danger" onclick="UphapusKeterampilan(this)">-</button>
         </div>
     `;
-        UpketerampilanIndex++;
+        new_index++;
 
         // Sisipkan setelah elemen yang diklik
-        currentItem.parentNode.insertBefore(newItem, currentItem.nextSibling);
+        currentItem.parentNode.appendChild(newItem);
     }
 
     function UphapusKeterampilan(btn) {
@@ -459,29 +465,38 @@
         item.remove();
     }
 
-    function UptambahTantangan(btn) {
+    async function UptambahTantangan(btn, id) {
+        let new_index2;
+        try {
+            const response = await fetch(`/get-fmdetail/${id}`);
+            const data = await response.json();
+            new_index2 = data;
+        } catch (error) {
+            console.error('Error:', error);
+        }
+
         const currentItem = btn.closest('.tantangan-item');
         const newItem = document.createElement('div');
         newItem.className = 'row tantangan-item mb-2';
         newItem.innerHTML = `
         <div class="col-5">
             <div class="form-group">
-                <input placeholder="variable" name="tantangan[${UptantanganIndex}][var]" class="form-control" type="text">
+                <input placeholder="variable" name="tantangan[${new_index2}][var]" class="form-control" type="text">
             </div>
         </div>
         <div class="col-6">
             <div class="form-group">
-                <textarea name="tantangan[${UptantanganIndex}][desc]" class="form-control"></textarea>
+                <textarea name="tantangan[${new_index2}][desc]" class="form-control"></textarea>
             </div>
         </div>
         <div class="col-1 d-flex align-items-end">
             <button type="button" class="btn btn-danger" onclick="UphapusTantangan(this)">-</button>
         </div>
     `;
-        UptantanganIndex++;
+        new_index2++;
 
         // Sisipkan setelah elemen yang diklik
-        currentItem.parentNode.insertBefore(newItem, currentItem.nextSibling);
+        currentItem.parentNode.appendChild(newItem);
     }
 
     function UphapusTantangan(btn) {
@@ -489,29 +504,38 @@
         item.remove();
     }
 
-    function UptambahHarapan(btn) {
+    async function UptambahHarapan(btn, id) {
+        let new_index3;
+        try {
+            const response = await fetch(`/get-fmdetail/${id}`);
+            const data = await response.json();
+            new_index3 = data;
+        } catch (error) {
+            console.error('Error:', error);
+        }
+
         const currentItem = btn.closest('.harapan-item');
         const newItem = document.createElement('div');
         newItem.className = 'row harapan-item mb-2';
         newItem.innerHTML = `
         <div class="col-5">
             <div class="form-group">
-                <input placeholder="variable" name="harapan[${UpharapanIndex}][var]" class="form-control" type="text">
+                <input placeholder="variable" name="harapan[${new_index3}][var]" class="form-control" type="text">
             </div>
         </div>
         <div class="col-6">
             <div class="form-group">
-                <textarea name="harapan[${UpharapanIndex}][desc]" class="form-control"></textarea>
+                <textarea name="harapan[${new_index3}][desc]" class="form-control"></textarea>
             </div>
         </div>
         <div class="col-1 d-flex align-items-end">
             <button type="button" class="btn btn-danger" onclick="UphapusHarapan(this)">-</button>
         </div>
     `;
-        UpharapanIndex++;
+        new_index3++;
 
         // Sisipkan setelah elemen yang diklik
-        currentItem.parentNode.insertBefore(newItem, currentItem.nextSibling);
+        currentItem.parentNode.appendChild(newItem);
     }
 
     function UphapusHarapan(btn) {
@@ -530,13 +554,13 @@
                     type: "GET",
                     data: {
                         id_week: id_week,
-                        id_kader:id_kader
+                        id_kader: id_kader
                     },
                     success: function(response) {
-                        if(response[0]){
+                        if (response[0]) {
                             console.log(response[0]);
                             $('#fmK_mentor').val(response[0]);
-                        }else{
+                        } else {
                             $('#fmK_mentor').val('');
                         }
                     }
@@ -544,19 +568,22 @@
             }
         });
 
-        $('#nik-kader').change(function(){
+        $('#nik-kader').change(function() {
             var nik_kader = $(this).val();
             var ojt = $('#ojt').val();
-            if(nik_kader != ''){
+            if (nik_kader != '') {
                 $.ajax({
                     url: '{{ route("getWeeks") }}', // bikin route ini
                     type: 'GET',
-                    data: {nik_kader: nik_kader,ojt:ojt},
-                    success: function(response){
+                    data: {
+                        nik_kader: nik_kader,
+                        ojt: ojt
+                    },
+                    success: function(response) {
                         $('#add-select-week').empty();
                         $('#add-select-week').append('<option value="">--Pilih Week--</option>');
-                        $.each(response, function(id, angka_week){
-                            $('#add-select-week').append('<option value="'+id+'">'+angka_week+'</option>');
+                        $.each(response, function(id, angka_week) {
+                            $('#add-select-week').append('<option value="' + id + '">' + angka_week + '</option>');
                         });
                     }
                 });
@@ -569,16 +596,18 @@
         $('#select-kader').on('change', function() {
             // $('#week-select').val('');
             var nik_kader = $(this).val();
-            if(nik_kader != ''){
+            if (nik_kader != '') {
                 $.ajax({
                     url: '{{ route("getWeeksEditK") }}', // bikin route ini
                     type: 'GET',
-                    data: {nik_kader: nik_kader},
-                    success: function(response){
+                    data: {
+                        nik_kader: nik_kader
+                    },
+                    success: function(response) {
                         $('#week-select').empty();
                         $('#week-select').append('<option value="">--Pilih Week--</option>');
-                        $.each(response, function(id, angka_week){
-                            $('#week-select').append('<option value="'+id+'">'+angka_week+'</option>');
+                        $.each(response, function(id, angka_week) {
+                            $('#week-select').append('<option value="' + id + '">' + angka_week + '</option>');
                         });
                     }
                 });

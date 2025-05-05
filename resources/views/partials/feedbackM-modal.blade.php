@@ -24,7 +24,7 @@
         <div id="peningkatan-wrapper">
             @foreach($feedback->details->where('jenis', 'peningkatan')->sortBy('no_idx')->values() as $i => $item)
             <div class="row peningkatan-item mb-2">
-                <div class="col-6">
+                <div class="col-5">
                     <div class="form-group">
                         <label class="mb-2">Variable:</label>
                         <input type="text" name="peningkatan[{{ $i }}][var]" class="form-control" value="{{ $item->var }}">
@@ -36,13 +36,21 @@
                         <textarea name="peningkatan[{{ $i }}][desc]" class="form-control">{{ $item->desc }}</textarea>
                     </div>
                 </div>
-                <!-- <div class="col-1 d-flex align-items-end">
-                    <button type="button" class="btn btn-primary" onclick="UptambahKeterampilan(this)">+</button>
-                </div> -->
+                @if ($loop->first)
+                <div class="col-1 d-flex align-items-end">
+                <button type="button" class="btn btn-primary" onclick="UptambahPeningkatan(this,'{{ $feedback->id_feedbackmai }}')">+</button>
+
+                </div>
+                @else
+                <div class="col-1 d-flex align-items-end">
+                    <button type="button" class="btn btn-danger" onclick="UphapusPeningkatan(this)">-</button>
+                </div>
+                @endif
             </div>
             @endforeach
         </div>
     </div>
+
 
     {{-- KESIMPULAN --}}
     <div class="row">

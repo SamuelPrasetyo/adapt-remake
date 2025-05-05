@@ -185,3 +185,8 @@ Route::middleware(['can:isAll'])->group(function () {
         Route::post('api/fetch-weeks', 'fetchWeek')->name('fetch.week');
     });
 });
+
+Route::get('/get-fmdetail/{id}', function ($id) {
+    return \App\Models\FmDetail::where('id_feedbackmai', $id)->count();
+});
+

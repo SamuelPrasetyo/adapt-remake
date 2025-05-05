@@ -16,7 +16,7 @@
         <div id="keterampilan-wrapper">
         @foreach($feedback->details->where('jenis', 'keterampilan')->sortBy('no_idx')->values() as $i => $item)
             <div class="row keterampilan-item mb-2">
-                <div class="col-6">
+                <div class="col-5">
                     <div class="form-group">
                         <label class="mb-2">Variable:</label>
                         <input type="text" name="keterampilan[{{ $i }}][var]" class="form-control" value="{{ $item->var }}">
@@ -28,6 +28,16 @@
                         <textarea name="keterampilan[{{ $i }}][desc]" class="form-control">{{ $item->desc }}</textarea>
                     </div>
                 </div>
+                @if ($loop->first)
+                <div class="col-1 d-flex align-items-end">
+                <button type="button" class="btn btn-primary" onclick="UptambahKeterampilan(this,'{{ $feedback->id_feedbackmai }}')">+</button>
+
+                </div>
+                @else
+                <div class="col-1 d-flex align-items-end">
+                    <button type="button" class="btn btn-danger" onclick="UphapusKeterampilan(this)">-</button>
+                </div>
+                @endif
                 <!-- <div class="col-1 d-flex align-items-end">
                     <button type="button" class="btn btn-primary" onclick="UptambahKeterampilan(this)">+</button>
                 </div> -->
@@ -42,7 +52,7 @@
         <div id="tantangan-wrapper">
             @foreach($feedback->details->where('jenis', 'tantangan')->sortBy('no_idx')->values() as $i => $item)
             <div class="row tantangan-item mb-2">
-                <div class="col-6">
+                <div class="col-5">
                     <div class="form-group">
                         <label class="mb-2">Variable:</label>
                         <input type="text" name="tantangan[{{ $i }}][var]" class="form-control" value="{{ $item->var }}">
@@ -54,6 +64,16 @@
                         <textarea name="tantangan[{{ $i }}][desc]" class="form-control">{{ $item->desc }}</textarea>
                     </div>
                 </div>
+                @if ($loop->first)
+                <div class="col-1 d-flex align-items-end">
+                <button type="button" class="btn btn-primary" onclick="UptambahTantangan(this,'{{ $feedback->id_feedbackmai }}')">+</button>
+
+                </div>
+                @else
+                <div class="col-1 d-flex align-items-end">
+                    <button type="button" class="btn btn-danger" onclick="UphapusTantangan(this)">-</button>
+                </div>
+                @endif
                 <!-- <div class="col-1 d-flex align-items-end">
                     <button type="button" class="btn btn-primary" onclick="UptambahTantangan(this)">+</button>
                 </div> -->
@@ -68,7 +88,7 @@
         <div id="harapan-wrapper">
             @foreach($feedback->details->where('jenis', 'harapan')->sortBy('no_idx')->values() as $i => $item)
             <div class="row harapan-item mb-2">
-                <div class="col-6">
+                <div class="col-5">
                     <div class="form-group">
                         <label class="mb-2">Variable:</label>
                         <input type="text" name="harapan[{{ $i }}][var]" class="form-control" value="{{ $item->var }}">
@@ -80,6 +100,16 @@
                         <textarea name="harapan[{{ $i }}][desc]" class="form-control">{{ $item->desc }}</textarea>
                     </div>
                 </div>
+                @if ($loop->first)
+                <div class="col-1 d-flex align-items-end">
+                <button type="button" class="btn btn-primary" onclick="UptambahHarapan(this,'{{ $feedback->id_feedbackmai }}')">+</button>
+
+                </div>
+                @else
+                <div class="col-1 d-flex align-items-end">
+                    <button type="button" class="btn btn-danger" onclick="UphapusHarapan(this)">-</button>
+                </div>
+                @endif
                 <!-- <div class="col-1 d-flex align-items-end">
                     <button type="button" class="btn btn-primary" onclick="UptambahHarapan(this)">+</button>
                 </div> -->

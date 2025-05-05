@@ -252,21 +252,26 @@ class FeedbackMaiController extends Controller
 
         // Update detail berdasarkan jenis
         foreach (['keterampilan', 'tantangan', 'harapan'] as $jenis) {
+            FmDetail::where('id_feedbackmai', $id)
+                ->where('jenis', $jenis)
+                ->delete();
             if ($request->has($jenis)) {
                 foreach ($request->$jenis as $key => $detail) {
-                    $data_update = [
-                        'var' => $detail['var'],
-                        'desc' => $detail['desc'],
+                    $fm_detail = [
+                        'id_fmdetail'    => Str::uuid(),
+                        'id_feedbackmai' => $id,
+                        'no_idx'         => $key + 1,
+                        'jenis'          => $jenis,
+                        'var'            => $detail['var'] ?? null,
+                        'desc'           => $detail['desc'] ?? null,
+                        'created_at'     => now(),
+                        'updated_at'     => now()
                     ];
-                    // $fmdetail = FmDetail::where('id_feedbackmai', $id)
-                    //                     ->where('jenis',$jenis)
-                    //                     ->first();
-                    FmDetail::where('id_feedbackmai', $id)
-                        ->where('jenis', $jenis)->where('no_idx', $key + 1)
-                        ->update($data_update);
+                    FmDetail::create($fm_detail);
                 }
             }
         }
+
 
         ActivityLog::activity_log('Mengubah data Feedback MAI pada Kader');
         Alert::success('Success', 'Data berhasil Diupdate!');
@@ -282,26 +287,30 @@ class FeedbackMaiController extends Controller
                 'tk_keterlibatan'   => $request->tk_keterlibatan ?? $feedback_mai->tk_keterlibatan,
                 'kesimpulan'        => $request->kesimpulan ?? $feedback_mai->kesimpulan,
                 'nama_mentor'        => $request->nama_mentor ?? $feedback_mai->nama_mentor,
+                'updated_at'        => now()
             ]);
 
         // Update detail berdasarkan jenis
         foreach (['peningkatan'] as $jenis) {
+            FmDetail::where('id_feedbackmai', $id)
+                ->where('jenis', $jenis)
+                ->delete();
             if ($request->has($jenis)) {
                 foreach ($request->$jenis as $key => $detail) {
-                    $data_update = [
-                        'var' => $detail['var'],
-                        'desc' => $detail['desc'],
+                    $fm_detail = [
+                        'id_fmdetail'    => Str::uuid(),
+                        'id_feedbackmai' => $id,
+                        'no_idx'         => $key + 1,
+                        'jenis'          => $jenis,
+                        'var'            => $detail['var'] ?? null,
+                        'desc'           => $detail['desc'] ?? null,
+                        'created_at'     => now(),
+                        'updated_at'     => now()
                     ];
-                    // $fmdetail = FmDetail::where('id_feedbackmai', $id)
-                    //                     ->where('jenis',$jenis)
-                    //                     ->first();
-                    FmDetail::where('id_feedbackmai', $id)
-                        ->where('jenis', $jenis)->where('no_idx', $key + 1)
-                        ->update($data_update);
+                    FmDetail::create($fm_detail);
                 }
             }
         }
-
         ActivityLog::activity_log('Mengubah data Feedback MAI pada Mentor');
         Alert::success('Success', 'Data berhasil Diupdate!');
         return redirect()->route('reportfeedback.index');
@@ -406,7 +415,7 @@ class FeedbackMaiController extends Controller
             ->toArray();
 
         // Semua week yang belum dipakai kader ini
-        $weeks = Week::whereIn('angka_week',$arr_week)->whereNotIn('id_week', $week_fm)
+        $weeks = Week::whereIn('angka_week', $arr_week)->whereNotIn('id_week', $week_fm)
             ->orderBy('angka_week', 'asc')
             ->pluck('angka_week', 'id_week');
         return response()->json($weeks);
