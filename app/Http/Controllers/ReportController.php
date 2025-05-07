@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exports\ReportFeedbackExport;
+use App\Exports\ReportFeedbackKaderExport;
 use App\Models\ActivityLog;
 use App\Models\cr;
 use App\Models\FeedbackMai;
@@ -557,9 +558,15 @@ class ReportController extends Controller
 
     public function export_reportfeedback($ojt)
     {
-        $file_name = 'reportfeedback_ojt_' . $ojt . '_' . date('d-m-Y_H:i:s') . '.xlsx';
+        $file_name = 'reportfeedback_mentor_ojt_' . $ojt . '_' . date('d-m-Y_H:i:s') . '.xlsx';
 
         return Excel::download(new ReportFeedbackExport($ojt), $file_name);
+    }
+    public function export_reportfeedback_kader($ojt)
+    {
+        $file_name = 'reportfeedback_kader_ojt_' . $ojt . '_' . date('d-m-Y_H:i:s') . '.xlsx';
+
+        return Excel::download(new ReportFeedbackKaderExport($ojt), $file_name);
     }
 
 

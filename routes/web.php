@@ -152,6 +152,7 @@ Route::middleware(['can:isAdmin&Mentor'])->group(function () {
         Route::match(['get', 'post'], '/reportfeedback', 'report_feedback')->name('report.feedback');
         Route::match(['get', 'post'], '/reportfeedback-back/{ojt}', 'report_feedback_back')->name('report.feedback.back');
         Route::get('/reportfeedback/export/{ojt}', 'export_reportfeedback')->name('reportfeedback.exportexcel');
+        Route::get('/reportfeedback-kader/export/{ojt}', 'export_reportfeedback_kader')->name('reportfeedbackkader.exportexcel');
 
         Route::post('/performsum', 'perform_sum_add')->name('performsum.add');
         Route::put('/performsum-edit/{id}', 'perform_sum_edit')->name('performsum.edit');

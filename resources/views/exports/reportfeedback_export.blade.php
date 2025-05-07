@@ -2,43 +2,43 @@
     <table id="example" class="datatables-basic table border-top table-striped">
         <thead>
             <tr>
-                <th style="border:1px solid #000;text-align: center;">No</th>
-                <th style="border:1px solid #000;text-align: center;width:100px">Bisnis Unit</th>
-                <th style="border:1px solid #000;text-align: center;">Divisi</th>
-                <th style="border:1px solid #000;text-align: center;">Departement</th>
-                <th style="border:1px solid #000;text-align: center;">Mentor</th>
-                <th style="border:1px solid #000;text-align: center;">Kader</th>
-                <th style="border:1px solid #000;text-align: center;">Batch</th>
-                <th style="border:1px solid #000;text-align: center;">L/P</th>
-                <th style="border:1px solid #000;text-align: center;">Iq</th>
-                <th style="border:1px solid #000;text-align: center;">Inch</th>
+                <th style="background-color:gray;border:1px solid #000;text-align: center;">No</th>
+                <th style="background-color:gray;border:1px solid #000;text-align: center;width:100px">Bisnis Unit</th>
+                <th style="background-color:gray;border:1px solid #000;text-align: center;">Divisi</th>
+                <th style="background-color:gray;border:1px solid #000;text-align: center;">Departement</th>
+                <th style="background-color:gray;border:1px solid #000;text-align: center;">Mentor</th>
+                <th style="background-color:gray;border:1px solid #000;text-align: center;">Kader</th>
+                <th style="background-color:gray;border:1px solid #000;text-align: center;">Batch</th>
+                <th style="background-color:gray;border:1px solid #000;text-align: center;">L/P</th>
+                <th style="background-color:gray;border:1px solid #000;text-align: center;">Iq</th>
+                <th style="background-color:gray;border:1px solid #000;text-align: center;">Inch</th>
                 @foreach($weeks as $wk)
                 @foreach($pertanyaans as $key => $q)
                 @if($key < 4)
-                    <th style="border:1px solid #000;text-align: center;">{{strip_tags($q->nama_pertanyaan).'('.$wk->angka_week.')'}}</th>
+                    <th style="background-color:gray;border:1px solid #000;text-align: center;">{{strip_tags($q->nama_pertanyaan).'('.$wk->angka_week.')'}}</th>
                     @endif
                     @endforeach
                     @endforeach
-                    <th style="border:1px solid #000;text-align: center;">Rata-rata</th>
+                    <th style="background-color:gray;border:1px solid #000;text-align: center;">Rata-rata</th>
                     @foreach($weeks as $wk)
                     @foreach($pertanyaans as $key => $q)
                     @if($key == 4)
-                    <th style="border:1px solid #000;text-align: center;">{{'I & M'.'('.$wk->angka_week.')'}}</th>
+                    <th style="background-color:gray;border:1px solid #000;text-align: center;">{{'I & M'.'('.$wk->angka_week.')'}}</th>
                     @endif
                     @endforeach
                     @endforeach
-                    <th style="border:1px solid #000;text-align: center;">Rata-rata</th>
+                    <th style="background-color:gray;border:1px solid #000;text-align: center;">Rata-rata</th>
                     @foreach($weeks as $wk)
                     @foreach($pertanyaans as $key => $q)
                     @if($key == 4)
-                    <th style="border:1px solid #000;text-align: center;">{{'Input Week '.'('.$wk->angka_week.')'}}</th>
+                    <th style="background-color:gray;border:1px solid #000;text-align: center;">{{'Input Week '.'('.$wk->angka_week.')'}}</th>
                     @endif
                     @endforeach
                     @endforeach
-                    <th style="border:1px solid #000;text-align: center;">PERFORMANCE SUMMARY</th>
-                    <th style="border:1px solid #000;text-align: center;">AVG</th>
-                    <th style="border:1px solid #000;text-align: center;">GRADE</th>
-                    <th style="border:1px solid #000;text-align: center;width:200px"> SUMMARY GRADE</th>
+                    <th style="background-color:gray;border:1px solid #000;text-align: center;">PERFORMANCE SUMMARY</th>
+                    <th style="background-color:gray;border:1px solid #000;text-align: center;">AVG</th>
+                    <th style="background-color:gray;border:1px solid #000;text-align: center;">GRADE</th>
+                    <th style="background-color:gray;border:1px solid #000;text-align: center;width:200px"> SUMMARY GRADE</th>
             </tr>
         </thead>
         <tbody>
@@ -106,7 +106,7 @@
                     @endif
                     @endforeach
                     @endforeach
-                    @php $rata2_2 = $rata2_2 != 0 ? round($rata2_2/$c2, 2) : 0; @endphp
+                    @php $rata2_2 = $rata2_2 != 0 ? round(($rata2_2/$c2)*2, 2) : 0; @endphp
                     <td style="border:1px solid #000;text-align: left;font-size:12px">{{$rata2_2}}</td>
                     @foreach($weeks as $wk)
                     @foreach($pertanyaans as $key => $q)

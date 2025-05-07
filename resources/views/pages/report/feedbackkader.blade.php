@@ -19,7 +19,7 @@
                                         <h5 class="card-title mb-1 text-nowrap">Report Feedback {{$user_type}} OJT {{$ojt}}</h5>
                                     </div>
                                     <div class="col d-flex justify-content-end gap-2 mb-3">
-                                        <a class="btn btn-primary" href="{{ route('reportfeedback.exportexcel',$ojt) }}">Export</a>
+                                        <a class="btn btn-primary" href="{{ route('reportfeedbackkader.exportexcel',$ojt) }}">Export</a>
                                         <button data-bs-toggle="modal" data-bs-target="#add-fm" class="btn btn-sm btn-primary">
                                             <i class="bi bi-plus-lg"></i> Feedback MAI
                                         </button>
@@ -54,7 +54,6 @@
                                                 </th>
                                                 @endforeach
                                                 @endforeach
-                                                <th style="text-align: center;">Feedback MAI</th>
                                             </tr>
                                         </thead>
 
@@ -121,11 +120,6 @@
                                                     @endif
                                                     @endforeach
                                                     @endforeach
-                                                    <td style="text-align: center;font-size:14px"><button data-bs-toggle="modal"
-                                                            data-bs-target="#add-data{{$data->id}}" class="btn btn-sm btn-primary">Add</button>
-                                                        <button data-bs-toggle="modal"
-                                                            data-bs-target="#edit-data{{$data->id}}" class="btn btn-sm btn-primary">Edit</button>
-                                                    </td>
                                             </tr>
                                             @endforeach
                                         </tbody>
