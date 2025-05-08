@@ -360,6 +360,24 @@ class FeedbackMaiController extends Controller
 
     public function getWeeksEditM(Request $request)
     {
+        switch ($request->ojt) {
+            case '1':
+                $arr_week = ['2', '4', '6', '8', '10', '12'];
+                break;
+            case '2':
+                $arr_week = ['14', '16', '18', '20', '22', '24'];
+                break;
+            case '3':
+                $arr_week = ['26', '28', '30', '32', '34', '36'];
+                break;
+            case '4':
+                $arr_week = ['38', '40', '42', '44', '46', '48'];
+                break;
+            default:
+                $arr_week = [];
+                break;
+        }
+
         $nik_kader = $request->nik_kader;
 
         // Week yang sudah diambil kader ini
@@ -370,6 +388,7 @@ class FeedbackMaiController extends Controller
 
         // Semua week yang belum dipakai kader ini
         $weeks = Week::whereIn('id_week', $week_fm)
+            ->whereIn('angka_week',$arr_week)
             ->orderBy('angka_week', 'asc')
             ->pluck('angka_week', 'id_week');
         return response()->json($weeks);
@@ -377,6 +396,24 @@ class FeedbackMaiController extends Controller
 
     public function getWeeksEditK(Request $request)
     {
+        switch ($request->ojt) {
+            case '1':
+                $arr_week = range(1, 12);
+                break;
+            case '2':
+                $arr_week = range(13, 24);
+                break;
+            case '3':
+                $arr_week = range(25, 36);
+                break;
+            case '4':
+                $arr_week = range(37, 48);
+                break;
+            default:
+                $arr_week = [];
+                break;
+        }
+
         $nik_kader = $request->nik_kader;
 
         // Week yang sudah diambil kader ini
@@ -386,9 +423,10 @@ class FeedbackMaiController extends Controller
             ->toArray();
 
         // Semua week yang belum dipakai kader ini
-        $weeks = WeekKader::whereIn('id_week', $week_fm)
-            ->orderBy('angka_week', 'asc')
-            ->pluck('angka_week', 'id_week');
+        $weeks = WeekKader::whereIn('angka_week',$arr_week)
+                    ->whereIn('id_week', $week_fm)
+                    ->orderBy('angka_week', 'asc')
+                    ->pluck('angka_week', 'id_week');
         return response()->json($weeks);
     }
 

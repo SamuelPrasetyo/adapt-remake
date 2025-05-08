@@ -133,7 +133,6 @@
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                             </div>
                                             <div class="modal-body overflow-auto" style="max-height: 500px;">
-                                                @php $kader = \App\Models\Kader::where('nik',$data->nik_kader)->first(); @endphp
                                                 <div class="row">
                                                     <div class="col-6">
                                                         <label class="mb-2">Kader: </label>
@@ -142,7 +141,11 @@
                                                                 <option value="">--Pilih Kader--</option>
                                                                 @foreach($datas as $data)
                                                                 @php
-                                                                $fm_kader = \App\Models\FeedbackMai::where('user_type','kader')->where('nik_kader',$data->nik_kader)->first();
+                                                                $fm_kader = \App\Models\FeedbackMai::join('weeks_kader','feedback_mai.id_week','weeks_kader.id_week')
+                                                                ->where('user_type','kader')
+                                                                ->where('nik_kader',$data->nik_kader)
+                                                                ->whereIn('weeks_kader.angka_week',$arr_week)
+                                                                ->first();
                                                                 @endphp
                                                                 @if($fm_kader)
                                                                 <option value="{{ $data->nik_kader }}">{{ $data->nama }}</option>
@@ -590,12 +593,14 @@
         $('#select-kader').on('change', function() {
             // $('#week-select').val('');
             var nik_kader = $(this).val();
+            var ojt = $('#ojt').val();
             if (nik_kader != '') {
                 $.ajax({
                     url: '{{ route("getWeeksEditK") }}', // bikin route ini
                     type: 'GET',
                     data: {
-                        nik_kader: nik_kader
+                        nik_kader: nik_kader,
+                        ojt:ojt
                     },
                     success: function(response) {
                         $('#week-select').empty();

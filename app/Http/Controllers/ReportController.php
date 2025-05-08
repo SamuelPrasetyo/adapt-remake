@@ -384,7 +384,7 @@ class ReportController extends Controller
             $feedbacks = FeedbackMai::with('details')->get();
             $user_type = $request->usertype;
 
-            return view('pages.report.feedback', compact('datas', 'mentor', 'jawaban', 'pertanyaans', 'weeks', 'performance_sums', 'ojt', 'feedbacks','user_type'));
+            return view('pages.report.feedback', compact('datas', 'mentor', 'jawaban', 'pertanyaans', 'weeks', 'performance_sums', 'ojt', 'feedbacks','user_type','arr_week'));
         } elseif ($request->usertype == 'Kader') {
             $datas = Kader::select('kader.id', 'kader.nama', 'kader.jenis_kelamin', 'kader.iq', 'kader.ipk', 'company.company_name', 'divisis.nama as divisi', 'departemens.nama as departement', 'batch.nama_batch', 'batch.tahun_batch', 'kader.nik', 'jawaban.nik_kader', 'company.company_shortname')
                 ->leftJoin('company', 'kader.company_code', 'company.company_code')
@@ -454,7 +454,7 @@ class ReportController extends Controller
             $ojt = $request->ojt;
 
             $user_type = $request->usertype;
-            return view('pages.report.feedbackkader', compact('datas', 'mentor', 'jawaban', 'pertanyaans', 'weeks', 'ojt', 'feedbacks','user_type'));
+            return view('pages.report.feedbackkader', compact('datas', 'mentor', 'jawaban', 'pertanyaans', 'weeks', 'ojt', 'feedbacks','user_type','arr_week'));
         }
     }
 

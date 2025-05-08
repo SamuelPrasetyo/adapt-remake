@@ -365,8 +365,13 @@
                                                             <option value="">--Pilih Kader--</option>
                                                             @foreach($datas as $data)
                                                             @php
-                                                            $fm_mentor = \App\Models\FeedbackMai::where('user_type','mentor')->where('nik_kader',$data->nik_kader)->first();
+                                                            $fm_mentor = \App\Models\FeedbackMai::join('weeks','feedback_mai.id_week','weeks.id_week')
+                                                                ->where('user_type','mentor')
+                                                                ->where('nik_kader',$data->nik_kader)
+                                                                ->whereIn('weeks.angka_week',$arr_week)
+                                                                ->first();
                                                             @endphp
+
                                                             @if($fm_mentor)
                                                             <option value="{{ $data->nik_kader }}">{{ $data->nama }}</option>
                                                             @endif
@@ -423,6 +428,7 @@
             <button type="button" class="btn btn-danger" onclick="hapusPeningkatan(this)">-</button>
         </div>
     `;
+    
         peningkatanIndex++;
         wrapper.appendChild(newItem); // Tambahkan ke bawah
     }
@@ -622,12 +628,14 @@
         $('#select-kaderM').on('change', function() {
             // $('#biweek-select').val('');
             var nik_kader = $(this).val();
+            var ojt = $('#ojt').val();
             if (nik_kader != '') {
                 $.ajax({
                     url: '{{ route("getWeeksEditM") }}', // bikin route ini
                     type: 'GET',
                     data: {
-                        nik_kader: nik_kader
+                        nik_kader: nik_kader,
+                        ojt: ojt
                     },
                     success: function(response) {
                         $('#biweek-select').empty();
