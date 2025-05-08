@@ -56,7 +56,7 @@ class FeedbackMaiController extends Controller
             ->first();
         $file_name = 'fm-kader-' . $feedback->nama_kader . '-Week' . $feedback->angka_week . '-' . now() . '.pdf';
         $pdf = Pdf::loadView('pdf.feedbackmai', compact('feedback'));
-
+        ActivityLog::activity_log('Mengexport Feedback MAI pada Kader');
         return $pdf->download($file_name);
     }
 
@@ -97,7 +97,7 @@ class FeedbackMaiController extends Controller
             ->first();
         $file_name = 'fm-mentor-' . $feedback->nama_mentor . '-Week' . $feedback->angka_week . '-' . now() . '.pdf';
         $pdf = Pdf::loadView('pdf.feedbackmaiM', compact('feedback'));
-
+        ActivityLog::activity_log('Mengexport Feedback MAI pada Mentor');
         return $pdf->download($file_name);
     }
 
@@ -200,7 +200,7 @@ class FeedbackMaiController extends Controller
             ->first();
         $file_name = 'fm-kader-' . $feedback->nama_kader . '-Week' . $feedback->angka_week . '-' . now() . '.pdf';
         $pdf = PDF::loadView('pdf.feedbackmai', compact('feedback'));
-
+        ActivityLog::activity_log('Mengexport Feedback MAI pada Kader');
         return $pdf->download($file_name);
     }
 
@@ -218,7 +218,7 @@ class FeedbackMaiController extends Controller
         $file_name = 'fm-mentor-' . $nm_mentor . '-Week' . $feedback->angka_week . '-' . now() . '.pdf';
 
         $pdf = PDF::loadView('pdf.feedbackmaiM', compact('feedback'));
-
+        ActivityLog::activity_log('Mengexport Feedback MAI pada Mentor');
         return $pdf->download($file_name);
     }
 
