@@ -44,12 +44,15 @@ Route::middleware(['can:isKader'])->group(function () {
     Route::controller(DashboardController::class)->group(function () {
         Route::get('/dashboard-kader', 'dashboard_kader')->name('dashboard.kader');
     });
-    Route::get('/feedback_mai-kader', [FeedbackMaiController::class, 'fm_kader_index'])->name('fm.kader.index');
-    Route::get('/feedback_mai-kader/export/{id_week}', [FeedbackMaiController::class, 'fm_kader_export'])->name('fm.kader.export');
-});
-Route::middleware(['can:isMentor'])->group(function () {
+    
     Route::get('/feedback_mai-mentor', [FeedbackMaiController::class, 'fm_mentor_index'])->name('fm.mentor.index');
     Route::get('/feedback_mai-mentor/export/{id_week}/{nik_kader}', [FeedbackMaiController::class, 'fm_mentor_export'])->name('fm.mentor.export');
+});
+Route::middleware(['can:isMentor'])->group(function () {
+    Route::get('/feedback_mai-kader', [FeedbackMaiController::class, 'fm_kader_index'])->name('fm.kader.index');
+    Route::get('/feedback_mai-kader/export/{id_week}', [FeedbackMaiController::class, 'fm_kader_export'])->name('fm.kader.export');
+
+    
 });
 
 Route::controller(LoginController::class)->group(function () {

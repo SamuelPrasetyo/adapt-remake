@@ -25,10 +25,14 @@ class FeedbackMaiController extends Controller
     public function fm_kader_index()
     {
         $user = Auth::user();
+        $data_kader = Jawaban::where('created_by',$user->id)->first();
+
         $feedbacks = FeedbackMai::select('feedback_mai.*', 'weeks_kader.angka_week',)
             ->join('weeks_kader', 'feedback_mai.id_week', 'weeks_kader.id_week')
-            ->where('feedback_mai.nik_kader', $user->nik)
+            ->where('feedback_mai.nik_kader', $data_kader->nik_kader)
+            // ->where('created')
             ->where('feedback_mai.user_type', 'kader')
+            ->orderBy('weeks_kader.angka_week','desc')
             ->get();
 
         return view('pages.feedbackmai.fm_kader', compact('feedbacks'));
@@ -37,6 +41,8 @@ class FeedbackMaiController extends Controller
     public function fm_kader_export($id_week)
     {
         $user = Auth::user();
+        $data_kader = Jawaban::where('created_by',$user->id)->first();
+
         $feedback = FeedbackMai::select('feedback_mai.*', 'company.company_name', 'departemens.nama as nama_dept', 'kader.nama as nama_kader', 'weeks_kader.angka_week', 'batch.nama_batch')
             ->join('kader', 'feedback_mai.nik_kader', 'kader.nik')
             ->join('company', 'kader.company_code', 'company.company_code')
@@ -44,7 +50,7 @@ class FeedbackMaiController extends Controller
             ->join('weeks_kader', 'feedback_mai.id_week', 'weeks_kader.id_week')
             ->join('batch', 'kader.id_batch', 'batch.id_batch')
             ->where('feedback_mai.id_week', $id_week)
-            ->where('feedback_mai.nik_kader', $user->nik)
+            ->where('feedback_mai.nik_kader', $data_kader->nik_kader)
             ->where('feedback_mai.user_type', 'kader')
             // ->with(['details','kaders'])
             ->first();

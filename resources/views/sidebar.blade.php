@@ -145,7 +145,7 @@
                     </a>
                 </li>
                 @endcanany
-                @canany(['isKader'])
+                @canany(['isMentor'])
                 <li class="menu-item" id="fm_kader">
                     <a href="{{route('fm.kader.index')}}" class="menu-link">
                         <i class="menu-icon tf-icons bx bxs-archive-in"></i>
@@ -153,7 +153,7 @@
                     </a>
                 </li>
                 @endcanany
-                @canany(['isMentor'])
+                @canany(['isKader'])
                 <li class="menu-item" id="fm_mentor">
                     <a href="{{route('fm.mentor.index')}}" class="menu-link">
                         <i class="menu-icon tf-icons bx bxs-archive-in"></i>

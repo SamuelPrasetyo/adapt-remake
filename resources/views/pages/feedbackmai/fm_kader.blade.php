@@ -16,10 +16,10 @@
                                     </div>
                                 </div>
                                 <div class="table table-striped">
-                                    <table id="example" class="datatables-basic table border-top table-striped">
+                                    <table id="example" class="datatables-basic table table-bordered table-striped">
                                         <thead>
                                             <tr>
-                                                <th style="text-align: center;">No</th>
+                                                <th style="text-align: center;width:2%">No</th>
                                                 <th style="text-align: center;">Week</th>
                                                 <th style="text-align: center;">File</th>
                                             </tr>
@@ -29,7 +29,7 @@
                                             @foreach($feedbacks as $feedback)
                                             <tr>
                                                 <td style="text-align: center;font-size:14px">{{$no++}}</td>
-                                                <td style="text-align: center;font-size:14px">{{$feedback->angka_week}}</td>
+                                                <td style="text-align: center;font-size:14px">{{'Week '.$feedback->angka_week}}</td>
                                                 <td style="text-align: center;font-size:14px"><a class="btn btn-sm btn-primary" href="{{route('fm.kader.export',$feedback->id_week)}}"><i class="bi bi-download"></i></a></td>
                                             </tr>
                                             @endforeach
