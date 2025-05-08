@@ -25,20 +25,30 @@ class FeedbackMaiController extends Controller
     public function fm_kader_index()
     {
         $user = Auth::user();
-        $data_kader = Jawaban::where('created_by',$user->id)->first();
+        $nik_kader = Jawaban::select('nik_kader')
+        ->where('created_by', $user->id)
+        ->groupBy('nik_kader')
+        ->pluck('nik_kader')
+        ->toArray();
+        $kaders = FeedbackMai::select('kader.id','kader.nama','kader.nik')
+            ->join('kader', 'feedback_mai.nik_kader', 'kader.nik')
+            ->whereIn('feedback_mai.nik_kader', $nik_kader)
+            ->where('feedback_mai.user_type', 'kader')
+            ->groupBy('kader.id','kader.nama','kader.nik')
+            ->get();
 
         $feedbacks = FeedbackMai::select('feedback_mai.*', 'weeks_kader.angka_week',)
             ->join('weeks_kader', 'feedback_mai.id_week', 'weeks_kader.id_week')
-            ->where('feedback_mai.nik_kader', $data_kader->nik_kader)
+            ->whereIn('feedback_mai.nik_kader', $nik_kader)
             // ->where('created')
             ->where('feedback_mai.user_type', 'kader')
             ->orderBy('weeks_kader.angka_week','desc')
             ->get();
 
-        return view('pages.feedbackmai.fm_kader', compact('feedbacks'));
+        return view('pages.feedbackmai.fm_kader', compact('feedbacks','kaders'));
     }
 
-    public function fm_kader_export($id_week)
+    public function fm_kader_export($id_week,$nik_kader)
     {
         $user = Auth::user();
         $data_kader = Jawaban::where('created_by',$user->id)->first();
@@ -50,7 +60,7 @@ class FeedbackMaiController extends Controller
             ->join('weeks_kader', 'feedback_mai.id_week', 'weeks_kader.id_week')
             ->join('batch', 'kader.id_batch', 'batch.id_batch')
             ->where('feedback_mai.id_week', $id_week)
-            ->where('feedback_mai.nik_kader', $data_kader->nik_kader)
+            ->where('feedback_mai.nik_kader', $nik_kader)
             ->where('feedback_mai.user_type', 'kader')
             // ->with(['details','kaders'])
             ->first();
