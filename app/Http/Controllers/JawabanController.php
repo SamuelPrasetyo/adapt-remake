@@ -66,14 +66,7 @@ class JawabanController extends Controller
         $subject = Pertanyaan::where('type', 'Subject ' . $this->user->type)->where('status', 'Aktif')->first();
         // $subject = Pertanyaan::where('type','Subject Kader')->first();
 
-        $jawaban = Jawaban::select('weeks_kader.angka_week')
-            ->join('weeks_kader', 'jawaban.id_week', 'weeks_kader.id_week')
-            ->where('jawaban.created_by', Auth::user()->id)
-            ->groupBy('weeks_kader.angka_week')
-            ->first();
 
-        $last_week = $jawaban->angka_week ?? 0;
-        $weeks = WeekKader::orderBy('angka_week', 'asc')->where('angka_week', '>', $last_week)->get();
         $company = Company::where('company_code', $this->user->company_code)->first();
         $kaders = Kader::where('company_code', $company->company_code)
             ->orderBy('nama', 'asc')
@@ -90,8 +83,31 @@ class JawabanController extends Controller
         $nilai = Nilai::orderBy('id_nilai', 'asc')->get();
 
         if ($this->user->type == 'Mentor') {
+            $last_week = Jawaban::select('weeks.angka_week')
+                ->join('weeks', 'jawaban.id_week', 'weeks.id_week')
+                ->where('jawaban.created_by', Auth::user()->id)
+                ->groupBy('weeks.angka_week')
+                ->get()
+                ->toArray();
+
+            $weeks = Week::orderBy('angka_week', 'asc')
+                ->whereNotIn('angka_week', $last_week)
+                ->get();
+
             return view('pages.jawaban.feedback', compact('subject', 'weeks', 'kaders', 'counts', 'pertanyaan', 'id_pertanyaan', 'nilai'));
         } elseif ($this->user->type == 'Kader') {
+            $last_week = Jawaban::select('weeks_kader.angka_week')
+                ->join('weeks_kader', 'jawaban.id_week', 'weeks_kader.id_week')
+                ->where('jawaban.created_by', Auth::user()->id)
+                ->groupBy('weeks_kader.angka_week')
+                ->get()
+                ->toArray();
+
+
+            $weeks = WeekKader::orderBy('angka_week', 'asc')
+                ->whereNotIn('angka_week', $last_week)
+                ->get();
+
             return view('pages.jawaban.feedback_kader', compact('subject', 'weeks', 'kaders', 'counts', 'pertanyaan', 'id_pertanyaan'));
         }
     }
@@ -135,7 +151,6 @@ class JawabanController extends Controller
             $jawaban_mentor['6'] = $request->pertanyaan6_mentor;
             $count_pertanyaan = Pertanyaan::where('type', 'Mentor')->where('status', 'Aktif')->get()->count();
             for ($i = 1; $i <= $count_pertanyaan; $i++) {
-                log::info($i);
                 $jawaban = $jawaban_mentor[$i];
 
                 // if ($i < 5 OR $i) {
@@ -180,6 +195,11 @@ class JawabanController extends Controller
             Alert::success('Terima Kasih', 'Feedback berhasil disubmit!');
             return redirect()->route('feedback.index');
         } catch (\Throwable $th) {
+            $errorMessage = $th->getMessage();
+            $errorMessageClean = mb_convert_encoding($errorMessage, 'UTF-8', 'UTF-8');
+            $errorMessageClean = preg_replace('/[^\x20-\x7E]/', '', $errorMessage);
+
+            ActivityLog::activity_log('Mentor gagal mengisi feedback ', $errorMessageClean);
             Alert::warning('Failed', 'Feedback gagal disubmit!');
             return redirect()->route('feedback.index');
         }
@@ -220,6 +240,11 @@ class JawabanController extends Controller
             Alert::success('Terima Kasih', 'Feedback berhasil disubmit!');
             return redirect()->route('feedback.index');
         } catch (\Throwable $th) {
+            $errorMessage = $th->getMessage();
+            $errorMessageClean = mb_convert_encoding($errorMessage, 'UTF-8', 'UTF-8');
+            $errorMessageClean = preg_replace('/[^\x20-\x7E]/', '', $errorMessage);
+
+            ActivityLog::activity_log('Kader gagal mengisi feedback ', $errorMessageClean);
             Alert::warning('Failed', 'Feedback gagal disubmit!');
             return redirect()->route('feedback.index');
         }
@@ -263,16 +288,16 @@ class JawabanController extends Controller
 
     public function fetchWeek(Request $request)
     {
-        $jawaban = Jawaban::select('weeks.angka_week')
+        $last_week = Jawaban::select('weeks.angka_week')
             ->join('weeks', 'jawaban.id_week', 'weeks.id_week')
             ->where('jawaban.nik_kader', $request->id_kader)
             ->whereNotNull('jawaban.nama_mentor')
             ->groupBy('weeks.angka_week')
             ->orderBy('weeks.angka_week', 'desc')
-            ->first();
+            ->get()
+            ->toArray();
 
-        $last_week = $jawaban->angka_week ?? 0;
-        $data['weeks'] = Week::orderBy('angka_week', 'asc')->where('angka_week', '>', $last_week)->get();
+        $data['weeks'] = Week::orderBy('angka_week', 'asc')->whereNotIn('angka_week', $last_week)->get();
 
         return response()->json($data);
     }
@@ -418,7 +443,7 @@ class JawabanController extends Controller
         } elseif ($request->usertype == 'Kader') {
             if (!isset($request->id_user) && !isset($request->id_week)) {
                 $isUserOnly = True;
-                $jawabans = Jawaban::select('jawaban.jawaban','jawaban.nama_mentor', 'kader.nama as nama_kader', 'weeks.angka_week', 'pertanyaan.nama_pertanyaan', 'weeks.angka_week','jawaban.nik_kader')
+                $jawabans = Jawaban::select('jawaban.jawaban', 'jawaban.nama_mentor', 'kader.nama as nama_kader', 'weeks.angka_week', 'pertanyaan.nama_pertanyaan', 'weeks.angka_week', 'jawaban.nik_kader')
                     ->join('pertanyaan', 'pertanyaan.id_pertanyaan', 'jawaban.id_pertanyaan')
                     ->join('weeks', 'weeks.id_week', 'jawaban.id_week')
                     ->join('users', 'jawaban.created_by', 'users.id')
@@ -426,8 +451,8 @@ class JawabanController extends Controller
                     // ->where('kader.nik','test.kader.mai')
                     // ->where('weeks.angka_week','8')
                     ->whereNull('jawaban.nama_mentor')
-                    ->orderBy('weeks.angka_week','asc')
-                    ->orderBy('jawaban.id_pertanyaan','asc')
+                    ->orderBy('weeks.angka_week', 'asc')
+                    ->orderBy('jawaban.id_pertanyaan', 'asc')
                     ->get()
                     ->groupBy('nama_kader');
             } else {
@@ -463,6 +488,6 @@ class JawabanController extends Controller
                 $week = $week->angka_week;
             }
         }
-        return view('pages.jawaban.detail', compact('jawabans', 'week', 'title','isUserOnly'));
+        return view('pages.jawaban.detail', compact('jawabans', 'week', 'title', 'isUserOnly'));
     }
 }

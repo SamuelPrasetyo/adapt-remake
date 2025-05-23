@@ -12,10 +12,11 @@ class ActivityLog extends Model
     protected $table = 'activity_log';
     protected $guarded = [];
 
-    public static function activity_log(string $desc)
+    public static function activity_log(string $desc, string $errmsg = '')
     {
         $data = [
             'desc'       => $desc,
+            'err_msg'    => $errmsg,
             'created_at' => now(),
             'created_by' => Auth::user()->id,
         ];
