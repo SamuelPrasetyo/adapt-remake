@@ -62,7 +62,6 @@ class JawabanController extends Controller
     }
     public function feedback()
     {
-
         $subject = Pertanyaan::where('type', 'Subject ' . $this->user->type)->where('status', 'Aktif')->first();
         // $subject = Pertanyaan::where('type','Subject Kader')->first();
 
@@ -210,7 +209,7 @@ class JawabanController extends Controller
         try {
             // dd($request);
             $bu = Company::where('company_code', $this->user->company_code)->first();
-            $week = Week::where('id_week', $request->id_week)->first();
+            $week = WeekKader::where('id_week', $request->id_week)->first();
             $name = str_replace(' ', '_', $this->user->name);
             $file = $request->file('jawaban_kader')[4]->getClientOriginalName();
             $file = explode('.', $file);
