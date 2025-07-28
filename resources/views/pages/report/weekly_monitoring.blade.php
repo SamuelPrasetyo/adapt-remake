@@ -275,7 +275,7 @@
                                 </div>
                                 <div class="row mt-3 mb-3">
                                     <div class="col-4">
-                                        <h6>MANTEE : </h6>
+                                        <h6>MENTEE : </h6>
                                     </div>
                                     <div class="col-8">
                                         <div class="progress" style="height: 4vh;">
