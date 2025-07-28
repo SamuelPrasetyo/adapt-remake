@@ -198,7 +198,12 @@
 
                                                     @endphp
                                                     @endfor
-                                                    <td style="font-size: 11px;background-color:#E5E4E2;text-align:center;border:1px black solid;vertical-align: middle;">{{ number_format($avg2 / $count_data2, 2) }}
+                                                    <td style="font-size: 11px;background-color:#E5E4E2;text-align:center;border:1px black solid;vertical-align: middle;">
+                                                        @if($count_data2 > 0)
+                                                        {{ number_format($avg2 / $count_data2, 2) }}
+                                                        @else
+                                                        -
+                                                        @endif
                                                     </td>
                                             </tr>
                                         </tbody>
