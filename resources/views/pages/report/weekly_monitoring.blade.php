@@ -202,7 +202,7 @@
                                                         @if($count_data2 > 0)
                                                         {{ number_format($avg2 / $count_data2, 2) }}
                                                         @else
-                                                        -
+                                                        0
                                                         @endif
                                                     </td>
                                             </tr>
