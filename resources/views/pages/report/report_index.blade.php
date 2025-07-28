@@ -56,13 +56,13 @@
                             <form action="{{route('report.feedback')}}" class="col-6" method="POST">
                                 @csrf
                                 <label class="mb-2">User Type: </label>
-                                    <div class="form-group mb-1">
-                                        <select class="form-control select2" name="usertype" id="usertype">
-                                            <option value="">--Pilih User Type--</option>
-                                            <option value="Mentor">Mentor</option>
-                                            <option value="Kader">Kader</option>
-                                        </select>
-                                    </div>
+                                <div class="form-group mb-1">
+                                    <select class="form-control select2" name="usertype" id="usertype">
+                                        <option value="">--Pilih User Type--</option>
+                                        <option value="Mentor">Mentor</option>
+                                        <option value="Kader">Kader</option>
+                                    </select>
+                                </div>
                                 <label class="mb-2">OJT: </label>
                                 <div class="form-group mb-1">
                                     <select class="form-control select2" name="ojt" required>

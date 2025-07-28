@@ -88,13 +88,21 @@
                                             <tr>
                                                 <td style="font-size: 11px;background-color:#E5E4E2;text-align:center;border:1px black solid">{{$no++}}</td>
                                                 <td style="font-size: 11px;background-color:#E5E4E2;text-align:left;border:1px black solid">{{strip_tags($val->nama_pertanyaan)}}</td>
-                                                @php $avg_pertanyaan = 0;@endphp
+                                                @php
+                                                $avg_pertanyaan = 0;
+                                                $count_data = 0;
+                                                @endphp
 
                                                 @for($i = 0; $i < count($data[strip_tags($val->nama_pertanyaan)]); $i++)
                                                     <td style="font-size: 11px;background-color:#E5E4E2;text-align:center;border:1px black solid">{{$data[strip_tags($val->nama_pertanyaan)][$week_arr[$i]]}}</td>
-                                                    @php $avg_pertanyaan += $data[strip_tags($val->nama_pertanyaan)][$week_arr[$i]];@endphp
+                                                    @php
+                                                    $avg_pertanyaan += $data[strip_tags($val->nama_pertanyaan)][$week_arr[$i]];
+                                                    if($data[strip_tags($val->nama_pertanyaan)][$week_arr[$i]] != 0){
+                                                    $count_data += 1;
+                                                    }
+                                                    @endphp
                                                     @endfor
-                                                    <td style="font-size: 11px;background-color:#E5E4E2;text-align:center;border:1px black solid">{{round($avg_pertanyaan/6, 2)}}</td>
+                                                    <td style="font-size: 11px;background-color:#E5E4E2;text-align:center;border:1px black solid">{{number_format($avg_pertanyaan/$count_data, 2)}}</td>
                                             </tr>
                                             @endforeach
                                             <tr>
@@ -172,12 +180,26 @@
                                         <tbody>
                                             <tr>
                                                 <td style="font-size: 11px;background-color:#E5E4E2;text-align:center;border:1px black solid">INVOLMENT & MOTIVATION</td>
-                                                @php $avg2 = 0;@endphp
+                                                @php
+
+                                                $avg2 = 0;
+                                                $count_data2 = 0;
+
+                                                @endphp
+
                                                 @for($j = 0; $j < count($data2); $j++)
                                                     <td style="font-size: 11px;background-color:#E5E4E2;text-align:center;border:1px black solid;vertical-align: middle;    ">{{$data2[$week_arr[$j]]}}</td>
-                                                    @php $avg2 += $data2[$week_arr[$j]]; @endphp
+                                                    @php
+                                                    $avg2 += $data2[$week_arr[$j]];
+
+                                                    if($data2[$week_arr[$j]] != 0){
+                                                    $count_data2 += 1;
+                                                    }
+
+                                                    @endphp
                                                     @endfor
-                                                    <td style="font-size: 11px;background-color:#E5E4E2;text-align:center;border:1px black solid;vertical-align: middle;">{{round($avg2/6)}}</td>
+                                                    <td style="font-size: 11px;background-color:#E5E4E2;text-align:center;border:1px black solid;vertical-align: middle;">{{ number_format($avg2 / $count_data2, 2) }}
+                                                    </td>
                                             </tr>
                                         </tbody>
                                     </table>

@@ -171,11 +171,12 @@ class ReportController extends Controller
         $nama_mentor = '';
 
         $nama_mentors = [];
+
         foreach ($reports as $val) {
             $nama_mentors[] = $val->nama_mentor;
 
             $data[strip_tags($val->nama_pertanyaan)][$val->week] = $val->jawaban;
-            if ($val->id_pertanyaan == '1') {
+            if ($val->id_pertanyaan == '5') {
                 $data2[$val->week] = $val->jawaban;
 
                 if (is_numeric($val->jawaban)) {
@@ -185,11 +186,15 @@ class ReportController extends Controller
             if ($val->id_pertanyaan == '6') {
                 $data3[$val->week] = $val->essay_revisi ?? $val->jawaban;
             } else {
-                if (is_numeric($val->jawaban)) {
-                    $avg_week[$val->week] = ($avg_week[$val->week] ?? 0) + $val->jawaban / 4;
+                if ($val->id_pertanyaan != '5') {
+
+                    if (is_numeric($val->jawaban)) {
+                        $avg_week[$val->week] = ($avg_week[$val->week] ?? 0) + $val->jawaban / 4;
+                    }
                 }
             }
         }
+
         foreach ($weeks as $w) {
             if (!isset($avg_week[$w->angka_week])) {
                 $avg_week[$w->angka_week] = 0;
@@ -221,6 +226,7 @@ class ReportController extends Controller
         }
 
         // Iterate over the data to fill missing weeks with "0"
+
         foreach ($data as $key => $values) {
             foreach ($week as $wk) {
                 if (!isset($data[$key][$wk])) {
@@ -233,7 +239,7 @@ class ReportController extends Controller
             // Sort weeks to maintain order
             ksort($data[$key]);
         }
-        // dd($avg_week,$avg2_week);
+        // dd($avg_week, $avg2_week);
         $avg = json_encode($avg_week, JSON_NUMERIC_CHECK);
         $avg_2 = json_encode($avg2_week, JSON_NUMERIC_CHECK);
         $week = json_encode($week, JSON_NUMERIC_CHECK);
@@ -281,7 +287,6 @@ class ReportController extends Controller
             ->groupBy('jawaban.created_by', 'id_week')
             ->get()
             ->count();
-
         return view('pages.report.weekly_monitoring', compact('week', 'reports', 'avg', 'learningG', 'kkm', 'data_lg', 'title', 'pertanyaans', 'data', 'week_arr', 'avg_week', 'data_kkm', 'batch', 'tahun', 'data2', 'avg_2', 'data3', 'performance_sums', 'mentor_percent', 'kader_percent'));
     }
 
@@ -289,7 +294,7 @@ class ReportController extends Controller
     {
         $kaders = Kader::select('kader.nama', 'kader.nik')
             ->join('jawaban', 'kader.nik', 'jawaban.nik_kader')
-            ->whereNotNull('jawaban.nama_mentor')
+            // ->whereNotNull('jawaban.nama_mentor')
             ->groupBy('kader.nama', 'kader.nik')
             ->orderBy('nama', 'asc')
             ->get();
@@ -348,7 +353,7 @@ class ReportController extends Controller
             $mentor = [];
             $jawaban = [];
 
-            $weeks = Week::whereIn('angka_week', $arr_week)->orderBy('angka_week','asc')->get();
+            $weeks = Week::whereIn('angka_week', $arr_week)->orderBy('angka_week', 'asc')->get();
             foreach ($datas as $value) {
                 $data_mentor = Jawaban::select('jawaban.nama_mentor', 'jawaban.nik_kader')
                     ->where('jawaban.nik_kader', $value->nik)
@@ -383,8 +388,7 @@ class ReportController extends Controller
 
             $feedbacks = FeedbackMai::with('details')->get();
             $user_type = $request->usertype;
-
-            return view('pages.report.feedback', compact('datas', 'mentor', 'jawaban', 'pertanyaans', 'weeks', 'performance_sums', 'ojt', 'feedbacks','user_type','arr_week'));
+            return view('pages.report.feedback', compact('datas', 'mentor', 'jawaban', 'pertanyaans', 'weeks', 'performance_sums', 'ojt', 'feedbacks', 'user_type', 'arr_week'));
         } elseif ($request->usertype == 'Kader') {
             $datas = Kader::select('kader.id', 'kader.nama', 'kader.jenis_kelamin', 'kader.iq', 'kader.ipk', 'company.company_name', 'divisis.nama as divisi', 'departemens.nama as departement', 'batch.nama_batch', 'batch.tahun_batch', 'kader.nik', 'jawaban.nik_kader', 'company.company_shortname')
                 ->leftJoin('company', 'kader.company_code', 'company.company_code')
@@ -423,7 +427,7 @@ class ReportController extends Controller
             }
             $mentor = [];
             $jawaban = [];
-            $weeks = WeekKader::whereIn('angka_week', $arr_week)->orderBy('angka_week','asc')->get();
+            $weeks = WeekKader::whereIn('angka_week', $arr_week)->orderBy('angka_week', 'asc')->get();
             foreach ($datas as $value) {
                 $data_mentor = Jawaban::select('jawaban.nama_mentor', 'jawaban.nik_kader')
                     ->where('jawaban.nik_kader', $value->nik)
@@ -454,7 +458,7 @@ class ReportController extends Controller
             $ojt = $request->ojt;
 
             $user_type = $request->usertype;
-            return view('pages.report.feedbackkader', compact('datas', 'mentor', 'jawaban', 'pertanyaans', 'weeks', 'ojt', 'feedbacks','user_type','arr_week'));
+            return view('pages.report.feedbackkader', compact('datas', 'mentor', 'jawaban', 'pertanyaans', 'weeks', 'ojt', 'feedbacks', 'user_type', 'arr_week'));
         }
     }
 
@@ -515,7 +519,6 @@ class ReportController extends Controller
             }
         }
         $pertanyaans = Pertanyaan::get();
-
         $performance_sums = PerformanceSum::where('ojt', $ojt)->get();
 
         $ojt = $ojt;
@@ -537,7 +540,8 @@ class ReportController extends Controller
 
         ActivityLog::activity_log('Menambah data Performance Summary');
         Alert::success('Success', 'Data berhasil ditambahkan!');
-        return redirect()->route('report.feedback.back', $request->ojt);
+        // return redirect()->route('report.feedback.back', $request->ojt);
+        return redirect()->route('reportfeedback.index');
     }
 
     public function perform_sum_edit(Request $request, $id)
@@ -552,8 +556,13 @@ class ReportController extends Controller
 
         ActivityLog::activity_log('Mengubah data Performance Summary');
         Alert::success('Success', 'Data berhasil diupdate!');
-        return redirect()->route('report.feedback.back', $request->ojt);
-        // return back()->withInput(['ojt' => $request->ojt]);
+
+        // return redirect()->route('report.feedback.back', [
+        //     'ojt' => $request->ojt,
+        //     'user_type' => $request->user_type
+        // ]);
+
+        return redirect()->route('reportfeedback.index');
     }
 
     public function export_reportfeedback($ojt)
@@ -570,7 +579,7 @@ class ReportController extends Controller
     }
 
 
-    
+
 
 
 
