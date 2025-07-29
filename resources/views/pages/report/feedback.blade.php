@@ -193,7 +193,7 @@
                                 $modalId = 'add-data' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $data->nik_kader);
                                 @endphp
                                 <!-- Modal -->
-                                <div class="modal fade" id="add-data{{$data->nik_kader}}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                <div class="modal fade" id="{{$modalId}}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
                                     <div class="modal-dialog">
                                         <div class="modal-content">
                                             <div class="modal-header">
