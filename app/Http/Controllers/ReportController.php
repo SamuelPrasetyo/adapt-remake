@@ -118,6 +118,7 @@ class ReportController extends Controller
     public function weekly_monitoring(Request $request)
     {
         $week_arr = [];
+        $week_arr_kader = [];
 
         switch ($request->ojt) {
             case '1':
@@ -134,6 +135,24 @@ class ReportController extends Controller
                 break;
             default:
                 $week_arr = [];
+                break;
+        }
+
+        switch ($request->ojt) {
+            case '1':
+                $week_arr_kader = range(1, 12);
+                break;
+            case '2':
+                $week_arr_kader = range(13, 24);
+                break;
+            case '3':
+                $week_arr_kader = range(25, 36);
+                break;
+            case '4':
+                $week_arr_kader = range(37, 48);
+                break;
+            default:
+                $week_arr_kader = [];
                 break;
         }
         // dd($week_arr);
@@ -171,7 +190,6 @@ class ReportController extends Controller
         $nama_mentor = '';
 
         $nama_mentors = [];
-
         foreach ($reports as $val) {
             $nama_mentors[] = $val->nama_mentor;
 
@@ -231,15 +249,20 @@ class ReportController extends Controller
             foreach ($week as $wk) {
                 if (!isset($data[$key][$wk])) {
                     $data[$key][$wk] = "0";
-                    $data2[$wk] = "0";
+
+                    if (!isset($data2[$wk])) {
+                        $data2[$wk] = 0;
+                    }
+
                     $data3[$wk] = "-";
                 }
             }
 
-            // Sort weeks to maintain order
             ksort($data[$key]);
         }
-        // dd($avg_week, $avg2_week);
+
+        // dd($data2, $avg2_week);
+
         $avg = json_encode($avg_week, JSON_NUMERIC_CHECK);
         $avg_2 = json_encode($avg2_week, JSON_NUMERIC_CHECK);
         $week = json_encode($week, JSON_NUMERIC_CHECK);
@@ -272,21 +295,31 @@ class ReportController extends Controller
         $performance_sums = PerformanceSum::where('nik_kader', $request->nik_kader)
             ->where('ojt', $request->ojt)
             ->first();
-        $mentor_percent = Jawaban::select('jawaban.created_by', 'id_week')
+        $mentor_percent = Jawaban::select('jawaban.created_by', 'jawaban.id_week')
             ->join('users', 'jawaban.created_by', 'users.id')
+            ->join('weeks', 'jawaban.id_week', 'weeks.id_week')
             ->where('jawaban.nik_kader', $request->nik_kader)
             ->where('users.type', 'Mentor')
-            ->groupBy('jawaban.created_by', 'id_week')
+            ->whereIn('weeks.angka_week', $week_arr)
+            ->groupBy('jawaban.created_by', 'jawaban.id_week')
             ->get()
             ->count();
+        if ($mentor_percent > 0) {
+            $mentor_percent = ($mentor_percent / 6) * 100;
+        }
 
-        $kader_percent = Jawaban::select('jawaban.created_by', 'id_week')
+        $kader_percent = Jawaban::select('jawaban.created_by', 'jawaban.id_week')
             ->join('users', 'jawaban.created_by', 'users.id')
+            ->join('weeks_kader', 'jawaban.id_week', 'weeks_kader.id_week')
             ->where('jawaban.nik_kader', $request->nik_kader)
             ->where('users.type', 'Kader')
-            ->groupBy('jawaban.created_by', 'id_week')
+            ->whereIn('weeks_kader.angka_week', $week_arr_kader)
+            ->groupBy('jawaban.created_by', 'jawaban.id_week')
             ->get()
             ->count();
+        if ($kader_percent > 0) {
+            $kader_percent = ($kader_percent / 12) * 100;
+        }
         return view('pages.report.weekly_monitoring', compact('week', 'reports', 'avg', 'learningG', 'kkm', 'data_lg', 'title', 'pertanyaans', 'data', 'week_arr', 'avg_week', 'data_kkm', 'batch', 'tahun', 'data2', 'avg_2', 'data3', 'performance_sums', 'mentor_percent', 'kader_percent'));
     }
 

@@ -273,7 +273,7 @@
                                                 aria-valuenow="{{ $mentor_percent }}"
                                                 aria-valuemin="0"
                                                 aria-valuemax="100">
-                                                {{ $mentor_percent }}%
+                                                {{ round($mentor_percent,2) }}%
                                             </div>
                                         </div>
                                     </div>
@@ -289,7 +289,7 @@
                                                 aria-valuenow="{{ $kader_percent }}"
                                                 aria-valuemin="0"
                                                 aria-valuemax="100">
-                                                {{ $kader_percent }}%
+                                                {{ round($kader_percent,2) }}%
                                             </div>
                                         </div>
                                     </div>
