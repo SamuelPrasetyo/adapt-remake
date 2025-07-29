@@ -306,7 +306,7 @@
                                 </div>
                             </div>
                             <div class="row" style="border: #000 1px solid;min-height:20vh">
-                                <p class="m-1" style="font-size: 13px;font-family:Arial, Helvetica, sans-serif">{{$performance_sums->desc ?? ''}}</p>
+                                <p class="m-1" style="font-size: 13px;font-family:Arial, Helvetica, sans-serif">{!! nl2br(e($performance_sums->desc ?? '')) !!}</p>
                             </div>
                         </div>
                     </div>

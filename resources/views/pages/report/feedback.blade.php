@@ -166,8 +166,13 @@
                                                         <a class="text-decoration-none text-dark" href="" data-bs-toggle="modal"
                                                             data-bs-target="#edit-data{{$performSums->id . $ojt}}">{{$performsum->desc}}</a>
                                                         @else
-                                                        <a class="text-decoration-none" href="" data-bs-toggle="modal"
-                                                            data-bs-target="#add-data{{$data->nik_kader}}"><i class="fa-solid fa-plus"></i> Add</a>
+                                                        @php
+                                                        $modalId = 'add-data' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $data->nik_kader);
+                                                        @endphp
+
+                                                        <a class="text-decoration-none" href="#" data-bs-toggle="modal" data-bs-target="#{{ $modalId }}">
+                                                            <i class="fa-solid fa-plus"></i> Add
+                                                        </a>
                                                         @endif
                                                     </td>
                                                     <td style="text-align: center;font-size:14px">{{round($rata2_3 , 2) ?? 0}}</td>
@@ -184,6 +189,9 @@
                                     </table>
                                 </div>
                                 @foreach($datas as $data)
+                                @php
+                                $modalId = 'add-data' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $data->nik_kader);
+                                @endphp
                                 <!-- Modal -->
                                 <div class="modal fade" id="add-data{{$data->nik_kader}}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
                                     <div class="modal-dialog">
@@ -366,10 +374,10 @@
                                                             @foreach($datas as $data)
                                                             @php
                                                             $fm_mentor = \App\Models\FeedbackMai::join('weeks','feedback_mai.id_week','weeks.id_week')
-                                                                ->where('user_type','mentor')
-                                                                ->where('nik_kader',$data->nik_kader)
-                                                                ->whereIn('weeks.angka_week',$arr_week)
-                                                                ->first();
+                                                            ->where('user_type','mentor')
+                                                            ->where('nik_kader',$data->nik_kader)
+                                                            ->whereIn('weeks.angka_week',$arr_week)
+                                                            ->first();
                                                             @endphp
 
                                                             @if($fm_mentor)
@@ -428,7 +436,7 @@
             <button type="button" class="btn btn-danger" onclick="hapusPeningkatan(this)">-</button>
         </div>
     `;
-    
+
         peningkatanIndex++;
         wrapper.appendChild(newItem); // Tambahkan ke bawah
     }
