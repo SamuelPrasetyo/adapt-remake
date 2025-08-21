@@ -180,7 +180,7 @@ class ReportController extends Controller
         $data2 = [];
         $data3 = [];
         $data_lg = [];
-        $temp_week = 0;
+        $lg_prev = 0;
         $title['nama_kader'] = '';
         $avg_week = [];
         $avg2_week = [];
@@ -212,7 +212,6 @@ class ReportController extends Controller
                 }
             }
         }
-
         foreach ($weeks as $w) {
             if (!isset($avg_week[$w->angka_week])) {
                 $avg_week[$w->angka_week] = 0;
@@ -227,22 +226,27 @@ class ReportController extends Controller
         } else {
             $nama_mentor = array_values($nama_mentors); // Reset indeks array
         }
+        ksort($avg_week);
         foreach ($avg_week as $key => $avw) {
             if ($avw != 0) {
-                $cal = ($avw + $temp_week) / 6;
+                if ($key > 0) {
+                    $cal = ($lg_prev * 6 + $avw) / 6;
+                } else {
+                    $cal = $avw / 6;
+                }
                 $rounded = round($cal, 2);
             } else {
                 $rounded = 0;
             }
-
+            // dd($rounded);
             $data_lg[$key] =  $rounded;
             $learningG[$key] =  $rounded;
             $data_kkm[$key] = 7;
             // $week[$key] = $key;
 
-            $temp_week += $avw;
+            $lg_prev = $rounded;
         }
-
+        // dd($avg_week, $learningG);
         // Iterate over the data to fill missing weeks with "0"
 
         foreach ($data as $key => $values) {
