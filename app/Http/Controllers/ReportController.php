@@ -236,7 +236,7 @@ class ReportController extends Controller
                 }
                 $rounded = round($cal, 2);
             } else {
-                $rounded = 0;
+                $rounded = $lg_prev;
             }
             // dd($rounded);
             $data_lg[$key] =  $rounded;
