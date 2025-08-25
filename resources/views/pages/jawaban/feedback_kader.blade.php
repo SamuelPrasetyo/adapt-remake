@@ -14,7 +14,7 @@
                                 </div>
                                 <div class="col-4">
                                     <form action="{{ route('feedback_kader.store') }}" method="POST"
-                                        enctype="multipart/form-data">
+                                        enctype="multipart/form-data" id="form-kader">
                                         @csrf
                                         <div class="form-group mb-1">
                                             <label class="mb-1"><strong>{{ Auth::user()->name }}</strong></label>
@@ -39,7 +39,7 @@
                                 <h6 class="mb-2">1. {{ strip_tags($pertanyaan[1]) }}</h6>
                                 <input type="text" hidden name="id_pertanyaan1" value="{{ $id_pertanyaan[1] }}">
                                 <div class="form-group mb-1">
-                                    <textarea type="text" placeholder="jawaban" class="form-control" id="ckeditor" name="jawaban_kader[1]"></textarea>
+                                    <textarea type="text" placeholder="jawaban" class="form-control" id="ckeditor-1" name="jawaban_kader[1]"></textarea>
                                 </div>
                             </div>
                         </div>
@@ -50,7 +50,7 @@
                                 <h6 class="mb-2">2. {{ strip_tags($pertanyaan[2]) }}</h6>
                                 <input type="text" hidden name="id_pertanyaan2" value="{{ $id_pertanyaan[2] }}">
                                 <div class="form-group mb-1">
-                                    <textarea type="text" placeholder="jawaban" class="form-control" id="ckeditor2" name="jawaban_kader[2]"></textarea>
+                                    <textarea type="text" placeholder="jawaban" class="form-control" id="ckeditor-2" name="jawaban_kader[2]"></textarea>
                                 </div>
                             </div>
                         </div>
@@ -61,7 +61,7 @@
                                 <h6 class="mb-2">3. {{ strip_tags($pertanyaan[3]) }}</h6>
                                 <input type="text" hidden name="id_pertanyaan3" value="{{ $id_pertanyaan[3] }}">
                                 <div class="form-group mb-1">
-                                    <textarea type="text" placeholder="jawaban" class="form-control" id="ckeditor3" name="jawaban_kader[3]"></textarea>
+                                    <textarea type="text" placeholder="jawaban" class="form-control" id="ckeditor-3" name="jawaban_kader[3]"></textarea>
                                 </div>
                             </div>
                         </div>
@@ -87,7 +87,7 @@
                             </div>
                         </div>
                     </div>
-                    <button class="btn btn-primary ml-1 mt-2" type="submit">Submit</button>
+                    <button class="btn btn-primary ml-1 mt-2" id="submit-kader" type="submit">Submit</button>
                     </form>
                 </div>
             </div>
@@ -111,25 +111,50 @@
 @section('addon-script')
 <script type="text/javascript">
     $(document).ready(function() {
+        const editors = {};
+        ClassicEditor
+            .create(document.querySelector('#ckeditor-1'))
+            .then(editor => {
+                editors[1] = editor;
+            })
+            .catch(error => console.error(error));
+
+        ClassicEditor
+            .create(document.querySelector('#ckeditor-2'))
+            .then(editor => {
+                editors[2] = editor;
+            })
+            .catch(error => console.error(error));
+
+        ClassicEditor
+            .create(document.querySelector('#ckeditor-3'))
+            .then(editor => {
+                editors[3] = editor;
+            })
+            .catch(error => console.error(error));
+
+        $('#submit-kader').click(function(event) {
+            let isValid = true;
+
+            for (const nomor in editors) {
+                const isi = editors[nomor].getData().trim();
+
+                if (isi === '') {
+                    isValid = false;
+                    alert(`Pertanyaan Nomor ${nomor} belum dilengkapi!`);
+                    break;
+                }
+            }
+
+            if (!isValid) {
+                event.preventDefault(); // stop form submission
+            }
+        });
+
         $('#is-start').click(function(event) {
             $('#form-survey').removeClass('d-none');
             $('#start').addClass('d-none');
         });
-        ClassicEditor
-            .create(document.querySelector('#ckeditor'))
-            .catch(error => {
-                console.error(error);
-            });
-        ClassicEditor
-            .create(document.querySelector('#ckeditor2'))
-            .catch(error => {
-                console.error(error);
-            });
-        ClassicEditor
-            .create(document.querySelector('#ckeditor3'))
-            .catch(error => {
-                console.error(error);
-            });
         $('#example').DataTable({
             scrollY: "100%",
             scrollCollapse: true,
