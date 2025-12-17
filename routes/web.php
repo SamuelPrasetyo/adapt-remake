@@ -51,8 +51,6 @@ Route::middleware(['can:isKader'])->group(function () {
 Route::middleware(['can:isMentor'])->group(function () {
     Route::get('/feedback_mai-kader', [FeedbackMaiController::class, 'fm_kader_index'])->name('fm.kader.index');
     Route::get('/feedback_mai-kader/export/{id_week}/{nik_kader}', [FeedbackMaiController::class, 'fm_kader_export'])->name('fm.kader.export');
-
-    
 });
 
 Route::controller(LoginController::class)->group(function () {
@@ -160,7 +158,8 @@ Route::middleware(['can:isAdmin&Mentor'])->group(function () {
         Route::post('/performsum', 'perform_sum_add')->name('performsum.add');
         Route::put('/performsum-edit/{id}', 'perform_sum_edit')->name('performsum.edit');
     });
-
+    Route::post('/assessment/upload/{id}', [ReportController::class, 'upload'])
+        ->name('assessment.upload');
     // FEEDBACK MAI ADMIN
     Route::post('/feedbackmai/store', [FeedbackMaiController::class, 'feedbackmai'])->name('feedbackmai');
     Route::put('/feedbackmai/{id}', [FeedbackMaiController::class, 'feedbackmai_update'])->name('feedbackmai.update');
@@ -193,4 +192,3 @@ Route::middleware(['can:isAll'])->group(function () {
 Route::get('/get-fmdetail/{id}', function ($id) {
     return \App\Models\FmDetail::where('id_feedbackmai', $id)->count();
 });
-

@@ -29,7 +29,7 @@
                         <div class="col-12 text-center" style="border-left: #000 2px solid;border-right: #000 2px solid;border-bottom: #000 2px solid;">
                             <div class="row">
                                 <div class="col-6">
-                                    <p class="m-0" style="text-align: left; font-size:14px"><b>PERIOD</b> : OJT {{$title['ojt']}}</p>
+                                    <p class="m-0" style="text-align: left; font-size:14px"><b>PERIOD</b> : {{$title['rangeMonth']}}</p>
                                     <p class="m-0" style="text-align: left; font-size:14px"><b>MANTEE NAME</b> : {{strtoupper($title['nama_kader'])}}</p>
                                     <p class="m-0" style="text-align: left; font-size:14px"><b>MENTOR NAME</b> :
                                         @if(is_array($title['nama_mentor']))
@@ -72,16 +72,48 @@
                             <div class="row">
                                 <div class="col-12 p-0">
                                     <table class="table">
+
                                         <thead>
                                             <tr>
-                                                <th style="font-size: 9px;border:1px black solid;background-color:white;padding-bottom:1.5vh; text-align:center">NO</th>
-                                                <th style="font-size: 9px;border:1px black solid;background-color:white;padding-bottom:1.5vh; text-align:center">ASSESSMENT POINT</th>
-                                                @foreach($week_arr as $wa)
-                                                <th style="font-size: 9px;border:1px black solid;background-color:white;padding-bottom:1.5vh; text-align:center">W{{$wa}}</th>
+                                                <th rowspan="2" style="font-size:9px;border:1px black solid;background-color:white;padding-bottom:1.5vh;text-align:center;vertical-align:middle;">NO</th>
+                                                <th rowspan="2"
+                                                    style="font-size:9px;
+           border:1px black solid;
+           background-color:white;
+           padding-bottom:1.5vh;
+           text-align:center;
+           vertical-align:middle;">
+                                                    @if($file->file_assessment)
+                                                    <a href="{{ asset('storage/'.$file->file_assessment) }}"
+                                                        target="_blank"
+                                                        class="text-muted text-decoration-none">
+                                                        ASSESSMENT POINT
+                                                    </a>
+                                                    @else
+                                                    <span class="text-muted">ASSESSMENT POINT</span>
+                                                    @endif
+
+                                                </th>
+
+
+                                                @foreach($months as $m)
+                                                <th colspan="2" style="font-size:9px;border:1px black solid;background-color:white;padding-bottom:1.5vh;text-align:center">
+                                                    {{ $m }}
+                                                </th>
                                                 @endforeach
-                                                <th style="font-size: 9px;border:1px black solid;background-color:white;padding-bottom:1.5vh; text-align:center">AVE</th>
+
+                                                <th rowspan="2" style="font-size:9px;border:1px black solid;background-color:white;padding-bottom:1.5vh;text-align:center;vertical-align:middle;">AVE</th>
+                                            </tr>
+
+                                            <tr>
+                                                @foreach($week_arr as $wa)
+                                                <th style="font-size:9px;border:1px black solid;background-color:white;padding-bottom:1.5vh;text-align:center">
+                                                    W{{ $wa }}
+                                                </th>
+                                                @endforeach
                                             </tr>
                                         </thead>
+
                                         <tbody>
                                             @php $no=1;@endphp
                                             @foreach($pertanyaans as $val)

@@ -22,6 +22,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Barryvdh\Snappy\Facades\SnappyPdf;
 use Dompdf\Dompdf;
 use Dompdf\Options;
+use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use RealRashid\SweetAlert\Facades\Alert;
 use Illuminate\Support\Str;
@@ -119,18 +120,28 @@ class ReportController extends Controller
     {
         $week_arr = [];
         $week_arr_kader = [];
+        $rangeMonth = '';
+        $months = [];
 
         switch ($request->ojt) {
             case '1':
+                $months = ['Jan', 'Feb', 'Mar'];
+                $rangeMonth = 'Januari - Maret';
                 $week_arr = ['2', '4', '6', '8', '10', '12'];
                 break;
             case '2':
+                $months = ['Apr', 'May', 'Jun'];
+                $rangeMonth = 'April - Juni';
                 $week_arr = ['14', '16', '18', '20', '22', '24'];
                 break;
             case '3':
+                $months = ['Jul', 'Aug', 'Sep'];
+                $rangeMonth = 'Juli - September';
                 $week_arr = ['26', '28', '30', '32', '34', '36'];
                 break;
             case '4':
+                $months = ['Okt', 'Nov', 'Dec'];
+                $rangeMonth = 'Oktober - Desember';
                 $week_arr = ['38', '40', '42', '44', '46', '48'];
                 break;
             default:
@@ -292,6 +303,7 @@ class ReportController extends Controller
         $title['iq'] = $kader->iq;
         $title['ipk'] = $kader->ipk;
         $title['ojt'] = $request->ojt;
+        $title['rangeMonth'] = $rangeMonth;
         $title['batch'] = $this->ToRomawi($kader->nama_batch) . ' - ' . $kader->tahun_batch;
         $batch = $this->ToRomawi($kader->nama_batch);
         $tahun = $kader->tahun_batch;
@@ -324,7 +336,11 @@ class ReportController extends Controller
         if ($kader_percent > 0) {
             $kader_percent = ($kader_percent / 12) * 100;
         }
-        return view('pages.report.weekly_monitoring', compact('week', 'reports', 'avg', 'learningG', 'kkm', 'data_lg', 'title', 'pertanyaans', 'data', 'week_arr', 'avg_week', 'data_kkm', 'batch', 'tahun', 'data2', 'avg_2', 'data3', 'performance_sums', 'mentor_percent', 'kader_percent'));
+
+        $file = PerformanceSum::where('nik_kader', $request->nik_kader)
+            ->where('ojt', $request->ojt)->first();
+
+        return view('pages.report.weekly_monitoring', compact('week', 'reports', 'avg', 'learningG', 'kkm', 'data_lg', 'title', 'pertanyaans', 'data', 'week_arr', 'avg_week', 'data_kkm', 'batch', 'tahun', 'data2', 'avg_2', 'data3', 'performance_sums', 'mentor_percent', 'kader_percent', 'months', 'file'));
     }
 
     public function weekly_index()
@@ -616,6 +632,31 @@ class ReportController extends Controller
     }
 
 
+    public function upload(Request $request, $id)
+    {
+        // $request->validate([
+        //     'file_assessment' => 'required|file|max:2048'
+        // ]);
+
+        $data = PerformanceSum::findOrFail($id);
+
+        // hapus file lama
+        if ($data->file_assessment && Storage::disk('public')->exists($data->file_assessment)) {
+            Storage::disk('public')->delete($data->file_assessment);
+        }
+
+        $path = $request->file('file_assessment')
+            ->store('assessment_files', 'public');
+
+        $data->update([
+            'file_assessment' => $path
+        ]);
+
+        ActivityLog::activity_log('Mengupload file Assessment Point');
+        Alert::success('Success', 'Data berhasil diupdate!');
+
+        return redirect()->route('reportfeedback.index');
+    }
 
 
 

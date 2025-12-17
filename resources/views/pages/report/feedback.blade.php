@@ -20,12 +20,33 @@
                                     </div>
                                     <div class="col d-flex justify-content-end gap-2 mb-3">
                                         <a class="btn btn-primary" href="{{ route('reportfeedback.exportexcel',$ojt) }}">Export</a>
-                                        <button data-bs-toggle="modal" data-bs-target="#addM-fm" class="btn btn-sm btn-primary">
-                                            <i class="bi bi-plus-lg"></i> Feedback MAI
-                                        </button>
-                                        <button data-bs-toggle="modal" data-bs-target="#editM-fm" class="btn btn-sm btn-primary">
-                                            <i class="bi bi-pencil-fill"></i> Feedback MAI
-                                        </button>
+                                        <div class="dropdown d-inline">
+                                            <button class="btn btn-primary dropdown-toggle"
+                                                type="button"
+                                                data-bs-toggle="dropdown"
+                                                aria-expanded="false">
+                                                <i class="bi bi-chat-dots-fill"></i> Feedback MAI</button>
+
+                                            <ul class="dropdown-menu">
+                                                <li>
+                                                    <button class="dropdown-item"
+                                                        type="button"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#addM-fm">
+                                                        <i class="bi bi-plus-lg"></i> Tambah Feedback
+                                                    </button>
+                                                </li>
+                                                <li>
+                                                    <button class="dropdown-item"
+                                                        type="button"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#editM-fm">
+                                                        <i class="bi bi-pencil-fill"></i> Edit Feedback
+                                                    </button>
+                                                </li>
+                                            </ul>
+                                        </div>
+
                                     </div>
                                 </div>
                                 <div class="table table-striped">
@@ -71,6 +92,7 @@
                                                     <th style="text-align: center;">AVG</th>
                                                     <th style="text-align: center;">GRADE</th>
                                                     <th style="text-align: center;"> SUMMARY GRADE</th>
+                                                    <th style="text-align: center;">FILE ASSESSMENT POINT</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -164,7 +186,8 @@
                                                         @endphp
                                                         @if($performSums)
                                                         <a class="text-decoration-none text-dark" href="" data-bs-toggle="modal"
-                                                            data-bs-target="#edit-data{{$performSums->id . $ojt}}">{{$performsum->desc}}</a>
+                                                            data-bs-target="#edit-data{{$performSums->id . $ojt}}">{{ \Illuminate\Support\Str::limit($performsum->desc, 10, '...') }}
+                                                        </a>
                                                         @else
                                                         @php
                                                         $modalId = 'add-data' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $data->nik_kader);
@@ -182,6 +205,19 @@
                                                         <td style="text-align: center;font-size:14px">{{$norma->grade ?? '-'}}</td>
                                                         <td style="text-align: center;font-size:14px"> {{ strlen($norma->deskripsi ?? '') > 40 ? substr($norma->deskripsi ?? '-', 0, 40) . '...' : $norma->deskripsi ?? '-' }}
                                                         </td>
+                                                        @php
+                                                        $modal2Id = 'uploadAssessment' . str_replace('.', '_', $data->nik_kader);
+                                                        @endphp
+
+                                                        <td class="text-center">
+                                                            <button class="btn btn-sm btn-outline-primary"
+                                                                data-bs-toggle="modal"
+                                                                data-bs-target="#{{$modal2Id}}">
+                                                                <i class="bi bi-upload"></i>
+                                                                {{ $data->file_assessment ? 'Edit File' : 'Upload File' }}
+                                                            </button>
+                                                        </td>
+
                                             </tr>
                                             @endforeach
 
@@ -400,6 +436,83 @@
                                             <!-- <div class="modal-footer">
                                                 <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">Close</button>
                                             </div> -->
+                                        </div>
+                                    </div>
+                                </div>
+                                @endforeach
+
+                                @foreach($performance_sums as $data)
+                                @php
+                                $modal2Id = 'uploadAssessment' . str_replace('.', '_', $data->nik_kader);
+                                @endphp
+                                <div class="modal fade" id="{{ $modal2Id }}" tabindex="-1">
+                                    <div class="modal-dialog modal-md modal-dialog-centered">
+                                        <div class="modal-content">
+
+                                            <form action="{{ route('assessment.upload', $data->id) }}"
+                                                method="POST"
+                                                enctype="multipart/form-data">
+                                                @csrf
+
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title">
+                                                        Upload File Assessment <br>{{$data->nama.' - '.$data->nik_kader}}
+                                                    </h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                </div>
+
+                                                <div class="modal-body">
+
+                                                    {{-- FILE SUDAH ADA --}}
+                                                    @if($data->file_assessment)
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-bold">File Saat Ini</label>
+                                                        <div class="d-flex align-items-center gap-2">
+                                                            <a href="{{ asset('storage/'.$data->file_assessment) }}"
+                                                                target="_blank"
+                                                                class="btn btn-sm btn-success">
+                                                                <i class="bi bi-eye"></i> Lihat File
+                                                            </a>
+
+                                                            <span class="text-muted small">
+                                                                {{ basename($data->file_assessment) }}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <hr>
+                                                    @endif
+
+                                                    {{-- INPUT FILE --}}
+                                                    <div class="mb-3">
+                                                        <label class="form-label">
+                                                            {{ $data->file_assessment ? 'Ganti File' : 'Upload File' }}
+                                                        </label>
+                                                        <input type="file"
+                                                            name="file_assessment"
+                                                            class="form-control"
+                                                            accept=".pdf,.doc,.docx,.jpg,.png"
+                                                            required>
+                                                        <small class="text-muted">
+                                                            Format: PDF, DOC, DOCX, JPG, PNG
+                                                        </small>
+                                                    </div>
+
+                                                </div>
+
+                                                <div class="modal-footer">
+                                                    <button type="button"
+                                                        class="btn btn-secondary btn-sm"
+                                                        data-bs-dismiss="modal">
+                                                        Batal
+                                                    </button>
+                                                    <button type="submit"
+                                                        class="btn btn-primary btn-sm">
+                                                        <i class="bi bi-save"></i> Simpan
+                                                    </button>
+                                                </div>
+
+                                            </form>
+
                                         </div>
                                     </div>
                                 </div>
