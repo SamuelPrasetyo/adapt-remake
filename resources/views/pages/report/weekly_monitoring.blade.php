@@ -83,12 +83,16 @@
            padding-bottom:1.5vh;
            text-align:center;
            vertical-align:middle;">
+                                                    @if($file)
                                                     @if($file->file_assessment)
                                                     <a href="{{ asset('storage/'.$file->file_assessment) }}"
                                                         target="_blank"
                                                         class="text-muted text-decoration-none">
                                                         ASSESSMENT POINT
                                                     </a>
+                                                    @else
+                                                    <span class="text-muted">ASSESSMENT POINT</span>
+                                                    @endif
                                                     @else
                                                     <span class="text-muted">ASSESSMENT POINT</span>
                                                     @endif
