@@ -456,7 +456,7 @@
 
                                                 <div class="modal-header">
                                                     <h5 class="modal-title">
-                                                        Upload File Assessment <br>{{$data->nama.' - '.$data->nik_kader}}
+                                                        Upload File Assessment <br>{{'NIK Kader: '.$data->nik_kader}}
                                                     </h5>
                                                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                                 </div>
