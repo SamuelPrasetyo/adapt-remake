@@ -110,11 +110,13 @@
                                             </tr>
 
                                             <tr>
-                                                @foreach($week_arr as $wa)
+                                                @foreach($weeksWithRange as $w)
                                                 <th style="font-size:9px;border:1px black solid;background-color:white;padding-bottom:1.5vh;text-align:center">
-                                                    W{{ $wa }}
+                                                    {{ $w['week'] }} <br>
+                                                    <small>{{ $w['range'] }}</small>
                                                 </th>
                                                 @endforeach
+
                                             </tr>
                                         </thead>
 

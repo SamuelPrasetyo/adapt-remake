@@ -166,6 +166,20 @@ class ReportController extends Controller
                 $week_arr_kader = [];
                 break;
         }
+
+        $year = date('Y');
+        $weeksWithRange = [];
+
+        foreach ($week_arr as $week) {
+            $range = $this->getWeekRange((int)$week, $year);
+
+            $weeksWithRange[] = [
+                'week'  => 'W' . $week,
+                'range' => '(Tgl ' . $range['start'] . '-' . $range['end'] . ')',
+            ];
+        }
+
+
         // dd($week_arr);
         $reports = Jawaban::selectRaw("pertanyaan.nama_pertanyaan,pertanyaan.id_pertanyaan,jawaban,nik_kader,weeks.angka_week as week, jawaban.nama_mentor as nama_mentor,essay_revisi")
             ->join('weeks', 'jawaban.id_week', 'weeks.id_week')
@@ -340,7 +354,7 @@ class ReportController extends Controller
         $file = PerformanceSum::where('nik_kader', $request->nik_kader)
             ->where('ojt', $request->ojt)->first();
 
-        return view('pages.report.weekly_monitoring', compact('week', 'reports', 'avg', 'learningG', 'kkm', 'data_lg', 'title', 'pertanyaans', 'data', 'week_arr', 'avg_week', 'data_kkm', 'batch', 'tahun', 'data2', 'avg_2', 'data3', 'performance_sums', 'mentor_percent', 'kader_percent', 'months', 'file'));
+        return view('pages.report.weekly_monitoring', compact('week', 'reports', 'avg', 'learningG', 'kkm', 'data_lg', 'title', 'pertanyaans', 'data', 'week_arr', 'avg_week', 'data_kkm', 'batch', 'tahun', 'data2', 'avg_2', 'data3', 'performance_sums', 'mentor_percent', 'kader_percent', 'months', 'file', 'weeksWithRange'));
     }
 
     public function weekly_index()
@@ -676,6 +690,22 @@ class ReportController extends Controller
         }
         return $returnValue;
     }
+
+    private function getWeekRange($week, $year)
+    {
+        $date = new \DateTime();
+        $date->setISODate($year, $week);
+
+        $start = clone $date;           // Senin
+        $end   = clone $date;
+        $end->modify('+4 days');        // Jumat
+
+        return [
+            'start' => $start->format('j'),
+            'end'   => $end->format('j'),
+        ];
+    }
+
 
 
     /**
