@@ -5,10 +5,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DepartemenController;
 use App\Http\Controllers\DivisiController;
+use App\Http\Controllers\DokumenController;
 use App\Http\Controllers\FeedbackMaiController;
 use App\Http\Controllers\JawabanController;
 use App\Http\Controllers\KaderController;
+use App\Http\Controllers\LearningController;
 use App\Http\Controllers\LoginController;
+use App\Http\Controllers\ModulController;
 use App\Http\Controllers\NilaiController;
 use App\Http\Controllers\PertanyaanController;
 use App\Http\Controllers\ReportController;
@@ -137,6 +140,21 @@ Route::middleware(['can:isAdmin'])->group(function () {
 
     Route::post('api/fetch-users', [JawabanController::class, 'fetchUser'])->name('fetch.user');
     Route::post('api/fetch-weekfeedback', [JawabanController::class, 'fetchWeekFeedback'])->name('fetch.weekfeedback');
+
+    Route::controller(ModulController::class)->group(function () {
+        Route::get('/modul', 'index')->name('modul.index');
+        Route::post('/modul/store', 'store')->name('modul.store');
+        Route::put('/modul/update/{id}', 'update')->name('modul.update');
+        Route::delete('/modul/delete/{id}', 'destroy')->name('modul.destroy');
+    });
+    Route::post('/modul/assign', [ModulController::class, 'assign'])->name('modul.assign');
+
+    Route::controller(DokumenController::class)->group(function () {
+        Route::get('/dokumen', 'index')->name('dokumen.index');
+        Route::post('/dokumen/store', 'store')->name('dokumen.store');
+        Route::put('/dokumen/update/{id}', 'update')->name('dokumen.update');
+        Route::delete('/dokumen/delete/{id}', 'destroy')->name('dokumen.destroy');
+    });
 });
 Route::middleware(['can:isAdmin&Mentor'])->group(function () {
     Route::controller(ReportController::class)->group(function () {
@@ -187,6 +205,19 @@ Route::middleware(['can:isAll'])->group(function () {
         Route::post('/feedback-survey-kader/store', 'feedback_kader_store')->name('feedback_kader.store');
         Route::post('api/fetch-weeks', 'fetchWeek')->name('fetch.week');
     });
+
+    Route::get('/my-learning', [LearningController::class, 'index'])
+        ->name('learning.index');
+    Route::get('/learning/{id}', [LearningController::class, 'detail'])
+        ->name('learning.detail');
+
+    Route::get('/modul/{id}/test/{type}', [LearningController::class, 'test'])
+        ->name('learning.test');
+
+    Route::post('/learning/test/submit', [LearningController::class, 'submitTest'])
+        ->name('learning.submitTest');
+
+    Route::get('/ajax/test/{id}/{type}', [LearningController::class, 'ajax_test']);
 });
 
 Route::get('/get-fmdetail/{id}', function ($id) {

@@ -68,7 +68,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 @if(Auth::user() != null)
-@php 
+@php
 $id = \Illuminate\Support\Facades\Auth::user()->id;
 \App\Models\User::where('id',$id)->update(['last_activity' => now()]);
 @endphp
@@ -135,7 +135,7 @@ $id = \Illuminate\Support\Facades\Auth::user()->id;
                       <span class="align-middle">Change Password</span>
                     </a>
                   </li>
-                    @endif
+                  @endif
                   <li>
                     <a class="dropdown-item" href="{{ route('logout') }}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
                       <i class="bx bx-power-off me-2"></i>
@@ -306,6 +306,14 @@ $id = \Illuminate\Support\Facades\Auth::user()->id;
       case 'batch':
         $("#batch").addClass('active');
         $("#master").addClass('active open');
+        break;
+      case 'modul_pembelajaran':
+        $("#modul_pembelajaran").addClass('active');
+        $("#modul").addClass('active open');
+        break;
+      case 'dokumen':
+        $("#dokumen").addClass('active');
+        $("#modul").addClass('active open');
         break;
       case 'nilai':
         $("#nilai").addClass('active');

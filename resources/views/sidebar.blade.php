@@ -103,6 +103,18 @@
                         <div data-i18n="Jawaban">Feedback</div>
                     </a>
                 </li>
+                <li class="menu-item" id="modul_pembelajaran">
+                    <a href="{{route('modul.index')}}" class="menu-link">
+                        <i class="menu-icon tf-icons bx bxs-file"></i>
+                        <div data-i18n="Modul">Modul Pembelajaran</div>
+                    </a>
+                </li>
+                <li class="menu-item" id="dokumen">
+                    <a href="{{route('dokumen.index')}}" class="menu-link">
+                        <i class="menu-icon tf-icons bx bxs-file"></i>
+                        <div data-i18n="Dokumen">Dokumen</div>
+                    </a>
+                </li>
                 @endcanany
                 @canany(['isMentor','isKader'])
                 <li class="menu-item" id="feedback">
@@ -112,7 +124,7 @@
                     </a>
                 </li>
                 @endcanany
-                
+
             </ul>
         </li>
         @canany(['isAdmin','isMentor','isKader'])
