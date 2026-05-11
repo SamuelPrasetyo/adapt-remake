@@ -85,6 +85,7 @@ class LearningController extends Controller
             ->where('tipe', 'post')
             ->get();
 
+
         return view('pages.learning.detail', compact(
             'modul',
             'progress',
