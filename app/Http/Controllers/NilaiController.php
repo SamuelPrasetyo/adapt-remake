@@ -7,6 +7,7 @@ use App\Models\Nilai;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use RealRashid\SweetAlert\Facades\Alert;
+use Inertia\Inertia;
 
 class NilaiController extends Controller
 {
@@ -21,7 +22,7 @@ class NilaiController extends Controller
     public function index()
     {
         $nilais = Nilai::orderBy('nama_nilai', 'asc')->get();
-        return view('pages.nilai.index', compact('nilais'));
+        return Inertia::render('Master/Nilai/Index', ['nilais' => $nilais]);
     }
 
     /**

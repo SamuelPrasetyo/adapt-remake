@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use RealRashid\SweetAlert\Facades\Alert;
 use Illuminate\Support\Str;
+use Inertia\Inertia;
 
 class ReportController extends Controller
 {
@@ -56,9 +57,9 @@ class ReportController extends Controller
                 ->get();
         }
 
-        $title = 'Learning Growth';
-
-        return view('pages.report.report_index', compact('kaders', 'title'));
+        return Inertia::render('Report/LearningGrowth', [
+            'kaders' => $kaders,
+        ]);
     }
     public function learning_growth(Request $request)
     {
@@ -95,11 +96,6 @@ class ReportController extends Controller
             array_push($week, $w->angka_week);
         }
 
-        $avg = json_encode($avg, JSON_NUMERIC_CHECK);
-        $week = json_encode($week, JSON_NUMERIC_CHECK);
-        $learningG = json_encode($learningG, JSON_NUMERIC_CHECK);
-        $kkm = json_encode($kkm, JSON_NUMERIC_CHECK);
-
         $kader = Kader::select('kader.nama as nama_kader', 'kader.nik', 'divisis.nama as nama_divisi', 'departemens.nama as nama_departemen', 'company.company_name')
             ->where('nik', $request->nik_kader)
             ->leftJoin('company', 'kader.company_code', 'company.company_code')
@@ -112,8 +108,15 @@ class ReportController extends Controller
         $title['bu'] = $kader->company_name;
         $title['nik'] = $kader->nik;
 
-
-        return view('pages.report.learning_growth', compact('week', 'reports', 'avg', 'learningG', 'kkm', 'data_lg', 'title'));
+        return Inertia::render('Report/LearningGrowthResult', [
+            'title'    => $title,
+            'reports'  => $reports,
+            'avg'      => $avg,
+            'week'     => $week,
+            'learningG'=> $learningG,
+            'kkm'      => $kkm,
+            'data_lg'  => $data_lg,
+        ]);
     }
 
     public function weekly_monitoring(Request $request)
@@ -292,13 +295,6 @@ class ReportController extends Controller
 
         // dd($data2, $avg2_week);
 
-        $avg = json_encode($avg_week, JSON_NUMERIC_CHECK);
-        $avg_2 = json_encode($avg2_week, JSON_NUMERIC_CHECK);
-        $week = json_encode($week, JSON_NUMERIC_CHECK);
-        $learningG = json_encode($learningG, JSON_NUMERIC_CHECK);
-        $kkm = json_encode($kkm, JSON_NUMERIC_CHECK);
-
-
         $kader = Kader::select('kader.nama as nama_kader', 'kader.iq', 'kader.ipk', 'divisis.nama as nama_divisi', 'departemens.nama as nama_departemen', 'company.company_name', 'jawaban.nama_mentor', 'batch.nama_batch', 'batch.tahun_batch')
             ->leftJoin('jawaban', 'kader.nik', 'jawaban.nik_kader')
             ->leftJoin('company', 'kader.company_code', 'company.company_code')
@@ -354,7 +350,41 @@ class ReportController extends Controller
         $file = PerformanceSum::where('nik_kader', $request->nik_kader)
             ->where('ojt', $request->ojt)->first();
 
-        return view('pages.report.weekly_monitoring', compact('week', 'reports', 'avg', 'learningG', 'kkm', 'data_lg', 'title', 'pertanyaans', 'data', 'week_arr', 'avg_week', 'data_kkm', 'batch', 'tahun', 'data2', 'avg_2', 'data3', 'performance_sums', 'mentor_percent', 'kader_percent', 'months', 'file', 'weeksWithRange'));
+        // Restructure $data by id_pertanyaan for Inertia
+        $data_by_id = [];
+        foreach ($data as $namaKey => $weekData) {
+            $q = $pertanyaans->first(fn($p) => strip_tags($p->nama_pertanyaan) === $namaKey);
+            if ($q) {
+                $data_by_id[$q->id_pertanyaan] = $weekData;
+            }
+        }
+
+        $pertanyaans_list = $pertanyaans->map(fn($q) => [
+            'id'   => $q->id_pertanyaan,
+            'nama' => strip_tags($q->nama_pertanyaan),
+        ])->values();
+
+        return Inertia::render('Report/WeeklyResult', [
+            'title'            => $title,
+            'pertanyaans'      => $pertanyaans_list,
+            'data'             => $data_by_id,
+            'data2'            => $data2,
+            'data3'            => $data3,
+            'week_arr'         => $week_arr,
+            'avg_week'         => $avg_week,
+            'data_lg'          => $data_lg,
+            'data_kkm'         => $data_kkm,
+            'learningG'        => $learningG,
+            'avg_2'            => $avg2_week,
+            'performance_sums' => $performance_sums,
+            'mentor_percent'   => $mentor_percent,
+            'kader_percent'    => $kader_percent,
+            'months'           => $months,
+            'weeksWithRange'   => $weeksWithRange,
+            'file'             => $file,
+            'batch'            => $batch,
+            'tahun'            => $tahun,
+        ]);
     }
 
     public function weekly_index()
@@ -374,15 +404,14 @@ class ReportController extends Controller
                 ->groupBy('kader.nik', 'kader.nama')
                 ->get();
         }
-        $title = 'OJT Monitoring';
-
-        return view('pages.report.report_index', compact('kaders', 'title'));
+        return Inertia::render('Report/Weekly', [
+            'kaders' => $kaders,
+        ]);
     }
 
     public function feedback_index()
     {
-        $title = 'Report Feedback';
-        return view('pages.report.report_index', compact('title'));
+        return Inertia::render('Report/Feedback');
     }
 
     public function report_feedback(Request $request)
@@ -453,9 +482,18 @@ class ReportController extends Controller
 
             $ojt = $request->ojt;
 
-            $feedbacks = FeedbackMai::with('details')->get();
             $user_type = $request->usertype;
-            return view('pages.report.feedback', compact('datas', 'mentor', 'jawaban', 'pertanyaans', 'weeks', 'performance_sums', 'ojt', 'feedbacks', 'user_type', 'arr_week'));
+            return Inertia::render('Report/FeedbackResult', [
+                'datas'            => $datas,
+                'mentor'           => $mentor,
+                'jawaban'          => $jawaban,
+                'pertanyaans'      => $pertanyaans,
+                'weeks'            => $weeks,
+                'performance_sums' => $performance_sums,
+                'ojt'              => $ojt,
+                'user_type'        => $user_type,
+                'arr_week'         => $arr_week,
+            ]);
         } elseif ($request->usertype == 'Kader') {
             $datas = Kader::select('kader.id', 'kader.nama', 'kader.jenis_kelamin', 'kader.iq', 'kader.ipk', 'company.company_name', 'divisis.nama as divisi', 'departemens.nama as departement', 'batch.nama_batch', 'batch.tahun_batch', 'kader.nik', 'jawaban.nik_kader', 'company.company_shortname')
                 ->leftJoin('company', 'kader.company_code', 'company.company_code')
@@ -525,7 +563,16 @@ class ReportController extends Controller
             $ojt = $request->ojt;
 
             $user_type = $request->usertype;
-            return view('pages.report.feedbackkader', compact('datas', 'mentor', 'jawaban', 'pertanyaans', 'weeks', 'ojt', 'feedbacks', 'user_type', 'arr_week'));
+            return Inertia::render('Report/FeedbackResult', [
+                'datas'       => $datas,
+                'mentor'      => $mentor,
+                'jawaban'     => $jawaban,
+                'pertanyaans' => $pertanyaans,
+                'weeks'       => $weeks,
+                'ojt'         => $ojt,
+                'user_type'   => $user_type,
+                'arr_week'    => $arr_week,
+            ]);
         }
     }
 

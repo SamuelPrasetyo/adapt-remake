@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use RealRashid\SweetAlert\Facades\Alert;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
+use Inertia\Inertia;
 
 class DepartemenController extends Controller
 {
@@ -29,7 +30,10 @@ class DepartemenController extends Controller
                                 ->orderBy('departemens.nama', 'asc')
                                 ->get();
         $divisis = Divisi::get();
-        return view('pages.departemen.index', compact('departemens','divisis'));
+        return Inertia::render('Master/Departemen/Index', [
+            'departemens' => $departemens,
+            'divisis'     => $divisis,
+        ]);
     }
 
     /**

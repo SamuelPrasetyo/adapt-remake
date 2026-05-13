@@ -56,7 +56,7 @@ class LoginController extends Controller
             return redirect()->back()->with(['loginError' => 'Akun tidak aktif']);
         }
 
-        return redirect()->back()->with(['loginError' => 'NIK / Password Salah']);
+        return redirect()->back()->with(['loginError' => 'Username atau Password Salah']);
     }
 
     /**
@@ -114,5 +114,5 @@ class LoginController extends Controller
         return redirect('/login');
     }
 
-    
+
 }

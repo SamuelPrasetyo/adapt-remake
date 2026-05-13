@@ -7,6 +7,7 @@ use App\Models\Week;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use RealRashid\SweetAlert\Facades\Alert;
+use Inertia\Inertia;
 
 class WeekController extends Controller
 {
@@ -21,7 +22,7 @@ class WeekController extends Controller
     public function index()
     {
         $weeks = Week::orderBy('angka_week', 'asc')->get();
-        return view('pages.week.index', compact('weeks'));
+        return Inertia::render('Master/Week/Index', ['weeks' => $weeks]);
     }
 
     /**

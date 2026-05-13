@@ -9,6 +9,7 @@ use App\Models\Modul;
 use App\Models\KategoriModul;
 use Illuminate\Support\Facades\DB;
 use RealRashid\SweetAlert\Facades\Alert;
+use Inertia\Inertia;
 
 class ModulController extends Controller
 {
@@ -19,7 +20,11 @@ class ModulController extends Controller
         $users = Kader::get();
         $moduls = Modul::get();
 
-        return view('pages.modul.index', compact('moduls', 'companies', 'users', 'moduls'));
+        return Inertia::render('Modul/Index', [
+            'moduls'    => $moduls,
+            'companies' => $companies,
+            'users'     => $users,
+        ]);
     }
 
     public function store(Request $request)

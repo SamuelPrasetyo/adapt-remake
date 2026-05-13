@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use RealRashid\SweetAlert\Facades\Alert;
 use Illuminate\Support\Str;
+use Inertia\Inertia;
 
 class BatchController extends Controller
 {
@@ -22,7 +23,7 @@ class BatchController extends Controller
     public function index()
     {
         $batchs = Batch::orderBy('nama_batch', 'asc')->get();
-        return view('pages.batch.index', compact('batchs'));
+        return Inertia::render('Master/Batch/Index', ['batchs' => $batchs]);
     }
 
     /**

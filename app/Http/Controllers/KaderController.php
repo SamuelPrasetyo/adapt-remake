@@ -18,6 +18,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Validators\ValidationException;
+use Inertia\Inertia;
 
 class KaderController extends Controller
 {
@@ -44,7 +45,13 @@ class KaderController extends Controller
         $divisis = Divisi::get();
         $departemens = Departemen::get();
         $batchs = Batch::get();
-        return view('pages.kader.index', compact('kaders', 'companys', 'divisis', 'departemens', 'batchs'));
+        return Inertia::render('Master/Kader/Index', [
+            'kaders'     => $kaders,
+            'companys'   => $companys,
+            'divisis'    => $divisis,
+            'departemens'=> $departemens,
+            'batchs'     => $batchs,
+        ]);
     }
 
     /**

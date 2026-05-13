@@ -11,6 +11,7 @@ use RealRashid\SweetAlert\Facades\Alert;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
 
 class UserController extends Controller
 {
@@ -42,15 +43,19 @@ class UserController extends Controller
             })
             ->orderBy('last_activity', 'desc')
             ->get();
-        foreach ($users as $user) {
-            if ($user->type == 'Kader') {
-                $kader_existing = [$user->nik];
-            }
-        }
+
+        $kader_existing = $users->where('type', 'Kader')->pluck('nik')->toArray();
         $kaders = Kader::whereNotIn('nik', $kader_existing)->orderBy('nik', 'asc')->get();
+        $kadersUnassigned = $kaders->values();
 
         $companys = Company::get();
-        return view('pages.user.index', compact('users', 'kaders', 'companys'));
+
+        return Inertia::render('Master/User/Index', [
+            'users'            => $users,
+            'kaders'           => $kaders,
+            'companys'         => $companys,
+            'kadersUnassigned' => $kadersUnassigned,
+        ]);
     }
 
     /**

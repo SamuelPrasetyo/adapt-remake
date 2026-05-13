@@ -4,9 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Jawaban;
 use App\Models\Kader;
+use App\Models\Modul;
+use App\Models\User;
 use App\Models\Week;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
 
 class DashboardController extends Controller
 {
@@ -21,7 +24,19 @@ class DashboardController extends Controller
      */
     public function index()
     {
-        return view('pages.dashboard');
+        $stats = [
+            'totalKader'    => User::where('type', 'Kader')->where('status', 'Aktif')->count(),
+            'mentorAktif'   => User::where('type', 'Mentor')->where('status', 'Aktif')->count(),
+            'modulTersedia' => class_exists(Modul::class) ? Modul::count() : 0,
+            'dokPending'    => 0,
+        ];
+
+        return Inertia::render('Dashboard', [
+            'stats'              => $stats,
+            'departemenProgress' => [],
+            'mentorMonitoring'   => [],
+            'modulPerKategori'   => [],
+        ]);
     }
 
     /**

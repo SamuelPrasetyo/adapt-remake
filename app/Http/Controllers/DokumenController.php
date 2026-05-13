@@ -6,13 +6,14 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Dokumen;
+use Inertia\Inertia;
 
 class DokumenController extends Controller
 {
     public function index()
     {
         $dokumens = Dokumen::orderBy('created_at', 'desc')->get();
-        return view('pages.dokumen.index', compact('dokumens'));
+        return Inertia::render('Dokumen/Index', ['dokumens' => $dokumens]);
     }
 
     public function store(Request $request)

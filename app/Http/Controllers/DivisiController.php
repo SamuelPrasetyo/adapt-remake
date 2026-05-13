@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use RealRashid\SweetAlert\Facades\Alert;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
+use Inertia\Inertia;
 
 class DivisiController extends Controller
 {
@@ -24,7 +25,7 @@ class DivisiController extends Controller
     public function index()
     {
         $divisis = Divisi::orderBy('nama', 'asc')->get();
-        return view('pages.divisi.index', compact('divisis'));
+        return Inertia::render('Master/Divisi/Index', ['divisis' => $divisis]);
     }
 
     /**

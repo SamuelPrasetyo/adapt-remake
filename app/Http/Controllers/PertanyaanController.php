@@ -7,6 +7,7 @@ use App\Models\Pertanyaan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use RealRashid\SweetAlert\Facades\Alert;
+use Inertia\Inertia;
 
 class PertanyaanController extends Controller
 {
@@ -21,7 +22,7 @@ class PertanyaanController extends Controller
     public function index()
     {
         $pertanyaans = Pertanyaan::orderBy('type','asc')->orderBy('id_pertanyaan','asc')->get();
-        return view('pages.pertanyaan.index', compact('pertanyaans'));
+        return Inertia::render('Master/Pertanyaan/Index', ['pertanyaans' => $pertanyaans]);
     }
 
     /**
