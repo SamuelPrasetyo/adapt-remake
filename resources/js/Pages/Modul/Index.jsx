@@ -232,7 +232,7 @@ export default function ModulIndex({ moduls, companies = [], users = [] }) {
             </Modal>
 
             {/* ===== ASSIGN MODAL ===== */}
-            <Modal open={assignOpen} onClose={() => setAssignOpen(false)} title="Assign Modul" size="xl"
+            <Modal open={assignOpen} onClose={() => setAssignOpen(false)} title="Assign Modul" size="3xl"
                 footer={
                     <>
                         <button type="button" onClick={() => setAssignOpen(false)}
