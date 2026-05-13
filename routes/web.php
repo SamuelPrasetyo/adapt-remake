@@ -19,6 +19,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\WeekController;
 use App\Models\ActivityLog;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 /*
 |--------------------------------------------------------------------------
@@ -67,7 +68,7 @@ Route::middleware(['can:isAdmin'])->group(function () {
             ->join('users', 'activity_log.created_by', 'users.id')
             ->orderBy('created_at', 'desc')
             ->get();
-        return view('pages.activity_log.index', compact('activities_log'));
+        return Inertia::render('ActivityLog/Index', ['logs' => $activities_log]);
     })->name('activity.log');
 
     Route::controller(DivisiController::class)->group(function () {

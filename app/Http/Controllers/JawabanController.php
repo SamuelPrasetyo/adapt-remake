@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Auth;
 use RealRashid\SweetAlert\Facades\Alert;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
+use Inertia\Inertia;
 
 class JawabanController extends Controller
 {
@@ -384,7 +385,7 @@ class JawabanController extends Controller
 
     public function feedbackadmin_index()
     {
-        return view('pages.jawaban.feedback_index');
+        return Inertia::render('Feedback/Index');
     }
     public function feedbackadmin_store(Request $request)
     {
@@ -487,6 +488,16 @@ class JawabanController extends Controller
                 $week = $week->angka_week;
             }
         }
-        return view('pages.jawaban.detail', compact('jawabans', 'week', 'title', 'isUserOnly'));
+        $jawabansData = ($isUserOnly && $request->usertype === 'Kader')
+            ? $jawabans->map(fn ($items, $nama) => ['nama' => $nama, 'items' => $items->values()])->values()
+            : $jawabans->values();
+
+        return Inertia::render('Feedback/Detail', [
+            'jawabans'   => $jawabansData,
+            'week'       => $week,
+            'title'      => is_object($title) ? $title : null,
+            'isUserOnly' => $isUserOnly,
+            'userType'   => $request->usertype,
+        ]);
     }
 }
