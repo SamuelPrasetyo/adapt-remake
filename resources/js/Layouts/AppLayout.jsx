@@ -20,8 +20,10 @@ const NAV = [
     {
         type: 'group', label: 'Modul', icon: 'layers',
         children: [
-            { label: 'Daftar Modul', href: '/modul',   match: '/modul' },
-            { label: 'Dokumen',      href: '/dokumen',  match: '/dokumen' },
+            { label: 'Activity Log',      href: '/activity-log',       match: '/activity-log',      external: true },
+            { label: 'Feedback',          href: '/feedbackadmin/index', match: '/feedbackadmin',     external: true },
+            { label: 'Modul Pembelajaran', href: '/modul',             match: '/modul' },
+            { label: 'Dokumen',           href: '/dokumen',            match: '/dokumen' },
         ],
     },
     {
