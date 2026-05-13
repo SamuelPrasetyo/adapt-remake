@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Company;
 use App\Models\JawabanModul;
 use App\Models\Kader;
 use App\Models\Modul;
@@ -9,41 +10,47 @@ use App\Models\ModulTestResult;
 use App\Models\ModulUserAnswer;
 use App\Models\SoalModul;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 class LearningController extends Controller
 {
     public function index()
     {
-        $user = auth()->user();
+        $user  = auth()->user();
         $kader = Kader::where('nik', $user->nik)->first();
 
-        $companyId = $user->company_id;
+        if (!$kader) {
+            return Inertia::render('MyModul/Index', [
+                'moduls'  => [],
+                'grouped' => [],
+            ]);
+        }
+
+        // users.company_code links to company.company_code; modul_assignments stores company.company_id (PK)
+        $company   = Company::where('company_code', $user->company_code)->first();
+        $companyId = $company ? $company->company_id : null;
 
         $moduls = Modul::whereHas('assignments', function ($q) use ($kader, $companyId) {
-
             $q->where(function ($x) use ($kader) {
                 $x->where('assignable_type', 'user')
-                    ->where('assignable_id', $kader->id);
+                  ->where('assignable_id', $kader->id);
             });
-
-            $q->orWhere(function ($x) use ($companyId) {
-                $x->where('assignable_type', 'company')
-                    ->where('assignable_id', $companyId);
-            });
+            if ($companyId) {
+                $q->orWhere(function ($x) use ($companyId) {
+                    $x->where('assignable_type', 'company')
+                      ->where('assignable_id', $companyId);
+                });
+            }
         })
-            ->orderBy('fase')
-            ->get();
+        ->orderBy('fase')
+        ->get();
 
-        $fase1 = $moduls->where('fase', 'Fase 1');
-        $fase2 = $moduls->where('fase', 2);
-        $fase3 = $moduls->where('fase', 3);
+        $grouped = $moduls->groupBy('fase');
 
-        return view('pages.learning.index', compact(
-            'moduls',
-            'fase1',
-            'fase2',
-            'fase3'
-        ));
+        return Inertia::render('MyModul/Index', [
+            'moduls'  => $moduls->values(),
+            'grouped' => $grouped,
+        ]);
     }
 
     public function detail($id)
@@ -86,13 +93,13 @@ class LearningController extends Controller
             ->get();
 
 
-        return view('pages.learning.detail', compact(
-            'modul',
-            'progress',
-            'mentor',
-            'posttest',
-            'pretest'
-        ));
+        return Inertia::render('MyModul/Detail', [
+            'modul'    => $modul,
+            'progress' => $progress,
+            'mentor'   => $mentor,
+            'pretest'  => $pretest,
+            'posttest' => $posttest,
+        ]);
     }
 
     public function test($id, $type)

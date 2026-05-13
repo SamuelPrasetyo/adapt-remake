@@ -85,25 +85,28 @@ class DashboardController extends Controller
             array_push($week, $w->angka_week);
         }
 
-        $avg = json_encode($avg, JSON_NUMERIC_CHECK);
-        $week = json_encode($week, JSON_NUMERIC_CHECK);
-        $learningG = json_encode($learningG, JSON_NUMERIC_CHECK);
-        $kkm = json_encode($kkm, JSON_NUMERIC_CHECK);
-
         $kader = Kader::select('kader.nama as nama_kader', 'kader.nik', 'divisis.nama as nama_divisi', 'departemens.nama as nama_departemen', 'company.company_name')
             ->where('nik', $user_kader->nik)
             ->leftJoin('company', 'kader.company_code', 'company.company_code')
             ->leftJoin('divisis', 'kader.id_divisi', 'divisis.id')
             ->leftJoin('departemens', 'kader.id_departemen', 'departemens.id')
             ->first();
-        $title['nama_kader'] = $kader->nama_kader;
-        $title['divisi'] = $kader->nama_divisi;
-        $title['departemen'] = $kader->nama_departemen;
-        $title['bu'] = $kader->company_name;
-        $title['nik'] = $kader->nik;
 
+        $kaderInfo = [
+            'nama'       => $kader->nama_kader  ?? '',
+            'nik'        => $kader->nik          ?? '',
+            'divisi'     => $kader->nama_divisi  ?? '',
+            'departemen' => $kader->nama_departemen ?? '',
+            'bu'         => $kader->company_name ?? '',
+        ];
 
-        return view('pages.dashboard_kader', compact('week', 'reports', 'avg', 'learningG', 'kkm', 'data_lg', 'title'));
+        return Inertia::render('DashboardKader', [
+            'week'      => $weeks->pluck('angka_week')->values(),
+            'avg'       => $avg,
+            'learningG' => $learningG,
+            'kkm'       => $kkm,
+            'kaderInfo' => $kaderInfo,
+        ]);
     }
 
     /**

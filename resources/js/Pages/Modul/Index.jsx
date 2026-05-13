@@ -52,9 +52,10 @@ export default function ModulIndex({ moduls, companies = [], users = [] }) {
     const [editRow, setEditRow]       = useState(null);
     const [assignOpen, setAssignOpen] = useState(false);
     const [assignSearch, setAssignSearch] = useState('');
+    const [assignTargetSearch, setAssignTargetSearch] = useState('');
     const [assignType, setAssignType] = useState('');
-    const [assignUserId, setAssignUserId] = useState('');
-    const [assignCompanyId, setAssignCompanyId] = useState('');
+    const [assignUserIds, setAssignUserIds] = useState([]);
+    const [assignCompanyIds, setAssignCompanyIds] = useState([]);
     const [assignModulIds, setAssignModulIds] = useState([]);
     const [assignProcessing, setAssignProcessing] = useState(false);
 
@@ -110,18 +111,39 @@ export default function ModulIndex({ moduls, companies = [], users = [] }) {
         );
     };
 
+    const filteredUsers = useMemo(() => {
+        if (!assignTargetSearch.trim()) return users;
+        const q = assignTargetSearch.toLowerCase();
+        return users.filter((u) => u.nama?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q));
+    }, [users, assignTargetSearch]);
+
+    const filteredCompanies = useMemo(() => {
+        if (!assignTargetSearch.trim()) return companies;
+        const q = assignTargetSearch.toLowerCase();
+        return companies.filter((c) => c.company_name?.toLowerCase().includes(q));
+    }, [companies, assignTargetSearch]);
+
+    const toggleUser = (id) => setAssignUserIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+    const toggleCompany = (id) => setAssignCompanyIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+
     const openAssign = () => {
         setAssignType('');
-        setAssignUserId(users[0]?.id ?? '');
-        setAssignCompanyId(companies[0]?.company_id ?? '');
+        setAssignUserIds([]);
+        setAssignCompanyIds([]);
         setAssignModulIds([]);
         setAssignSearch('');
+        setAssignTargetSearch('');
         setAssignOpen(true);
     };
 
     const submitAssign = (e) => {
         e.preventDefault();
         if (!assignType) return;
+        const targetIds = assignType === 'user' ? assignUserIds : assignCompanyIds;
+        if (targetIds.length === 0) {
+            alert(`Pilih minimal satu ${assignType === 'user' ? 'user' : 'Business Unit'}.`);
+            return;
+        }
         if (assignModulIds.length === 0) {
             alert('Pilih minimal satu modul.');
             return;
@@ -129,7 +151,7 @@ export default function ModulIndex({ moduls, companies = [], users = [] }) {
         const body = {
             type: assignType,
             modul_id: assignModulIds,
-            ...(assignType === 'user' ? { user_id: assignUserId } : { company_id: assignCompanyId }),
+            ...(assignType === 'user' ? { user_id: assignUserIds } : { company_id: assignCompanyIds }),
         };
         setAssignProcessing(true);
         router.post('/modul/assign', body, {
@@ -248,12 +270,12 @@ export default function ModulIndex({ moduls, companies = [], users = [] }) {
                 <form id="assign-form" onSubmit={submitAssign}>
                     <div className="flex gap-6">
                         {/* ---- Kiri: Konfigurasi ---- */}
-                        <div className="w-64 shrink-0 border-r border-slate-200 pr-6">
+                        <div className="w-72 shrink-0 border-r border-slate-200 pr-6 flex flex-col">
                             <p className="text-sm font-semibold text-slate-700 mb-3">Konfigurasi Assign</p>
 
                             <Field label="Assign Ke">
                                 <select value={assignType} required
-                                    onChange={(e) => { setAssignType(e.target.value); setAssignModulIds([]); }}
+                                    onChange={(e) => { setAssignType(e.target.value); setAssignUserIds([]); setAssignCompanyIds([]); setAssignTargetSearch(''); }}
                                     className={inputCls}>
                                     <option value="">-- Pilih --</option>
                                     <option value="user">Individual</option>
@@ -262,23 +284,67 @@ export default function ModulIndex({ moduls, companies = [], users = [] }) {
                             </Field>
 
                             {assignType === 'user' && (
-                                <Field label="Pilih User">
-                                    <select value={assignUserId} onChange={(e) => setAssignUserId(e.target.value)} className={inputCls}>
-                                        {users.map((u) => (
-                                            <option key={u.id} value={u.id}>{u.nama}</option>
-                                        ))}
-                                    </select>
-                                </Field>
+                                <div className="flex flex-col flex-1 min-h-0">
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                                        Pilih User
+                                        {assignUserIds.length > 0 && (
+                                            <span className="ml-2 text-xs font-normal text-emerald-600">{assignUserIds.length} dipilih</span>
+                                        )}
+                                    </label>
+                                    <input type="text" value={assignTargetSearch}
+                                        onChange={(e) => setAssignTargetSearch(e.target.value)}
+                                        placeholder="Cari user..." className={`${inputCls} mb-2`} />
+                                    <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+                                        {filteredUsers.length === 0 && (
+                                            <p className="text-xs text-slate-400 text-center py-4">Tidak ada user ditemukan.</p>
+                                        )}
+                                        {filteredUsers.map((u) => {
+                                            const checked = assignUserIds.includes(u.id);
+                                            return (
+                                                <label key={u.id}
+                                                    className={`flex items-center gap-2.5 p-2.5 rounded-lg border cursor-pointer transition ${
+                                                        checked ? 'border-emerald-400 bg-emerald-50' : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50/50'
+                                                    }`}>
+                                                    <input type="checkbox" checked={checked} onChange={() => toggleUser(u.id)}
+                                                        className="w-4 h-4 accent-emerald-600 shrink-0" />
+                                                    <span className="text-sm text-slate-800 truncate">{u.nama}</span>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
                             )}
 
                             {assignType === 'company' && (
-                                <Field label="Pilih Business Unit">
-                                    <select value={assignCompanyId} onChange={(e) => setAssignCompanyId(e.target.value)} className={inputCls}>
-                                        {companies.map((c) => (
-                                            <option key={c.company_id} value={c.company_id}>{c.company_name}</option>
-                                        ))}
-                                    </select>
-                                </Field>
+                                <div className="flex flex-col flex-1 min-h-0">
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                                        Pilih Business Unit
+                                        {assignCompanyIds.length > 0 && (
+                                            <span className="ml-2 text-xs font-normal text-emerald-600">{assignCompanyIds.length} dipilih</span>
+                                        )}
+                                    </label>
+                                    <input type="text" value={assignTargetSearch}
+                                        onChange={(e) => setAssignTargetSearch(e.target.value)}
+                                        placeholder="Cari business unit..." className={`${inputCls} mb-2`} />
+                                    <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+                                        {filteredCompanies.length === 0 && (
+                                            <p className="text-xs text-slate-400 text-center py-4">Tidak ada business unit ditemukan.</p>
+                                        )}
+                                        {filteredCompanies.map((c) => {
+                                            const checked = assignCompanyIds.includes(c.company_id);
+                                            return (
+                                                <label key={c.company_id}
+                                                    className={`flex items-center gap-2.5 p-2.5 rounded-lg border cursor-pointer transition ${
+                                                        checked ? 'border-emerald-400 bg-emerald-50' : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50/50'
+                                                    }`}>
+                                                    <input type="checkbox" checked={checked} onChange={() => toggleCompany(c.company_id)}
+                                                        className="w-4 h-4 accent-emerald-600 shrink-0" />
+                                                    <span className="text-sm text-slate-800 truncate">{c.company_name}</span>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
                             )}
                         </div>
 

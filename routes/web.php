@@ -49,6 +49,8 @@ Route::middleware(['can:isKader'])->group(function () {
         Route::get('/dashboard-kader', 'dashboard_kader')->name('dashboard.kader');
     });
 
+    Route::get('/my-learning', [LearningController::class, 'index'])->name('my.learning');
+
     Route::get('/feedback_mai-mentor', [FeedbackMaiController::class, 'fm_mentor_index'])->name('fm.mentor.index');
     Route::get('/feedback_mai-mentor/export/{id_week}/{nik_kader}', [FeedbackMaiController::class, 'fm_mentor_export'])->name('fm.mentor.export');
 });
@@ -144,6 +146,7 @@ Route::middleware(['can:isAdmin'])->group(function () {
 
     Route::controller(ModulController::class)->group(function () {
         Route::get('/modul', 'index')->name('modul.index');
+        Route::get('/modul/peserta', 'peserta')->name('modul.peserta');
         Route::post('/modul/store', 'store')->name('modul.store');
         Route::put('/modul/update/{id}', 'update')->name('modul.update');
         Route::delete('/modul/delete/{id}', 'destroy')->name('modul.destroy');
@@ -207,8 +210,7 @@ Route::middleware(['can:isAll'])->group(function () {
         Route::post('api/fetch-weeks', 'fetchWeek')->name('fetch.week');
     });
 
-    Route::get('/my-learning', [LearningController::class, 'index'])
-        ->name('learning.index');
+    // /my-learning dipindah ke grup isKader di bawah
     Route::get('/learning/{id}', [LearningController::class, 'detail'])
         ->name('learning.detail');
 

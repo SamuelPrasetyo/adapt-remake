@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link, usePage, router, useForm } from '@inertiajs/react';
 import Modal from '@/Components/Modal';
 
-const NAV = [
+const ADMIN_NAV = [
     { type: 'item', label: 'Dashboard', icon: 'home', href: '/dashboard', match: '/dashboard' },
     {
         type: 'group', label: 'Master', icon: 'grid',
@@ -20,10 +20,11 @@ const NAV = [
     {
         type: 'group', label: 'Modul', icon: 'layers',
         children: [
-            { label: 'Activity Log',      href: '/activity-log',       match: '/activity-log',      external: true },
-            { label: 'Feedback',          href: '/feedbackadmin/index', match: '/feedbackadmin',     external: true },
-            { label: 'Modul Pembelajaran', href: '/modul',             match: '/modul' },
-            { label: 'Dokumen',           href: '/dokumen',            match: '/dokumen' },
+            { label: 'Activity Log',       href: '/activity-log',        match: '/activity-log',      external: true },
+            { label: 'Feedback',           href: '/feedbackadmin/index',  match: '/feedbackadmin',     external: true },
+            { label: 'Modul Pembelajaran', href: '/modul',               match: '/modul' },
+            { label: 'Dokumen',            href: '/dokumen',             match: '/dokumen' },
+            { label: 'Peserta Kader',      href: '/modul/peserta',       match: '/modul/peserta' },
         ],
     },
     {
@@ -32,6 +33,16 @@ const NAV = [
             { label: 'Learning Growth',   href: '/learning-index',       match: '/learning-index' },
             { label: 'Weekly Monitoring', href: '/ojt-index',            match: '/ojt-index' },
             { label: 'Feedback',          href: '/reportfeedback-index', match: '/reportfeedback-index' },
+        ],
+    },
+];
+
+const KADER_NAV = [
+    { type: 'item', label: 'Dashboard', icon: 'home', href: '/dashboard-kader', match: '/dashboard-kader' },
+    {
+        type: 'group', label: 'Modul', icon: 'layers',
+        children: [
+            { label: 'My Modul', href: '/my-learning', match: '/my-learning' },
         ],
     },
 ];
@@ -126,6 +137,8 @@ export default function AppLayout({ title, breadcrumb, headerActions, children }
     const user = props?.auth?.user;
     const flash = props?.flash;
 
+    const nav = user?.type === 'Kader' ? KADER_NAV : ADMIN_NAV;
+
     const [profileOpen, setProfileOpen] = useState(false);
     const [cpOpen, setCpOpen] = useState(false);
     const profileRef = useRef(null);
@@ -191,7 +204,7 @@ export default function AppLayout({ title, breadcrumb, headerActions, children }
 
                 {/* Nav — scrolls independently when overflow */}
                 <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-                    {NAV.map((item, i) => {
+                    {nav.map((item, i) => {
                         if (item.type === 'group') return <NavGroup key={i} item={item} currentUrl={url} />;
                         const isActive = url === item.match || url.startsWith(item.match + '/');
                         return (
