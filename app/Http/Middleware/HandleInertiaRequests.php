@@ -54,7 +54,7 @@ class HandleInertiaRequests extends Middleware
                     return $msg;
                 },
                 'error' => function () use ($request) {
-                    $msg = $request->session()->get('error') ?? $request->session()->get('errors');
+                    $msg = $request->session()->get('error');
                     if (!$msg) {
                         $alert = $request->session()->get('alert');
                         if (is_array($alert) && in_array(strtolower($alert['type'] ?? ''), ['error', 'warning'])) {

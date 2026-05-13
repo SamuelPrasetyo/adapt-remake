@@ -3,6 +3,7 @@
 use App\Http\Controllers\BatchController;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\SoalModulController;
 use App\Http\Controllers\DepartemenController;
 use App\Http\Controllers\DivisiController;
 use App\Http\Controllers\DokumenController;
@@ -143,6 +144,13 @@ Route::middleware(['can:isAdmin'])->group(function () {
 
     Route::post('api/fetch-users', [JawabanController::class, 'fetchUser'])->name('fetch.user');
     Route::post('api/fetch-weekfeedback', [JawabanController::class, 'fetchWeekFeedback'])->name('fetch.weekfeedback');
+
+    Route::controller(SoalModulController::class)->group(function () {
+        Route::get('/soal-modul', 'index')->name('soal-modul.index');
+        Route::post('/soal-modul/store', 'store')->name('soal-modul.store');
+        Route::put('/soal-modul/update/{id}', 'update')->name('soal-modul.update');
+        Route::delete('/soal-modul/delete/{id}', 'destroy')->name('soal-modul.delete');
+    });
 
     Route::controller(ModulController::class)->group(function () {
         Route::get('/modul', 'index')->name('modul.index');

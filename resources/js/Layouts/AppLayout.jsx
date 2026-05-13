@@ -23,6 +23,7 @@ const ADMIN_NAV = [
             { label: 'Activity Log',       href: '/activity-log',        match: '/activity-log',      external: true },
             { label: 'Feedback',           href: '/feedbackadmin/index',  match: '/feedbackadmin',     external: true },
             { label: 'Modul Pembelajaran', href: '/modul',               match: '/modul' },
+            { label: 'Soal Pre/Post Test', href: '/soal-modul',          match: '/soal-modul' },
             { label: 'Dokumen',            href: '/dokumen',             match: '/dokumen' },
             { label: 'Peserta Kader',      href: '/modul/peserta',       match: '/modul/peserta' },
         ],
