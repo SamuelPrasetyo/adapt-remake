@@ -4,9 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class ModulUserAnswer extends Model
+class ModulUserAnswers extends Model
 {
-    protected $table = 'modul_user_answer';
+    protected $table = 'modul_user_answers';
     protected $guarded = [];
 
     public function answers()

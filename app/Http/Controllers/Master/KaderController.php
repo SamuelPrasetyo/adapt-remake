@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Master;
 
+use App\Http\Controllers\Controller;
 use App\Exports\KadersExport;
 use App\Models\Kader;
 use Illuminate\Http\Request;
@@ -75,7 +76,7 @@ class KaderController extends Controller
         //
     }
 
-    public function export_kader() 
+    public function export_kader()
     {
         $file_name = 'kaders_'.date('d-m-Y_H:i:s') . '.xlsx';
 
@@ -98,7 +99,6 @@ class KaderController extends Controller
             Alert::warning('Failed', 'Import data gagal!');
             return redirect()->route('kader.index');
         }
-        // Excel::import(new KaderImport(), $request->file('file')->store('temp'));
     }
 
     /**
@@ -147,7 +147,7 @@ class KaderController extends Controller
                 'updated_at'        => now(),
                 'updated_by'        => Auth::user()->id
             ]);
-            
+
         ActivityLog::activity_log('Mengubah data Kader');
         Alert::success('Success', 'Data berhasil diupdate!');
         return redirect()->route('kader.index');
@@ -164,5 +164,5 @@ class KaderController extends Controller
         //
     }
 
-    
+
 }

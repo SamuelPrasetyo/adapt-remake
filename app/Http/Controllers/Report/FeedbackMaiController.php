@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Report;
 
+use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\cr;
 use App\Models\FeedbackMai;
@@ -40,7 +41,6 @@ class FeedbackMaiController extends Controller
         $feedbacks = FeedbackMai::select('feedback_mai.*', 'weeks_kader.angka_week',)
             ->join('weeks_kader', 'feedback_mai.id_week', 'weeks_kader.id_week')
             ->whereIn('feedback_mai.nik_kader', $nik_kader)
-            // ->where('created')
             ->where('feedback_mai.user_type', 'kader')
             ->orderBy('weeks_kader.angka_week','desc')
             ->get();
@@ -62,7 +62,6 @@ class FeedbackMaiController extends Controller
             ->where('feedback_mai.id_week', $id_week)
             ->where('feedback_mai.nik_kader', $nik_kader)
             ->where('feedback_mai.user_type', 'kader')
-            // ->with(['details','kaders'])
             ->first();
         $file_name = 'fm-kader-' . $feedback->nama_kader . '-Week' . $feedback->angka_week . '-' . now() . '.pdf';
         $pdf = Pdf::loadView('pdf.feedbackmai', compact('feedback'));
@@ -103,7 +102,6 @@ class FeedbackMaiController extends Controller
             ->where('feedback_mai.id_week', $id_week)
             ->where('feedback_mai.nik_kader', $nik_kader)
             ->where('feedback_mai.user_type', 'mentor')
-            // ->with(['details','kaders'])
             ->first();
         $file_name = 'fm-mentor-' . $feedback->nama_mentor . '-Week' . $feedback->angka_week . '-' . now() . '.pdf';
         $pdf = Pdf::loadView('pdf.feedbackmaiM', compact('feedback'));
@@ -141,7 +139,7 @@ class FeedbackMaiController extends Controller
                         'id_fmdetail'    => Str::uuid(),
                         'id_feedbackmai' => $id_feedbackmai,
                         'no_idx'         => $key + 1,
-                        'jenis'          => $jenis, // new column to identify type
+                        'jenis'          => $jenis,
                         'var'            => $val['var'] ?? null,
                         'desc'           => $val['desc'] ?? null,
                         'created_at'     => now()
@@ -183,7 +181,7 @@ class FeedbackMaiController extends Controller
                         'id_fmdetail'    => Str::uuid(),
                         'id_feedbackmai' => $id_feedbackmai,
                         'no_idx'         => $key + 1,
-                        'jenis'          => $jenis, // new column to identify type
+                        'jenis'          => $jenis,
                         'var'            => $val['var'] ?? null,
                         'desc'           => $val['desc'] ?? null,
                         'created_at'     => now()
@@ -259,14 +257,12 @@ class FeedbackMaiController extends Controller
     public function feedbackmai_update(Request $request, $id)
     {
         $feedback_mai = FeedbackMai::where('id_feedbackmai', $id)->first();
-        // Update kesimpulan
         FeedbackMai::where('id_feedbackmai', $id)
             ->update([
                 'kesimpulan' => $request->kesimpulan ?? $feedback_mai->kesimpulan,
                 'nama_mentor' => $request->nama_mentor ?? $feedback_mai->nama_mentor,
             ]);
 
-        // Update detail berdasarkan jenis
         foreach (['keterampilan', 'tantangan', 'harapan'] as $jenis) {
             FmDetail::where('id_feedbackmai', $id)
                 ->where('jenis', $jenis)
@@ -296,7 +292,6 @@ class FeedbackMaiController extends Controller
 
     public function feedbackmai_updateM(Request $request, $id)
     {
-        // Update kesimpulan
         $feedback_mai = FeedbackMai::where('id_feedbackmai', $id)->first();
         FeedbackMai::where('id_feedbackmai', $id)
             ->update([
@@ -306,7 +301,6 @@ class FeedbackMaiController extends Controller
                 'updated_at'        => now()
             ]);
 
-        // Update detail berdasarkan jenis
         foreach (['peningkatan'] as $jenis) {
             FmDetail::where('id_feedbackmai', $id)
                 ->where('jenis', $jenis)
@@ -354,13 +348,11 @@ class FeedbackMaiController extends Controller
 
         $nik_kader = $request->nik_kader;
 
-        // Week yang sudah diambil kader ini
         $week_fm = FeedbackMai::where('user_type', 'kader')
             ->where('nik_kader', $nik_kader)
             ->pluck('id_week')
             ->toArray();
 
-        // Semua week yang belum dipakai kader ini
         $weeks = WeekKader::whereIn('angka_week', $arr_week)
             ->whereNotIn('id_week', $week_fm)
             ->orderBy('angka_week', 'asc')
@@ -390,13 +382,11 @@ class FeedbackMaiController extends Controller
 
         $nik_kader = $request->nik_kader;
 
-        // Week yang sudah diambil kader ini
         $week_fm = FeedbackMai::where('user_type', 'mentor')
             ->where('nik_kader', $nik_kader)
             ->pluck('id_week')
             ->toArray();
 
-        // Semua week yang belum dipakai kader ini
         $weeks = Week::whereIn('id_week', $week_fm)
             ->whereIn('angka_week',$arr_week)
             ->orderBy('angka_week', 'asc')
@@ -426,13 +416,11 @@ class FeedbackMaiController extends Controller
 
         $nik_kader = $request->nik_kader;
 
-        // Week yang sudah diambil kader ini
         $week_fm = FeedbackMai::where('user_type', 'kader')
             ->where('nik_kader', $nik_kader)
             ->pluck('id_week')
             ->toArray();
 
-        // Semua week yang belum dipakai kader ini
         $weeks = WeekKader::whereIn('angka_week',$arr_week)
                     ->whereIn('id_week', $week_fm)
                     ->orderBy('angka_week', 'asc')
@@ -462,13 +450,11 @@ class FeedbackMaiController extends Controller
 
         $nik_kader = $request->nik_kader;
 
-        // Week yang sudah diambil kader ini
         $week_fm = FeedbackMai::where('user_type', 'mentor')
             ->where('nik_kader', $nik_kader)
             ->pluck('id_week')
             ->toArray();
 
-        // Semua week yang belum dipakai kader ini
         $weeks = Week::whereIn('angka_week', $arr_week)->whereNotIn('id_week', $week_fm)
             ->orderBy('angka_week', 'asc')
             ->pluck('angka_week', 'id_week');

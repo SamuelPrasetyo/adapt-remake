@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Modul;
 
+use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\JawabanModul;
 use App\Models\Modul;

@@ -1,9 +1,8 @@
 <?php
 
-// app/Http/Controllers/DokumenController.php
+namespace App\Http\Controllers\Modul;
 
-namespace App\Http\Controllers;
-
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Dokumen;
 use Inertia\Inertia;
@@ -53,7 +52,6 @@ class DokumenController extends Controller
 
             $dokumen->path_file = 'uploads/dokumen/' . $fileName;
 
-            // ambil nama asli file baru
             $dokumen->nama_file = $request->file('file')->getClientOriginalName();
         }
 

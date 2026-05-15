@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Report;
 
+use App\Http\Controllers\Controller;
 use App\Exports\ReportFeedbackExport;
 use App\Exports\ReportFeedbackKaderExport;
 use App\Models\ActivityLog;
@@ -182,23 +183,17 @@ class ReportController extends Controller
             ];
         }
 
-
-        // dd($week_arr);
         $reports = Jawaban::selectRaw("pertanyaan.nama_pertanyaan,pertanyaan.id_pertanyaan,jawaban,nik_kader,weeks.angka_week as week, jawaban.nama_mentor as nama_mentor,essay_revisi")
             ->join('weeks', 'jawaban.id_week', 'weeks.id_week')
             ->join('pertanyaan', 'jawaban.id_pertanyaan', 'pertanyaan.id_pertanyaan')
             ->join('users', 'jawaban.created_by', 'users.id')
-            // ->whereNotNull('nama_mentor')
             ->where('nik_kader', $request->nik_kader)
             ->where('pertanyaan.status', 'Aktif')
             ->where('pertanyaan.type', 'Mentor')
-            // ->whereNotIn('jawaban.id_pertanyaan', ['6'])
             ->whereIn('weeks.angka_week', $week_arr)
-            // ->groupBy('pertanyaan.nama_pertanyaan', 'nik_kader', 'week')
             ->orderBy('pertanyaan.id_pertanyaan')
             ->get();
         $pertanyaans = Pertanyaan::where('type', 'Mentor')->where('status', 'Aktif')->orderBy('id_pertanyaan', 'asc')->limit(4)->get();
-        // dd($reports);
         $data_count = count($reports);
         $avg = [];
         $learningG = [];
@@ -248,11 +243,11 @@ class ReportController extends Controller
             array_push($week, $w->angka_week);
             array_push($kkm, 7);
         }
-        $nama_mentors = array_unique($nama_mentors); // Hapus duplikat
+        $nama_mentors = array_unique($nama_mentors);
         if (count($nama_mentors) === 1) {
-            $nama_mentor = reset($nama_mentors); // Ambil nilai pertama
+            $nama_mentor = reset($nama_mentors);
         } else {
-            $nama_mentor = array_values($nama_mentors); // Reset indeks array
+            $nama_mentor = array_values($nama_mentors);
         }
         ksort($avg_week);
         foreach ($avg_week as $key => $avw) {
@@ -266,16 +261,12 @@ class ReportController extends Controller
             } else {
                 $rounded = $lg_prev;
             }
-            // dd($rounded);
             $data_lg[$key] =  $rounded;
             $learningG[$key] =  $rounded;
             $data_kkm[$key] = 7;
-            // $week[$key] = $key;
 
             $lg_prev = $rounded;
         }
-        // dd($avg_week, $learningG);
-        // Iterate over the data to fill missing weeks with "0"
 
         foreach ($data as $key => $values) {
             foreach ($week as $wk) {
@@ -293,8 +284,6 @@ class ReportController extends Controller
             ksort($data[$key]);
         }
 
-        // dd($data2, $avg2_week);
-
         $kader = Kader::select('kader.nama as nama_kader', 'kader.iq', 'kader.ipk', 'divisis.nama as nama_divisi', 'departemens.nama as nama_departemen', 'company.company_name', 'jawaban.nama_mentor', 'batch.nama_batch', 'batch.tahun_batch')
             ->leftJoin('jawaban', 'kader.nik', 'jawaban.nik_kader')
             ->leftJoin('company', 'kader.company_code', 'company.company_code')
@@ -302,7 +291,6 @@ class ReportController extends Controller
             ->leftJoin('departemens', 'kader.id_departemen', 'departemens.id')
             ->leftJoin('batch', 'kader.id_batch', 'batch.id_batch')
             ->where('nik', $request->nik_kader)
-            // ->whereNotNull('jawaban.nama_mentor')
             ->first();
 
         $title['nama_mentor'] = $nama_mentor;
@@ -317,7 +305,6 @@ class ReportController extends Controller
         $title['batch'] = $this->ToRomawi($kader->nama_batch) . ' - ' . $kader->tahun_batch;
         $batch = $this->ToRomawi($kader->nama_batch);
         $tahun = $kader->tahun_batch;
-        // dd($avg,$avg2);
         $performance_sums = PerformanceSum::where('nik_kader', $request->nik_kader)
             ->where('ojt', $request->ojt)
             ->first();
@@ -391,7 +378,6 @@ class ReportController extends Controller
     {
         $kaders = Kader::select('kader.nama', 'kader.nik')
             ->join('jawaban', 'kader.nik', 'jawaban.nik_kader')
-            // ->whereNotNull('jawaban.nama_mentor')
             ->groupBy('kader.nama', 'kader.nik')
             ->orderBy('nama', 'asc')
             ->get();
@@ -424,7 +410,6 @@ class ReportController extends Controller
                 ->leftJoin('batch', 'kader.id_batch', 'batch.id_batch')
                 ->leftJoin('jawaban', 'kader.nik', 'jawaban.nik_kader')
                 ->leftJoin('feedback_mai', 'kader.nik', 'feedback_mai.nik_kader')
-                // ->join('performance_summary','kader.nik','performance_summary.nik_kader')
                 ->groupBy('kader.id', 'kader.nama', 'kader.jenis_kelamin', 'kader.iq', 'kader.ipk', 'company.company_name', 'divisis.nama', 'departemens.nama', 'jawaban.nik_kader', 'kader.nik', 'batch.nama_batch', 'batch.tahun_batch')
                 ->get();
             $mentor[] = [];
@@ -458,7 +443,7 @@ class ReportController extends Controller
 
                 foreach ($data_mentor as $dt) {
                     if (!isset($mentor[$dt->nik_kader])) {
-                        $mentor[$dt->nik_kader] = []; // Initialize as an array if not set
+                        $mentor[$dt->nik_kader] = [];
                     }
                     array_push($mentor[$dt->nik_kader], $dt->nama_mentor);
                     unset($mentor[$dt->nik_kader][0]);
@@ -466,7 +451,6 @@ class ReportController extends Controller
 
                 $data_jawaban = Jawaban::select('jawaban.*', 'pertanyaan.nama_pertanyaan', 'pertanyaan.type')
                     ->where('nik_kader', $value->nik)
-                    // ->where('jawaban.created_by', $data_mentor->id)
                     ->join('pertanyaan', 'jawaban.id_pertanyaan', 'pertanyaan.id_pertanyaan')
                     ->get();
 
@@ -501,14 +485,9 @@ class ReportController extends Controller
                 ->leftJoin('departemens', 'kader.id_departemen', 'departemens.id')
                 ->leftJoin('batch', 'kader.id_batch', 'batch.id_batch')
                 ->leftJoin('jawaban', 'kader.nik', 'jawaban.nik_kader')
-                // ->leftJoin('feedback_mai', 'kader.nik', 'feedback_mai.nik_kader')
-                // ->join('performance_summary','kader.nik','performance_summary.nik_kader')
-                // ->where('kader.nik', 'test.kader.mai')
-                // ->where('feedback_mai.user_type','!=', 'mentor')
                 ->groupBy('kader.id', 'kader.nama', 'kader.jenis_kelamin', 'kader.iq', 'kader.ipk', 'company.company_name', 'divisis.nama', 'departemens.nama', 'jawaban.nik_kader', 'kader.nik', 'batch.nama_batch', 'batch.tahun_batch', 'company.company_shortname')
                 ->get();
-            // Contoh data dari controller (disederhanakan)
-            $feedbacks = FeedbackMai::with('details')->get(); // dengan relasi details
+            $feedbacks = FeedbackMai::with('details')->get();
 
 
             $mentor[] = [];
@@ -541,7 +520,7 @@ class ReportController extends Controller
 
                 foreach ($data_mentor as $dt) {
                     if (!isset($mentor[$dt->nik_kader])) {
-                        $mentor[$dt->nik_kader] = []; // Initialize as an array if not set
+                        $mentor[$dt->nik_kader] = [];
                     }
                     array_push($mentor[$dt->nik_kader], $dt->nama_mentor);
                     unset($mentor[$dt->nik_kader][0]);
@@ -549,7 +528,6 @@ class ReportController extends Controller
 
                 $data_jawaban = Jawaban::select('jawaban.*', 'pertanyaan.nama_pertanyaan', 'pertanyaan.type')
                     ->where('nik_kader', $value->nik)
-                    // ->where('jawaban.created_by', $data_mentor->id)
                     ->join('pertanyaan', 'jawaban.id_pertanyaan', 'pertanyaan.id_pertanyaan')
                     ->get();
 
@@ -584,7 +562,6 @@ class ReportController extends Controller
             ->leftJoin('departemens', 'kader.id_departemen', 'departemens.id')
             ->leftJoin('batch', 'kader.id_batch', 'batch.id_batch')
             ->leftJoin('jawaban', 'kader.nik', 'jawaban.nik_kader')
-            // ->join('performance_summary','kader.nik','performance_summary.nik_kader')
             ->groupBy('kader.nama', 'kader.jenis_kelamin', 'kader.iq', 'kader.ipk', 'company.company_name', 'divisis.nama', 'departemens.nama', 'jawaban.nik_kader', 'kader.nik', 'batch.nama_batch', 'batch.tahun_batch')
             ->get();
         $mentor[] = [];
@@ -616,14 +593,13 @@ class ReportController extends Controller
 
             foreach ($data_mentor as $dt) {
                 if (!isset($mentor[$dt->nik_kader])) {
-                    $mentor[$dt->nik_kader] = []; // Initialize as an array if not set
+                    $mentor[$dt->nik_kader] = [];
                 }
                 array_push($mentor[$dt->nik_kader], $dt->nama_mentor);
             }
 
             $data_jawaban = Jawaban::select('jawaban.*', 'pertanyaan.nama_pertanyaan', 'pertanyaan.type')
                 ->where('nik_kader', $value->nik)
-                // ->where('jawaban.created_by', $data_mentor->id)
                 ->join('pertanyaan', 'jawaban.id_pertanyaan', 'pertanyaan.id_pertanyaan')
                 ->get();
 
@@ -654,7 +630,6 @@ class ReportController extends Controller
 
         ActivityLog::activity_log('Menambah data Performance Summary');
         Alert::success('Success', 'Data berhasil ditambahkan!');
-        // return redirect()->route('report.feedback.back', $request->ojt);
         return redirect()->route('reportfeedback.index');
     }
 
@@ -670,11 +645,6 @@ class ReportController extends Controller
 
         ActivityLog::activity_log('Mengubah data Performance Summary');
         Alert::success('Success', 'Data berhasil diupdate!');
-
-        // return redirect()->route('report.feedback.back', [
-        //     'ojt' => $request->ojt,
-        //     'user_type' => $request->user_type
-        // ]);
 
         return redirect()->route('reportfeedback.index');
     }
@@ -695,13 +665,8 @@ class ReportController extends Controller
 
     public function upload(Request $request, $id)
     {
-        // $request->validate([
-        //     'file_assessment' => 'required|file|max:2048'
-        // ]);
-
         $data = PerformanceSum::findOrFail($id);
 
-        // hapus file lama
         if ($data->file_assessment && Storage::disk('public')->exists($data->file_assessment)) {
             Storage::disk('public')->delete($data->file_assessment);
         }
@@ -719,8 +684,15 @@ class ReportController extends Controller
         return redirect()->route('reportfeedback.index');
     }
 
+    public function exportLearningGrowthPdf($nik)
+    {
+        //
+    }
 
-
+    public function exportPdf(Request $request)
+    {
+        //
+    }
 
     function ToRomawi($number)
     {
@@ -743,17 +715,15 @@ class ReportController extends Controller
         $date = new \DateTime();
         $date->setISODate($year, $week);
 
-        $start = clone $date;           // Senin
+        $start = clone $date;
         $end   = clone $date;
-        $end->modify('+4 days');        // Jumat
+        $end->modify('+4 days');
 
         return [
             'start' => $start->format('j'),
             'end'   => $end->format('j'),
         ];
     }
-
-
 
     /**
      * Show the form for creating a new resource.

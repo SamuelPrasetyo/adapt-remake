@@ -1,13 +1,14 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Modul;
 
+use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\JawabanModul;
 use App\Models\Kader;
 use App\Models\Modul;
 use App\Models\ModulTestResult;
-use App\Models\ModulUserAnswer;
+use App\Models\ModulUserAnswers;
 use App\Models\SoalModul;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -58,9 +59,6 @@ class LearningController extends Controller
         $user = auth()->user();
 
         $modul = Modul::findOrFail($id);
-
-        // nanti ambil progress asli dari table progress
-        // sementara dummy dulu
 
         $progress = [
             'pretest' => true,
@@ -140,13 +138,13 @@ class LearningController extends Controller
 
             $jawaban = JawabanModul::find($jawabanId);
 
-            $isCorrect = $jawaban->is_correct ? 1 : 0;
+            $isCorrect = $jawaban->is_benar ? 1 : 0;
 
             if ($isCorrect) {
                 $correct++;
             }
 
-            ModulUserAnswer::create([
+            ModulUserAnswers::create([
                 'result_id' => $result->id,
                 'soal_modul_id' => $soalId,
                 'jawaban_modul_id' => $jawabanId,
@@ -171,8 +169,6 @@ class LearningController extends Controller
             ->where('modul_id', $id)
             ->where('tipe', $type)
             ->get();
-
-
 
         return response()->json($soals);
     }

@@ -1,18 +1,16 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Master;
 
-use App\Imports\DivisiImport;
+use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
-use App\Models\Divisi;
+use App\Models\Week;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use RealRashid\SweetAlert\Facades\Alert;
-use Illuminate\Support\Str;
-use Maatwebsite\Excel\Facades\Excel;
 use Inertia\Inertia;
 
-class DivisiController extends Controller
+class WeekController extends Controller
 {
     public function __construct() {
         $this->middleware('auth');
@@ -24,8 +22,8 @@ class DivisiController extends Controller
      */
     public function index()
     {
-        $divisis = Divisi::orderBy('nama', 'asc')->get();
-        return Inertia::render('Master/Divisi/Index', ['divisis' => $divisis]);
+        $weeks = Week::orderBy('angka_week', 'asc')->get();
+        return Inertia::render('Master/Week/Index', ['weeks' => $weeks]);
     }
 
     /**
@@ -46,33 +44,24 @@ class DivisiController extends Controller
      */
     public function store(Request $request)
     {
-        Divisi::insert([
-            'id'            => Str::uuid(),
-            'nama'          => $request->nama,
+        $data = [
+            'angka_week'    => $request->angka_week,
             'created_at'    => now(),
             'created_by'    => Auth::user()->id
-        ]);
-        ActivityLog::activity_log('Menambah data Divisi');
+        ];
+        Week::insert($data);
+        ActivityLog::activity_log('Menambah data Week');
         Alert::success('Success', 'Data berhasil ditambahkan!');
-        return redirect()->route('divisi.index');
-    }
-    public function import(Request $request)
-    {
-
-        Excel::import(new DivisiImport(), $request->file('file')->store('temp'));
-
-        ActivityLog::activity_log('Mengimport data Divisi');
-        Alert::success('Success', 'Data berhasil diupload!');
-        return redirect()->route('divisi.index');
+        return redirect()->route('week.index');
     }
 
     /**
      * Display the specified resource.
      *
-     * @param  \App\Models\Divisi  $divisi
+     * @param  \App\Models\Week  $week
      * @return \Illuminate\Http\Response
      */
-    public function show(Divisi $divisi)
+    public function show(Week $week)
     {
         //
     }
@@ -80,10 +69,10 @@ class DivisiController extends Controller
     /**
      * Show the form for editing the specified resource.
      *
-     * @param  \App\Models\Divisi  $divisi
+     * @param  \App\Models\Week  $week
      * @return \Illuminate\Http\Response
      */
-    public function edit(Divisi $divisi)
+    public function edit(Week $week)
     {
         //
     }
@@ -92,35 +81,34 @@ class DivisiController extends Controller
      * Update the specified resource in storage.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\Divisi  $divisi
+     * @param  \App\Models\Week  $week
      * @return \Illuminate\Http\Response
      */
     public function update(Request $request, $id)
     {
-        $divisi = Divisi::where('id', $id)->first();
-        Divisi::where('id', $id)
+        $week = Week::where('id_week', $id)->first();
+        Week::where('id_week', $id)
             ->update([
-                'nama' => strtoupper($request->nama) ?? strtoupper($divisi->nama),
+                'angka_week'    => $request->angka_week ?? $week->angka_week,
                 'updated_at'    => now(),
                 'updated_by'    => Auth::user()->id
             ]);
-            
-        ActivityLog::activity_log('Mengedit data Divisi');
+        ActivityLog::activity_log('Mengubah data Week');
         Alert::success('Success', 'Data berhasil diupdate!');
-        return redirect()->route('divisi.index');
+        return redirect()->route('week.index');
     }
 
     /**
      * Remove the specified resource from storage.
      *
-     * @param  \App\Models\Divisi  $divisi
+     * @param  \App\Models\Week  $week
      * @return \Illuminate\Http\Response
      */
     public function destroy($id)
     {
-        Divisi::where('id', $id)->delete();
-        ActivityLog::activity_log('Menghapus data Divisi');
+        Week::where('id_week', $id)->delete();
+        ActivityLog::activity_log('Menghapus data Week');
         Alert::success('Success', 'Data berhasil dihapus!');
-        return redirect()->route('divisi.index');
+        return redirect()->route('week.index');
     }
 }

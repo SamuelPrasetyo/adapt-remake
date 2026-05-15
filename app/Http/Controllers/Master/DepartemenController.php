@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Master;
 
+use App\Http\Controllers\Controller;
 use App\Imports\DepartemenImport;
 use App\Models\ActivityLog;
 use App\Models\Departemen;

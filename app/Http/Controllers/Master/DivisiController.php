@@ -1,15 +1,19 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Master;
 
+use App\Http\Controllers\Controller;
+use App\Imports\DivisiImport;
 use App\Models\ActivityLog;
-use App\Models\Nilai;
+use App\Models\Divisi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use RealRashid\SweetAlert\Facades\Alert;
+use Illuminate\Support\Str;
+use Maatwebsite\Excel\Facades\Excel;
 use Inertia\Inertia;
 
-class NilaiController extends Controller
+class DivisiController extends Controller
 {
     public function __construct() {
         $this->middleware('auth');
@@ -21,8 +25,8 @@ class NilaiController extends Controller
      */
     public function index()
     {
-        $nilais = Nilai::orderBy('nama_nilai', 'asc')->get();
-        return Inertia::render('Master/Nilai/Index', ['nilais' => $nilais]);
+        $divisis = Divisi::orderBy('nama', 'asc')->get();
+        return Inertia::render('Master/Divisi/Index', ['divisis' => $divisis]);
     }
 
     /**
@@ -43,24 +47,33 @@ class NilaiController extends Controller
      */
     public function store(Request $request)
     {
-        $data = [
-            'nama_nilai'    => $request->nama_nilai,
+        Divisi::insert([
+            'id'            => Str::uuid(),
+            'nama'          => $request->nama,
             'created_at'    => now(),
             'created_by'    => Auth::user()->id
-        ];
-        Nilai::insert($data);
-        ActivityLog::activity_log('Menambah data Nilai');
+        ]);
+        ActivityLog::activity_log('Menambah data Divisi');
         Alert::success('Success', 'Data berhasil ditambahkan!');
-        return redirect()->route('nilai.index');
+        return redirect()->route('divisi.index');
+    }
+    public function import(Request $request)
+    {
+
+        Excel::import(new DivisiImport(), $request->file('file')->store('temp'));
+
+        ActivityLog::activity_log('Mengimport data Divisi');
+        Alert::success('Success', 'Data berhasil diupload!');
+        return redirect()->route('divisi.index');
     }
 
     /**
      * Display the specified resource.
      *
-     * @param  \App\Models\Nilai  $nilai
+     * @param  \App\Models\Divisi  $divisi
      * @return \Illuminate\Http\Response
      */
-    public function show(Nilai $nilai)
+    public function show(Divisi $divisi)
     {
         //
     }
@@ -68,10 +81,10 @@ class NilaiController extends Controller
     /**
      * Show the form for editing the specified resource.
      *
-     * @param  \App\Models\Nilai  $nilai
+     * @param  \App\Models\Divisi  $divisi
      * @return \Illuminate\Http\Response
      */
-    public function edit(Nilai $nilai)
+    public function edit(Divisi $divisi)
     {
         //
     }
@@ -80,35 +93,35 @@ class NilaiController extends Controller
      * Update the specified resource in storage.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\Nilai  $nilai
+     * @param  \App\Models\Divisi  $divisi
      * @return \Illuminate\Http\Response
      */
     public function update(Request $request, $id)
     {
-        $nilai = Nilai::where('id_nilai', $id)->first();
-        Nilai::where('id_nilai', $id)
+        $divisi = Divisi::where('id', $id)->first();
+        Divisi::where('id', $id)
             ->update([
-                'nama_nilai'    => $request->nama_nilai ?? $nilai->nama_nilai,
+                'nama' => strtoupper($request->nama) ?? strtoupper($divisi->nama),
                 'updated_at'    => now(),
                 'updated_by'    => Auth::user()->id
             ]);
 
-        ActivityLog::activity_log('Mengubah data Nilai');
+        ActivityLog::activity_log('Mengedit data Divisi');
         Alert::success('Success', 'Data berhasil diupdate!');
-        return redirect()->route('nilai.index');
+        return redirect()->route('divisi.index');
     }
 
     /**
      * Remove the specified resource from storage.
      *
-     * @param  \App\Models\Nilai  $nilai
+     * @param  \App\Models\Divisi  $divisi
      * @return \Illuminate\Http\Response
      */
     public function destroy($id)
     {
-        Nilai::where('id_nilai', $id)->delete();
-        ActivityLog::activity_log('Menghapus data Nilai');
+        Divisi::where('id', $id)->delete();
+        ActivityLog::activity_log('Menghapus data Divisi');
         Alert::success('Success', 'Data berhasil dihapus!');
-        return redirect()->route('nilai.index');
+        return redirect()->route('divisi.index');
     }
 }

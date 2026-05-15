@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Modul;
 
+use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\Company;
 use App\Models\Jawaban;
@@ -40,14 +41,12 @@ class JawabanController extends Controller
     {
         if ($usertype == 'Mentor') {
             $jawabans = Jawaban::select('weeks.angka_week')
-                // ->rightJoin('pertanyaan', 'pertanyaan.id_pertanyaan', 'jawaban.id_pertanyaan', 'weeks.angka_week')
                 ->join('weeks', 'weeks.id_week', 'jawaban.id_week')
                 ->groupBy('weeks.angka_week')
                 ->get();
             $weeks = Week::orderBy('angka_week', 'asc')->get();
         } elseif ($usertype == 'Kader') {
             $jawabans = Jawaban::select('weeks_kader.angka_week')
-                // ->rightJoin('pertanyaan', 'pertanyaan.id_pertanyaan', 'jawaban.id_pertanyaan', 'weeks_kader.angka_week')
                 ->join('weeks_kader', 'weeks_kader.id_week', 'jawaban.id_week')
                 ->groupBy('weeks_kader.angka_week')
                 ->get();
@@ -64,8 +63,6 @@ class JawabanController extends Controller
     public function feedback()
     {
         $subject = Pertanyaan::where('type', 'Subject ' . $this->user->type)->where('status', 'Aktif')->first();
-        // $subject = Pertanyaan::where('type','Subject Kader')->first();
-
 
         $company = Company::where('company_code', $this->user->company_code)->first();
         $kaders = Kader::where('company_code', $company->company_code)
@@ -153,12 +150,6 @@ class JawabanController extends Controller
             for ($i = 1; $i <= $count_pertanyaan; $i++) {
                 $jawaban = $jawaban_mentor[$i];
 
-                // if ($i < 5 OR $i) {
-                //     $jawaban = $jawaban_mentor[$i];
-                // }
-                // if($i <= 6) {
-                //     $jawaban = $request->pertanyaan_mentor[$i];
-                // }
                 if ($i == 5) {
                     switch ($jawaban_mentor[$i]) {
                         case 'Sangat Kurang':
@@ -208,7 +199,6 @@ class JawabanController extends Controller
     public function feedback_kader_store(Request $request)
     {
         try {
-            // dd($request);
             $bu = Company::where('company_code', $this->user->company_code)->first();
             $week = WeekKader::where('id_week', $request->id_week)->first();
             $name = str_replace(' ', '_', $this->user->name);
@@ -219,7 +209,6 @@ class JawabanController extends Controller
             $count_pertanyaan = Pertanyaan::where('type', 'Kader')->where('status', 'Aktif')->get()->count();
 
             for ($i = 1; $i <= $count_pertanyaan; $i++) {
-                // dd($request['id_pertanyaan'.$i]);
                 if ($i == 4) {
                     $request->file('jawaban_kader')[$i]->move(public_path('assets/file'), $nama_file);
                 }
@@ -396,20 +385,6 @@ class JawabanController extends Controller
             if (!isset($request->id_user) && !isset($request->id_week)) {
                 $isUserOnly = True;
                 return redirect()->route('feedbackadmin.index');
-                // $jawabans = Jawaban::select('jawaban.jawaban','jawaban.nama_mentor', 'kader.nama as nama_kader', 'weeks.angka_week', 'pertanyaan.nama_pertanyaan', 'weeks.angka_week','jawaban.nik_kader')
-                //     ->join('pertanyaan', 'pertanyaan.id_pertanyaan', 'jawaban.id_pertanyaan')
-                //     ->join('weeks', 'weeks.id_week', 'jawaban.id_week')
-                //     ->join('users', 'jawaban.created_by', 'users.id')
-                //     ->join('kader', 'jawaban.nik_kader', 'kader.nik')
-                //     ->where('kader.nik','test.kader.mai')
-                //     // ->where('weeks.angka_week','8')
-                //     ->whereNull('jawaban.nama_mentor')
-                //     ->orderBy('weeks.angka_week','asc')
-                //     ->orderBy('jawaban.id_pertanyaan','asc')
-                //     ->get()
-                //     ->groupBy('nik_kader');
-                // dd($jawabans);
-
             } else {
                 $user = User::where('id', $request->id_user)->first();
                 $user_name = $user->name;
@@ -448,8 +423,6 @@ class JawabanController extends Controller
                     ->join('weeks', 'weeks.id_week', 'jawaban.id_week')
                     ->join('users', 'jawaban.created_by', 'users.id')
                     ->join('kader', 'jawaban.nik_kader', 'kader.nik')
-                    // ->where('kader.nik','test.kader.mai')
-                    // ->where('weeks.angka_week','8')
                     ->whereNull('jawaban.nama_mentor')
                     ->orderBy('weeks.angka_week', 'asc')
                     ->orderBy('jawaban.id_pertanyaan', 'asc')
