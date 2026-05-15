@@ -47,24 +47,6 @@ class SoalModulController extends Controller
             'jawabans.*.is_benar'   => 'required|boolean',
         ]);
 
-        // $soalModul = SoalModul::create([
-        //     'modul_id' => $request->modul_id,
-        //     'soal'     => $request->soal,
-        //     'tipe'     => $request->tipe,
-        // ]);
-
-        // foreach ($request->jawabans as $jawaban) {
-        //     JawabanModul::create([
-        //         'soal_id'    => $soalModul->id,
-        //         'jawaban'    => $jawaban['jawaban'],
-        //         'is_benar' => $jawaban['is_benar'] ? 1 : 0,
-        //     ]);
-        // }
-
-        // ActivityLog::activity_log('Menambah data Soal Modul');
-        // Alert::success('Success', 'Soal berhasil ditambahkan!');
-        // return redirect()->route('soal-modul.index');
-
         DB::beginTransaction();
 
         try {
