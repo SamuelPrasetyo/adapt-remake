@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\JawabanModul;
 use App\Models\Kader;
 use App\Models\Modul;
+use App\Models\ModulReadingProgress;
 use App\Models\ModulTestResult;
 use App\Models\ModulUserAnswers;
 use App\Models\SoalModul;
@@ -56,31 +57,37 @@ class LearningController extends Controller
 
     public function detail($id)
     {
-        $user = auth()->user();
-
+        $user  = auth()->user();
         $modul = Modul::findOrFail($id);
 
+        $pretestResult  = ModulTestResult::where('user_id', $user->id)
+            ->where('modul_id', $modul->id)
+            ->where('tipe', 'pre')
+            ->where('is_completed', 1)
+            ->first();
+
+        $posttestResult = ModulTestResult::where('user_id', $user->id)
+            ->where('modul_id', $modul->id)
+            ->where('tipe', 'post')
+            ->where('is_completed', 1)
+            ->first();
+
+        $readingProgress = ModulReadingProgress::where('user_id', $user->id)
+            ->where('modul_id', $modul->id)
+            ->value('progress') ?? 0;
+
         $progress = [
-            'pretest' => true,
-            'pretest_score' => 78,
-
-            'materi' => true,
-            'materi_progress' => 100,
-
-            'posttest' => true,
-            'posttest_score' => 82,
-
-            'post_activity' => true,
-
-            'final_score' => 82
+            'pretest'          => (bool) $pretestResult,
+            'pretest_score'    => $pretestResult?->score,
+            'materi'           => $readingProgress >= 100,
+            'materi_progress'  => $readingProgress,
+            'posttest'         => (bool) $posttestResult,
+            'posttest_score'   => $posttestResult?->score,
+            'post_activity'    => false,
+            'final_score'      => $posttestResult?->score ?? null,
         ];
 
-        $mentor = [
-            'nama' => 'Siti Rahayu',
-            'jabatan' => 'Senior HR Manager'
-        ];
-
-        $pretest = SoalModul::with('jawabans')
+        $pretest  = SoalModul::with('jawabans')
             ->where('modul_id', $modul->id)
             ->where('tipe', 'pre')
             ->get();
@@ -90,11 +97,9 @@ class LearningController extends Controller
             ->where('tipe', 'post')
             ->get();
 
-
         return Inertia::render('MyModul/Detail', [
             'modul'    => $modul,
             'progress' => $progress,
-            'mentor'   => $mentor,
             'pretest'  => $pretest,
             'posttest' => $posttest,
         ]);
@@ -120,9 +125,19 @@ class LearningController extends Controller
     {
         $request->validate([
             'modul_id' => 'required',
-            'tipe' => 'required',
-            'answers' => 'required|array'
+            'tipe'     => 'required',
+            'answers'  => 'required|array',
         ]);
+
+        $alreadyDone = ModulTestResult::where('user_id', auth()->id())
+            ->where('modul_id', $request->modul_id)
+            ->where('tipe', $request->tipe)
+            ->where('is_completed', 1)
+            ->exists();
+
+        if ($alreadyDone) {
+            return back()->withErrors(['test' => 'Test ini sudah pernah dikerjakan dan tidak dapat diulang.']);
+        }
 
         $correct = 0;
         $total = count($request->answers);
@@ -160,7 +175,61 @@ class LearningController extends Controller
             'is_completed' => 1
         ]);
 
-        return back()->with('success', 'Test berhasil diselesaikan');
+        return back();
+    }
+
+    public function myAnswers($id, $type)
+    {
+        $user = auth()->user();
+
+        $result = ModulTestResult::where('user_id', $user->id)
+            ->where('modul_id', $id)
+            ->where('tipe', $type)
+            ->where('is_completed', 1)
+            ->firstOrFail();
+
+        $userAnswers = ModulUserAnswers::where('result_id', $result->id)->get();
+        $soalIds     = $userAnswers->pluck('soal_modul_id');
+        $soals       = SoalModul::with('jawabans')->whereIn('id', $soalIds)->get()->keyBy('id');
+
+        $items = $userAnswers->map(function ($ua) use ($soals) {
+            $soal = $soals[$ua->soal_modul_id] ?? null;
+            if (!$soal) return null;
+
+            return [
+                'soal'       => $soal->soal,
+                'is_correct' => (bool) $ua->is_correct,
+                'jawabans'   => $soal->jawabans->map(fn($j) => [
+                    'id'       => $j->id,
+                    'jawaban'  => $j->jawaban,
+                    'selected' => $j->id == $ua->jawaban_modul_id,
+                ])->values(),
+            ];
+        })->filter()->values();
+
+        return response()->json([
+            'score' => $result->score,
+            'items' => $items,
+        ]);
+    }
+
+    public function saveReadingProgress(Request $request)
+    {
+        $request->validate([
+            'modul_id' => 'required|integer',
+            'progress' => 'required|integer|min:0|max:100',
+        ]);
+
+        $record = ModulReadingProgress::firstOrCreate(
+            ['user_id' => auth()->id(), 'modul_id' => $request->modul_id],
+            ['progress' => $request->progress]
+        );
+
+        if ($request->progress > $record->progress) {
+            $record->update(['progress' => $request->progress]);
+        }
+
+        return back();
     }
 
     public function ajax_test($id, $type)

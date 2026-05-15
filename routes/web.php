@@ -228,6 +228,12 @@ Route::middleware(['can:isAll'])->group(function () {
     Route::post('/learning/test/submit', [LearningController::class, 'submitTest'])
         ->name('learning.submitTest');
 
+    Route::get('/learning/{id}/answers/{type}', [LearningController::class, 'myAnswers'])
+        ->name('learning.myAnswers');
+
+    Route::post('/learning/materi/progress', [LearningController::class, 'saveReadingProgress'])
+        ->name('learning.saveReadingProgress');
+
     Route::get('/ajax/test/{id}/{type}', [LearningController::class, 'ajax_test']);
 });
 
