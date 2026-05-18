@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, usePage, router, useForm } from '@inertiajs/react';
 import Modal from '@/Components/Modal';
+import Toast from '@/Components/Toast';
 
 const ADMIN_NAV = [
     { type: 'item', label: 'Dashboard', icon: 'home', href: '/dashboard', match: '/dashboard' },
@@ -143,6 +144,7 @@ export default function AppLayout({ title, breadcrumb, headerActions, children }
     const [profileOpen, setProfileOpen] = useState(false);
     const [cpOpen, setCpOpen] = useState(false);
     const profileRef = useRef(null);
+    const [toast, setToast] = useState({ open: false, type: 'success', message: '', key: 0 });
 
     const cpForm = useForm({ password_lama: '', password: '', password2: '' });
 
@@ -155,6 +157,15 @@ export default function AppLayout({ title, breadcrumb, headerActions, children }
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
     }, []);
+
+    useEffect(() => {
+        if (flash?.success) {
+            setToast(prev => ({ open: true, type: 'success', message: flash.success, key: prev.key + 1 }));
+        } else if (flash?.error) {
+            const msg = typeof flash.error === 'string' ? flash.error : 'Terjadi kesalahan.';
+            setToast(prev => ({ open: true, type: 'error', message: msg, key: prev.key + 1 }));
+        }
+    }, [flash?.success, flash?.error]);
 
     const handleLogout = async () => {
         const csrf = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
@@ -288,23 +299,13 @@ export default function AppLayout({ title, breadcrumb, headerActions, children }
                 {/* Spacer — compensates for fixed header height */}
                 <div className="h-16 shrink-0" />
 
-                {/* Flash messages */}
-                {flash?.success && (
-                    <div className="mx-8 mt-4 px-4 py-3 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg text-sm flex items-center gap-2">
-                        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        {flash.success}
-                    </div>
-                )}
-                {flash?.error && (
-                    <div className="mx-8 mt-4 px-4 py-3 bg-red-50 text-red-800 border border-red-200 rounded-lg text-sm flex items-center gap-2">
-                        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        {typeof flash.error === 'string' ? flash.error : 'Terjadi kesalahan.'}
-                    </div>
-                )}
+                <Toast
+                    key={toast.key}
+                    open={toast.open}
+                    type={toast.type}
+                    message={toast.message}
+                    onClose={() => setToast(prev => ({ ...prev, open: false }))}
+                />
 
                 <main className="flex-1 p-8 overflow-x-hidden">{children}</main>
 

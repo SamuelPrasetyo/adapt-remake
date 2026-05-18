@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, router } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import DataTable from '@/Components/DataTable';
 import Modal from '@/Components/Modal';
+import Toast from '@/Components/Toast';
 
 const TIPE_OPTIONS = [
     { value: 'pre',  label: 'Pre-Test' },
@@ -88,29 +89,6 @@ function JawabanFields({ jawabans, setFn, prefix }) {
     );
 }
 
-function NotifBanner({ notif, onClose }) {
-    if (!notif) return null;
-    const isSuccess = notif.type === 'success';
-    return (
-        <div className={`flex items-start gap-2.5 px-4 py-3 rounded-lg border text-sm mb-4 ${
-            isSuccess ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'
-        }`}>
-            <svg className="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                {isSuccess
-                    ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                }
-            </svg>
-            <span className="flex-1">{notif.msg}</span>
-            <button type="button" onClick={onClose} className="opacity-60 hover:opacity-100 transition">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
-        </div>
-    );
-}
-
 export default function SoalModulIndex({ soals, moduls }) {
     const [tambahOpen, setTambahOpen]   = useState(false);
     const [editOpen, setEditOpen]       = useState(false);
@@ -121,18 +99,11 @@ export default function SoalModulIndex({ soals, moduls }) {
     const [deleteRow, setDeleteRow]     = useState(null);
     const [deleting, setDeleting]       = useState(false);
 
-    // Notification state: { type: 'success'|'error', msg: string, forModal: bool } | null
-    const [notif, setNotif]   = useState(null);
-    const timerRef            = useRef(null);
+    const [notif, setNotif] = useState({ open: false, type: 'success', message: '', key: 0 });
 
-    const showNotif = (type, msg, forModal = false) => {
-        clearTimeout(timerRef.current);
-        setNotif({ type, msg, forModal });
-        if (type === 'success') {
-            timerRef.current = setTimeout(() => setNotif(null), 3000);
-        }
+    const showNotif = (type, msg) => {
+        setNotif(prev => ({ open: true, type, message: msg, key: prev.key + 1 }));
     };
-    useEffect(() => () => clearTimeout(timerRef.current), []);
 
     const addForm  = useForm({ modul_id: '', soal: '', tipe: '', jawabans: emptyJawabans() });
     const editForm = useForm({ modul_id: '', soal: '', tipe: '', jawabans: emptyJawabans() });
@@ -169,7 +140,6 @@ export default function SoalModulIndex({ soals, moduls }) {
     };
 
     const openEdit = (row) => {
-        setNotif(null);
         setEditRow(row);
         const jawabans = row.jawabans && row.jawabans.length === 4
             ? row.jawabans.map(j => ({ jawaban: j.jawaban, is_benar: !!j.is_benar }))
@@ -185,11 +155,11 @@ export default function SoalModulIndex({ soals, moduls }) {
                 setEditOpen(false);
                 showNotif('success', 'Soal berhasil diupdate!');
             },
-            onError: () => showNotif('error', 'Terjadi kesalahan. Periksa kembali form.', true),
+            onError: () => showNotif('error', 'Terjadi kesalahan. Periksa kembali form.'),
         });
     };
 
-    const openDelete = (row) => { setNotif(null); setDeleteRow(row); setDeleteOpen(true); };
+    const openDelete = (row) => { setDeleteRow(row); setDeleteOpen(true); };
     const confirmDelete = () => {
         setDeleting(true);
         router.delete(`/soal-modul/delete/${deleteRow.id}`, {
@@ -221,10 +191,13 @@ export default function SoalModulIndex({ soals, moduls }) {
 
     return (
         <AppLayout title="SOAL PRE/POST TEST" breadcrumb="Modul / Soal Pre/Post Test">
-            {/* Success toast — page level, auto-close 3s */}
-            {notif?.type === 'success' && (
-                <NotifBanner notif={notif} onClose={() => { clearTimeout(timerRef.current); setNotif(null); }} />
-            )}
+            <Toast
+                key={notif.key}
+                open={notif.open}
+                type={notif.type}
+                message={notif.message}
+                onClose={() => setNotif(prev => ({ ...prev, open: false }))}
+            />
 
             <DataTable
                 columns={COLS}
@@ -261,13 +234,10 @@ export default function SoalModulIndex({ soals, moduls }) {
             />
 
             {/* Modal Tambah */}
-            <Modal open={tambahOpen} onClose={() => { setTambahOpen(false); addForm.reset(); addForm.setData('jawabans', emptyJawabans()); setNotif(null); }}
+            <Modal open={tambahOpen} onClose={() => { setTambahOpen(false); addForm.reset(); addForm.setData('jawabans', emptyJawabans()); }}
                 title="Tambah Soal" size="lg"
-                footer={<BtnRow onCancel={() => { setTambahOpen(false); addForm.reset(); addForm.setData('jawabans', emptyJawabans()); setNotif(null); }} formId="add-form" processing={addForm.processing} />}>
+                footer={<BtnRow onCancel={() => { setTambahOpen(false); addForm.reset(); addForm.setData('jawabans', emptyJawabans()); }} formId="add-form" processing={addForm.processing} />}>
                 <form id="add-form" onSubmit={submitAdd}>
-                    {notif?.type === 'error' && tambahOpen && (
-                        <NotifBanner notif={notif} onClose={() => setNotif(null)} />
-                    )}
                     <Field label="Modul">
                         <select value={addForm.data.modul_id} required
                             onChange={(e) => addForm.setData('modul_id', e.target.value)}
@@ -299,12 +269,9 @@ export default function SoalModulIndex({ soals, moduls }) {
             </Modal>
 
             {/* Modal Edit */}
-            <Modal open={editOpen} onClose={() => { setEditOpen(false); setNotif(null); }} title="Edit Soal" size="lg"
-                footer={<BtnRow onCancel={() => { setEditOpen(false); setNotif(null); }} formId="edit-form" processing={editForm.processing} />}>
+            <Modal open={editOpen} onClose={() => setEditOpen(false)} title="Edit Soal" size="lg"
+                footer={<BtnRow onCancel={() => setEditOpen(false)} formId="edit-form" processing={editForm.processing} />}>
                 <form id="edit-form" onSubmit={submitEdit}>
-                    {notif?.type === 'error' && editOpen && (
-                        <NotifBanner notif={notif} onClose={() => setNotif(null)} />
-                    )}
                     <Field label="Modul">
                         <select value={editForm.data.modul_id} required
                             onChange={(e) => editForm.setData('modul_id', e.target.value)}

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import Modal from '@/Components/Modal';
+import Toast from '@/Components/Toast';
 
 /* ── Stepper item ─────────────────────────────────────────── */
 function CheckItem({ done, title, sub, subColor = 'text-emerald-600', children, last }) {
@@ -22,132 +23,6 @@ function CheckItem({ done, title, sub, subColor = 'text-emerald-600', children, 
         </div>
     );
 }
-
-/* ── Toast notification ───────────────────────────────────── */
-function ToastNotif({ open, message, onClose }) {
-    useEffect(() => {
-        if (!open) return;
-        const timer = setTimeout(onClose, 3000);
-        return () => clearTimeout(timer);
-    }, [open, onClose]);
-
-    if (!open) return null;
-
-    return (
-        <>
-            <style>{`
-                @keyframes tn-slide-in {
-                    from { transform: translateX(120%); opacity: 0; }
-                    to   { transform: translateX(0);    opacity: 1; }
-                }
-                @keyframes tn-countdown { from { width: 100%; } to { width: 0%; } }
-                .tn-wrap { animation: tn-slide-in 0.3s ease-out forwards; }
-                .tn-bar  { animation: tn-countdown 3s linear forwards; }
-            `}</style>
-            <div className="fixed top-5 right-5 z-70 w-80">
-                <div className="tn-wrap bg-amber-50 border border-amber-300 rounded-xl shadow-lg overflow-hidden">
-                    <div className="flex items-center gap-3 px-4 py-3">
-                        <svg className="w-5 h-5 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                                d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                        </svg>
-                        <p className="text-sm font-medium text-amber-800">{message}</p>
-                    </div>
-                    <div className="h-1 bg-amber-100">
-                        <div className="tn-bar h-full bg-amber-400" />
-                    </div>
-                </div>
-            </div>
-        </>
-    );
-}
-
-/* ── Feedback modal (success / error) ────────────────────── */
-function FeedbackModal({ open, onClose, type = 'success' }) {
-    useEffect(() => {
-        if (!open) return;
-        const timer = setTimeout(onClose, 3000);
-        return () => clearTimeout(timer);
-    }, [open, onClose]);
-
-    if (!open) return null;
-
-    const isSuccess = type === 'success';
-    const color     = isSuccess ? '#10b981' : '#ef4444';
-    const barClass  = isSuccess ? 'fb-bar-success' : 'fb-bar-error';
-
-    return (
-        <>
-            <style>{`
-                @keyframes fb-draw-circle {
-                    from { stroke-dashoffset: 157; }
-                    to   { stroke-dashoffset: 0; }
-                }
-                @keyframes fb-draw-check {
-                    from { stroke-dashoffset: 40; }
-                    to   { stroke-dashoffset: 0; }
-                }
-                @keyframes fb-draw-cross-1 {
-                    from { stroke-dashoffset: 30; }
-                    to   { stroke-dashoffset: 0; }
-                }
-                @keyframes fb-draw-cross-2 {
-                    from { stroke-dashoffset: 30; }
-                    to   { stroke-dashoffset: 0; }
-                }
-                @keyframes fb-scale-in {
-                    from { transform: scale(0.8); opacity: 0; }
-                    to   { transform: scale(1);   opacity: 1; }
-                }
-                @keyframes fb-countdown {
-                    from { width: 100%; }
-                    to   { width: 0%; }
-                }
-                .fb-card     { animation: fb-scale-in 0.25s ease-out forwards; }
-                .fb-circle   { stroke-dasharray: 157; stroke-dashoffset: 157; animation: fb-draw-circle 0.55s ease-out 0.1s forwards; }
-                .fb-check    { stroke-dasharray: 40;  stroke-dashoffset: 40;  animation: fb-draw-check  0.35s ease-out 0.6s forwards; }
-                .fb-cross-1  { stroke-dasharray: 30;  stroke-dashoffset: 30;  animation: fb-draw-cross-1 0.3s ease-out 0.55s forwards; }
-                .fb-cross-2  { stroke-dasharray: 30;  stroke-dashoffset: 30;  animation: fb-draw-cross-2 0.3s ease-out 0.75s forwards; }
-                .fb-bar-success { animation: fb-countdown 3s linear forwards; background: #10b981; }
-                .fb-bar-error   { animation: fb-countdown 3s linear forwards; background: #ef4444; }
-            `}</style>
-            <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/40">
-                <div className="fb-card bg-white rounded-2xl shadow-2xl px-10 py-8 w-80 flex flex-col items-center gap-4">
-                    <svg viewBox="0 0 52 52" className="w-20 h-20">
-                        <circle className="fb-circle" cx="26" cy="26" r="25"
-                            fill="none" stroke={color} strokeWidth="2" />
-                        {isSuccess ? (
-                            <path className="fb-check" fill="none" stroke={color} strokeWidth="3.5"
-                                strokeLinecap="round" strokeLinejoin="round" d="M14 27l8 8 16-16" />
-                        ) : (
-                            <>
-                                <line className="fb-cross-1" x1="16" y1="16" x2="36" y2="36"
-                                    stroke={color} strokeWidth="3.5" strokeLinecap="round" />
-                                <line className="fb-cross-2" x1="36" y1="16" x2="16" y2="36"
-                                    stroke={color} strokeWidth="3.5" strokeLinecap="round" />
-                            </>
-                        )}
-                    </svg>
-                    <h3 className="text-lg font-bold text-slate-800 text-center">
-                        {isSuccess ? 'Jawaban Berhasil Disimpan!' : 'Gagal Menyimpan Jawaban'}
-                    </h3>
-                    <p className="text-sm text-slate-500 text-center">
-                        {isSuccess
-                            ? 'Hasil test kamu telah tersimpan dengan baik.'
-                            : 'Terjadi kesalahan. Silakan coba lagi.'}
-                    </p>
-                    <div className="w-full mt-1">
-                        <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div className={`${barClass} h-full rounded-full`} />
-                        </div>
-                        <p className="text-xs text-slate-400 text-center mt-1.5">Menutup otomatis dalam 3 detik</p>
-                    </div>
-                </div>
-            </div>
-        </>
-    );
-}
-
 /* ── Quiz modal (shared for pre & post) ───────────────────── */
 function QuizModal({ open, onClose, title, color, soals, modulId, tipe, onSuccess, onError }) {
     const [page, setPage] = useState(0);
@@ -341,6 +216,78 @@ function ReviewModal({ open, onClose, modulId, tipe, title }) {
     );
 }
 
+/* ── Post Activity upload ─────────────────────────────────── */
+function PostActivityUpload({ modulId }) {
+    const [file, setFile]         = useState(null);
+    const [error, setError]       = useState(null);
+    const [uploading, setUploading] = useState(false);
+    const fileRef = useRef(null);
+
+    const ALLOWED = ['pdf', 'docx', 'xlsx'];
+    const MAX_BYTES = 2 * 1024 * 1024;
+
+    const handleChange = (e) => {
+        const f = e.target.files[0];
+        if (!f) return;
+        const ext = f.name.split('.').pop().toLowerCase();
+        if (!ALLOWED.includes(ext)) {
+            setError('Format tidak diizinkan. Gunakan PDF, DOCX, atau XLSX.');
+            setFile(null);
+            return;
+        }
+        if (f.size > MAX_BYTES) {
+            setError('Ukuran file melebihi batas 2 MB.');
+            setFile(null);
+            return;
+        }
+        setError(null);
+        setFile(f);
+    };
+
+    const handleUpload = () => {
+        if (!file) return;
+        setUploading(true);
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('modul_id', modulId);
+        router.post('/learning/post-activity/upload', fd, {
+            forceFormData: true,
+            preserveState: true,
+            preserveScroll: true,
+            onSuccess: () => { setUploading(false); setFile(null); if (fileRef.current) fileRef.current.value = ''; },
+            onError: (errs) => { setUploading(false); setError(errs.file ?? 'Upload gagal. Coba lagi.'); },
+        });
+    };
+
+    return (
+        <div className="space-y-2 mt-1">
+            <input ref={fileRef} type="file" className="hidden"
+                accept=".pdf,.docx,.xlsx" onChange={handleChange} />
+
+            <div className="flex items-center gap-2 flex-wrap">
+                <button type="button" onClick={() => fileRef.current?.click()}
+                    className="text-sm px-3 py-1.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 transition">
+                    Pilih File
+                </button>
+                {file && (
+                    <button type="button" onClick={handleUpload} disabled={uploading}
+                        className="text-sm px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition">
+                        {uploading ? 'Mengupload...' : 'Upload'}
+                    </button>
+                )}
+            </div>
+
+            {file && (
+                <p className="text-xs text-slate-600 truncate max-w-xs">{file.name}</p>
+            )}
+            {error && (
+                <p className="text-xs text-red-500">{error}</p>
+            )}
+            <p className="text-xs text-slate-400">Format: PDF, DOCX, XLSX · Maks. 2 MB</p>
+        </div>
+    );
+}
+
 /* ── Materi PDF modal ─────────────────────────────────────── */
 function MateriModal({ open, onClose, modul }) {
     const [progress, setProgress] = useState(0);
@@ -404,13 +351,18 @@ function MateriModal({ open, onClose, modul }) {
 }
 
 /* ── Main page ────────────────────────────────────────────── */
+const STATUS_LABEL = { pending: 'Menunggu review', approved: 'Disetujui', rejected: 'Ditolak' };
+const STATUS_COLOR = { pending: 'text-amber-600', approved: 'text-emerald-600', rejected: 'text-red-500' };
+
 export default function ModulDetail({ modul, progress = {}, pretest = [], posttest = [] }) {
     const [showPre, setShowPre]       = useState(false);
     const [showPost, setShowPost]     = useState(false);
     const [showMateri, setShowMateri] = useState(false);
-    const [feedback, setFeedback] = useState(null);
-    const [toast, setToast]       = useState(null);
-    const [review, setReview]     = useState(null); // null | { tipe, title }
+    const [toast, setToast] = useState({ open: false, type: 'success', message: '', key: 0 });
+    const [review, setReview] = useState(null); // null | { tipe, title }
+
+    const showToast = (type, message) =>
+        setToast(prev => ({ open: true, type, message, key: prev.key + 1 }));
 
     const hasPre     = modul?.fase != 3;
     const finalScore = progress.final_score ?? '—';
@@ -486,13 +438,24 @@ export default function ModulDetail({ modul, progress = {}, pretest = [], postte
 
                         <CheckItem done={progress.post_activity}
                             title="Post Activity"
-                            sub={progress.post_activity ? 'Tugas berhasil diupload' : 'Belum diupload'}
+                            sub={progress.post_activity
+                                ? `File: ${progress.post_activity_file}`
+                                : 'Belum diupload'}
                             subColor={progress.post_activity ? 'text-emerald-600' : 'text-slate-500'}
                             last={modul?.fase != 3}>
-                            {progress.post_activity && (
-                                <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">
-                                    ✓ Uploaded
-                                </span>
+                            {progress.post_activity ? (
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">
+                                        ✓ Uploaded
+                                    </span>
+                                    {progress.post_activity_status && (
+                                        <span className={`text-xs font-medium ${STATUS_COLOR[progress.post_activity_status] ?? 'text-slate-500'}`}>
+                                            · {STATUS_LABEL[progress.post_activity_status] ?? progress.post_activity_status}
+                                        </span>
+                                    )}
+                                </div>
+                            ) : (
+                                <PostActivityUpload modulId={modul?.id} />
                             )}
                         </CheckItem>
 
@@ -530,23 +493,27 @@ export default function ModulDetail({ modul, progress = {}, pretest = [], postte
             <QuizModal open={showPre} onClose={() => setShowPre(false)}
                 title="Pre-Test" color="blue"
                 soals={pretest} modulId={modul?.id} tipe="pre"
-                onSuccess={() => setFeedback('success')}
-                onError={() => setFeedback('error')} />
+                onSuccess={() => showToast('success', 'Jawaban berhasil disimpan!')}
+                onError={() => showToast('error', 'Gagal menyimpan jawaban. Coba lagi.')} />
 
             <QuizModal open={showPost} onClose={() => setShowPost(false)}
                 title="Post-Test" color="green"
                 soals={posttest} modulId={modul?.id} tipe="post"
-                onSuccess={() => setFeedback('success')}
-                onError={() => setFeedback('error')} />
+                onSuccess={() => showToast('success', 'Jawaban berhasil disimpan!')}
+                onError={() => showToast('error', 'Gagal menyimpan jawaban. Coba lagi.')} />
 
             <MateriModal open={showMateri} onClose={() => setShowMateri(false)} modul={modul} />
 
             <ReviewModal open={review !== null} onClose={() => setReview(null)}
                 modulId={modul?.id} tipe={review?.tipe} title={review?.title ?? ''} />
 
-            <FeedbackModal open={feedback !== null} type={feedback} onClose={() => setFeedback(null)} />
-
-            <ToastNotif open={toast !== null} message={toast} onClose={() => setToast(null)} />
+            <Toast
+                key={toast.key}
+                open={toast.open}
+                type={toast.type}
+                message={toast.message}
+                onClose={() => setToast(prev => ({ ...prev, open: false }))}
+            />
         </AppLayout>
     );
 }

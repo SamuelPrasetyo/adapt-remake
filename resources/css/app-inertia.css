@@ -49,3 +49,14 @@ body {
 
 .animate-fade-in  { animation: fadeIn 150ms ease-out; }
 .animate-scale-in { animation: scaleIn 180ms ease-out; }
+
+@keyframes toast-slide-in {
+    from { transform: translateX(calc(100% + 1.25rem)); opacity: 0; }
+    to   { transform: translateX(0); opacity: 1; }
+}
+@keyframes toast-progress {
+    from { width: 100%; }
+    to   { width: 0%; }
+}
+.toast-enter { animation: toast-slide-in 0.35s cubic-bezier(0.21, 1.02, 0.73, 1) forwards; }
+.toast-bar   { animation: toast-progress var(--toast-duration, 5s) linear forwards; }
