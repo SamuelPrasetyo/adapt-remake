@@ -234,6 +234,9 @@ Route::middleware(['can:isAll'])->group(function () {
     Route::post('/learning/materi/progress', [LearningController::class, 'saveReadingProgress'])
         ->name('learning.saveReadingProgress');
 
+    Route::post('/learning/post-activity/upload', [LearningController::class, 'uploadPostActivity'])
+        ->name('learning.uploadPostActivity');
+
     Route::get('/ajax/test/{id}/{type}', [LearningController::class, 'ajax_test']);
 });
 

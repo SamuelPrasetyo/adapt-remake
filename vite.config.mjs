@@ -5,6 +5,9 @@ import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 
 export default defineConfig({
+    build: {
+        chunkSizeWarningLimit: 1000,
+    },
     plugins: [
         laravel({
             input: ['resources/css/app-inertia.css', 'resources/js/app.jsx'],

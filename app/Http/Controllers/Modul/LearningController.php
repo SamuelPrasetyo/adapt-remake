@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Modul;
 
 use App\Http\Controllers\Controller;
 use App\Models\Company;
+use App\Models\Dokumen;
 use App\Models\JawabanModul;
 use App\Models\Kader;
 use App\Models\Modul;
@@ -76,15 +77,25 @@ class LearningController extends Controller
             ->where('modul_id', $modul->id)
             ->value('progress') ?? 0;
 
+        $userType = strtolower($user->type ?? '');
+        $postActivityDoc = Dokumen::where('modul_id', $modul->id)
+            ->where('jenis', 'POST_ACTIVITY')
+            ->when($userType === 'kader',  fn($q) => $q->where('kader_id', $user->id))
+            ->when($userType !== 'kader', fn($q) => $q->where('mentor_id', $user->id))
+            ->latest()
+            ->first();
+
         $progress = [
-            'pretest'          => (bool) $pretestResult,
-            'pretest_score'    => $pretestResult?->score,
-            'materi'           => $readingProgress >= 100,
-            'materi_progress'  => $readingProgress,
-            'posttest'         => (bool) $posttestResult,
-            'posttest_score'   => $posttestResult?->score,
-            'post_activity'    => false,
-            'final_score'      => $posttestResult?->score ?? null,
+            'pretest'               => (bool) $pretestResult,
+            'pretest_score'         => $pretestResult?->score,
+            'materi'                => $readingProgress >= 100,
+            'materi_progress'       => $readingProgress,
+            'posttest'              => (bool) $posttestResult,
+            'posttest_score'        => $posttestResult?->score,
+            'post_activity'         => (bool) $postActivityDoc,
+            'post_activity_file'    => $postActivityDoc?->nama_file,
+            'post_activity_status'  => $postActivityDoc?->status,
+            'final_score'           => $posttestResult?->score ?? null,
         ];
 
         $pretest  = SoalModul::with('jawabans')
@@ -230,6 +241,41 @@ class LearningController extends Controller
         }
 
         return back();
+    }
+
+    public function uploadPostActivity(Request $request)
+    {
+        $request->validate([
+            'modul_id' => 'required|integer',
+            'file'     => 'required|file|mimes:pdf,docx,xlsx|max:2048',
+        ]);
+
+        $user     = auth()->user();
+        $userType = strtolower($user->type ?? '');
+
+        $folder = public_path('uploads/post_activity');
+        if (!file_exists($folder)) {
+            mkdir($folder, 0755, true);
+        }
+
+        $ext      = $request->file('file')->extension();
+        $fileName = time() . '_' . uniqid() . '.' . $ext;
+        $request->file('file')->move($folder, $fileName);
+
+        $data = [
+            'nama_file' => $request->file('file')->getClientOriginalName(),
+            'path_file' => 'uploads/post_activity/' . $fileName,
+            'tipe'      => $userType === 'kader' ? 'kader' : 'mentor',
+            'status'    => 'pending',
+            'jenis'     => 'POST_ACTIVITY',
+            'modul_id'  => $request->modul_id,
+            'kader_id'  => $userType === 'kader'  ? $user->id : null,
+            'mentor_id' => $userType === 'mentor' ? $user->id : null,
+        ];
+
+        Dokumen::create($data);
+
+        return back()->with('success', 'File berhasil diupload.');
     }
 
     public function ajax_test($id, $type)
