@@ -342,7 +342,7 @@ function MateriModal({ open, onClose, modul }) {
             <div ref={containerRef} onScroll={handleScroll}
                 className="h-[70vh] overflow-y-auto rounded-lg border border-slate-200">
                 {fileUrl
-                    ? <iframe src={fileUrl} width="100%" height="1200px" title="materi" style={{ border: 'none', display: 'block' }} />
+                    ? <iframe src={`${fileUrl}#toolbar=0&navpanes=0`} width="100%" height="1200px" title="materi" style={{ border: 'none', display: 'block' }} />
                     : <p className="text-sm text-slate-500 text-center py-12">File materi tidak tersedia.</p>
                 }
             </div>
