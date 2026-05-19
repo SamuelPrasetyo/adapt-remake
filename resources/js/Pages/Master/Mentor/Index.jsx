@@ -44,7 +44,7 @@ function ActionBtn({ onClick, color, title, children }) {
     );
 }
 
-export default function MentorIndex({ mentors, companys, kaders = [] }) {
+export default function MentorIndex({ mentors, companys, kaders = [], assignments = [] }) {
     const [tambahOpen, setTambahOpen] = useState(false);
     const [editOpen, setEditOpen]     = useState(false);
     const [editRow, setEditRow]       = useState(null);
@@ -88,21 +88,28 @@ export default function MentorIndex({ mentors, companys, kaders = [] }) {
 
     const openAssign = (mentor) => {
         setAssignMentor(mentor);
-        setAssignKaderIds([]);
+        const alreadyAssigned = assignments
+            .filter((a) => a.mentor_id === mentor.id)
+            .map((a) => a.kader_id);
+        setAssignKaderIds(alreadyAssigned);
         setAssignSearch('');
         setAssignOpen(true);
     };
 
     const filteredKaders = useMemo(() => {
-        if (!assignSearch.trim()) return kaders;
+        let list = kaders;
+        if (assignMentor?.company_code) {
+            list = list.filter((k) => k.company_code === assignMentor.company_code);
+        }
+        if (!assignSearch.trim()) return list;
         const q = assignSearch.toLowerCase();
-        return kaders.filter(
+        return list.filter(
             (k) =>
                 k.nama?.toLowerCase().includes(q) ||
                 k.nik?.toLowerCase().includes(q) ||
                 k.bu?.toLowerCase().includes(q)
         );
-    }, [kaders, assignSearch]);
+    }, [kaders, assignSearch, assignMentor]);
 
     const toggleKader = (id) => {
         setAssignKaderIds((prev) =>
@@ -268,7 +275,7 @@ export default function MentorIndex({ mentors, companys, kaders = [] }) {
             >
                 <form id="mentor-assign-form" onSubmit={submitAssign}>
                     <div className="mb-3">
-                        <input type="text" placeholder="Cari kader (nama / NIK / BU)..."
+                        <input type="text" placeholder="Cari kader (Nama / NIK)"
                             value={assignSearch}
                             onChange={(e) => setAssignSearch(e.target.value)}
                             className={inputCls} />

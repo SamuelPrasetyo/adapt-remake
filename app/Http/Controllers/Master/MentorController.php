@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\Company;
 use App\Models\Kader;
+use App\Models\ListKaderPerMentor;
 use App\Models\Mentor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use RealRashid\SweetAlert\Facades\Alert;
@@ -28,6 +30,15 @@ class MentorController extends Controller
             ->orderBy('mentor.nama', 'asc')
             ->get();
 
+        // Attach kader_count so AppLayout sidebar shows correct numbers
+        $mentorIds = $mentors->pluck('id')->all();
+        $countMap  = ListKaderPerMentor::whereIn('mentor_id', $mentorIds)
+            ->whereNull('deleted_at')
+            ->select('mentor_id', DB::raw('COUNT(*) as c'))
+            ->groupBy('mentor_id')
+            ->pluck('c', 'mentor_id');
+        $mentors->each(fn($m) => $m->kader_count = (int) ($countMap[$m->id] ?? 0));
+
         $companys = Company::orderBy('company_shortname', 'asc')->get();
 
         $kaders = Kader::select(
@@ -43,10 +54,16 @@ class MentorController extends Controller
             ->orderBy('kader.nama', 'asc')
             ->get();
 
+        // Existing assignments: array of {mentor_id, kader_id}
+        $assignments = ListKaderPerMentor::whereIn('mentor_id', $mentorIds)
+            ->whereNull('deleted_at')
+            ->get(['mentor_id', 'kader_id']);
+
         return Inertia::render('Master/Mentor/Index', [
-            'mentors'  => $mentors,
-            'companys' => $companys,
-            'kaders'   => $kaders,
+            'mentors'     => $mentors,
+            'companys'    => $companys,
+            'kaders'      => $kaders,
+            'assignments' => $assignments,
         ]);
     }
 

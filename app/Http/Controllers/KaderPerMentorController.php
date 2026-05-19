@@ -43,7 +43,9 @@ class KaderPerMentorController extends Controller
             return back();
         }
 
-        $kaders = Kader::whereIn('id', $request->kader_ids)->get();
+        $kaders = Kader::whereIn('id', $request->kader_ids)
+            ->where('company_code', $mentor->company_code)
+            ->get();
 
         $inserted = 0;
         foreach ($kaders as $kader) {
