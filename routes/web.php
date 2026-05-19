@@ -8,9 +8,11 @@ use App\Http\Controllers\Master\DivisiController;
 use App\Http\Controllers\Modul\DokumenController;
 use App\Http\Controllers\Report\FeedbackMaiController;
 use App\Http\Controllers\Modul\JawabanController;
+use App\Http\Controllers\KaderPerMentorController;
 use App\Http\Controllers\Master\KaderController;
 use App\Http\Controllers\Modul\LearningController;
 use App\Http\Controllers\LoginController;
+use App\Http\Controllers\Master\MentorController;
 use App\Http\Controllers\Modul\ModulController;
 use App\Http\Controllers\Master\NilaiController;
 use App\Http\Controllers\Master\PertanyaanController;
@@ -167,6 +169,24 @@ Route::middleware(['can:isAdmin'])->group(function () {
         Route::put('/dokumen/update/{id}', 'update')->name('dokumen.update');
         Route::delete('/dokumen/delete/{id}', 'destroy')->name('dokumen.destroy');
     });
+});
+
+// Master Mentor + Assign Kader — Admin company_code 021 only
+Route::middleware(['can:isAdmin021'])->group(function () {
+    Route::controller(MentorController::class)->group(function () {
+        Route::get('/mentor', 'index')->name('mentor.index');
+        Route::post('/mentor/store', 'store')->name('mentor.store');
+        Route::put('/mentor/update/{id}', 'update')->name('mentor.update');
+        Route::delete('/mentor/delete/{id}', 'destroy')->name('mentor.delete');
+    });
+    Route::post('/mentor/assign-kader', [KaderPerMentorController::class, 'assignKader'])
+        ->name('mentor.assignKader');
+});
+
+// List kader by mentor — Admin 021 + Mentor (BU filtering di controller)
+Route::middleware(['can:canMentorDashboard'])->group(function () {
+    Route::get('/mentor/{mentor_id}/kaders', [KaderPerMentorController::class, 'listByMentor'])
+        ->name('mentor.listKaders');
 });
 Route::middleware(['can:isAdmin&Mentor'])->group(function () {
     Route::controller(ReportController::class)->group(function () {
