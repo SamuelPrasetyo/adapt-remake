@@ -1,16 +1,380 @@
-// Dashboard utama — meniru gaya Nexus: gradient stats + progress bars.
-import React from 'react';
+// Dashboard utama — Mentor/Admin021 panel + global stats.
+import React, { useMemo, useRef, useState, useEffect } from 'react';
+import { router } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import StatsCard from '@/Components/StatsCard';
 import ProgressBar from '@/Components/ProgressBar';
+
+const STATUS_META = {
+    on_track:        { label: 'On Track',        cls: 'bg-emerald-50 text-emerald-700 ring-emerald-200',  dot: 'bg-emerald-500' },
+    perlu_perhatian: { label: 'Perlu Perhatian', cls: 'bg-amber-50 text-amber-700 ring-amber-200',        dot: 'bg-amber-500'   },
+    kritis:          { label: 'Kritis',          cls: 'bg-rose-50 text-rose-700 ring-rose-200',           dot: 'bg-rose-500'    },
+};
+
+const AVATAR_COLORS = [
+    'from-blue-500 to-indigo-500',
+    'from-emerald-500 to-teal-500',
+    'from-amber-500 to-orange-500',
+    'from-rose-500 to-pink-500',
+    'from-violet-500 to-purple-500',
+    'from-cyan-500 to-sky-500',
+];
+
+function avatarColor(seed = '') {
+    let h = 0;
+    for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+    return AVATAR_COLORS[h % AVATAR_COLORS.length];
+}
+
+function progressBarColor(pct) {
+    if (pct >= 70) return 'bg-linear-to-r from-emerald-500 to-emerald-600';
+    if (pct >= 40) return 'bg-linear-to-r from-amber-500 to-amber-600';
+    return 'bg-linear-to-r from-rose-500 to-rose-600';
+}
+
+function StatusBadge({ status }) {
+    const m = STATUS_META[status] || STATUS_META.on_track;
+    return (
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ring-1 ${m.cls}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${m.dot}`} />
+            {m.label}
+        </span>
+    );
+}
+
+function MentorFilter({ mentors, value, onChange }) {
+    const [open, setOpen] = useState(false);
+    const [q, setQ] = useState('');
+    const ref = useRef(null);
+
+    useEffect(() => {
+        const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+        document.addEventListener('mousedown', h);
+        return () => document.removeEventListener('mousedown', h);
+    }, []);
+
+    const totalKader = useMemo(
+        () => (mentors || []).reduce((acc, m) => acc + (m.kader_count || 0), 0),
+        [mentors]
+    );
+
+    const filtered = useMemo(() => {
+        const list = mentors || [];
+        if (!q.trim()) return list;
+        const s = q.toLowerCase();
+        return list.filter(m =>
+            m.nama?.toLowerCase().includes(s) ||
+            m.jabatan?.toLowerCase().includes(s)
+        );
+    }, [mentors, q]);
+
+    const current = value === 'all' ? null : (mentors || []).find(m => m.id === value);
+
+    return (
+        <div className="relative" ref={ref}>
+            <button
+                type="button"
+                onClick={() => setOpen(!open)}
+                className={`flex items-center gap-2 pl-3 pr-2 py-2 rounded-lg text-sm font-medium ring-1 transition ${
+                    current
+                        ? 'bg-blue-50 text-blue-700 ring-blue-200 hover:bg-blue-100'
+                        : 'bg-white text-slate-700 ring-slate-200 hover:bg-slate-50'
+                }`}
+            >
+                <svg className="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                <span className="truncate max-w-[180px]">
+                    {current ? current.nama : `Semua Mentor (${totalKader})`}
+                </span>
+                <svg className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 9l6 6 6-6" />
+                </svg>
+            </button>
+
+            {open && (
+                <div className="absolute right-0 top-[calc(100%+6px)] w-72 z-30 bg-white rounded-xl shadow-xl ring-1 ring-slate-200 overflow-hidden">
+                    <div className="p-2 border-b border-slate-100">
+                        <input
+                            type="text"
+                            autoFocus
+                            placeholder="Cari mentor..."
+                            value={q}
+                            onChange={(e) => setQ(e.target.value)}
+                            className="w-full px-2.5 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
+                        />
+                    </div>
+                    <div className="max-h-72 overflow-y-auto py-1">
+                        <button
+                            type="button"
+                            onClick={() => { onChange('all'); setOpen(false); setQ(''); }}
+                            className={`w-full text-left px-3 py-2 flex items-center gap-2.5 transition ${
+                                value === 'all' ? 'bg-blue-50' : 'hover:bg-slate-50'
+                            }`}
+                        >
+                            <div className="w-8 h-8 rounded-lg bg-linear-to-br from-slate-500 to-slate-700 flex items-center justify-center text-white">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <div className="text-sm font-semibold text-slate-900">Semua Kader</div>
+                                <div className="text-[11px] text-slate-500">{totalKader} kader · semua mentor</div>
+                            </div>
+                            {value === 'all' && (
+                                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                            )}
+                        </button>
+
+                        <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wider text-slate-400">Mentor</div>
+
+                        {filtered.length === 0 ? (
+                            <div className="px-3 py-4 text-center text-xs text-slate-500">Tidak ada mentor cocok.</div>
+                        ) : filtered.map((m) => {
+                            const isActive = value === m.id;
+                            return (
+                                <button
+                                    key={m.id}
+                                    type="button"
+                                    onClick={() => { onChange(m.id); setOpen(false); setQ(''); }}
+                                    className={`w-full text-left px-3 py-2 flex items-center gap-2.5 transition ${
+                                        isActive ? 'bg-blue-50' : 'hover:bg-slate-50'
+                                    }`}
+                                >
+                                    <div className={`w-8 h-8 rounded-lg bg-linear-to-br ${avatarColor(m.id || m.nama || '')} flex items-center justify-center text-xs font-bold text-white`}>
+                                        {m.nama?.charAt(0)?.toUpperCase() || '?'}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-sm font-medium text-slate-900 truncate">{m.nama}</div>
+                                        <div className="text-[11px] text-slate-500 truncate">
+                                            {m.jabatan || '—'} · {m.kader_count || 0} kader
+                                        </div>
+                                    </div>
+                                    {isActive && (
+                                        <svg className="w-4 h-4 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+const PAGE_SIZE = 10;
+
+function KaderTable({ kaders, mentorFilter, mentors, onMentorFilter, headerLabel }) {
+    const list = kaders || [];
+    const totalKader = list.length;
+    const [page, setPage] = useState(1);
+
+    const totalPages = Math.max(1, Math.ceil(totalKader / PAGE_SIZE));
+    const safePage   = Math.min(page, totalPages);
+    const pageItems  = list.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+    const start = totalKader === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
+    const end   = Math.min(safePage * PAGE_SIZE, totalKader);
+
+    // Reset ke halaman 1 saat data berubah (filter mentor)
+    useEffect(() => { setPage(1); }, [kaders]);
+
+    const pages = useMemo(() => {
+        if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+        const result = new Set([1, totalPages, safePage]);
+        if (safePage > 1) result.add(safePage - 1);
+        if (safePage < totalPages) result.add(safePage + 1);
+        return [...result].sort((a, b) => a - b);
+    }, [totalPages, safePage]);
+
+    return (
+        <div className="bg-white rounded-2xl shadow-[var(--shadow-card)] overflow-hidden mb-6">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </div>
+                    <div className="min-w-0">
+                        <div className="font-semibold text-slate-900 truncate">{headerLabel}</div>
+                        <div className="text-xs text-slate-500">{totalKader} kader ditampilkan</div>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 ring-1 ring-blue-200">
+                        {totalKader} Kader
+                    </span>
+                    <MentorFilter mentors={mentors} value={mentorFilter} onChange={onMentorFilter} />
+                </div>
+            </div>
+
+            {/* Table */}
+            {totalKader === 0 ? (
+                <div className="py-16 text-center">
+                    <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-slate-50 text-slate-400 mb-3">
+                        <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z" />
+                        </svg>
+                    </div>
+                    <div className="text-sm text-slate-600">Belum ada kader untuk filter ini.</div>
+                </div>
+            ) : (
+                <>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="text-left text-[11px] uppercase tracking-wider text-slate-500 bg-slate-50">
+                                    <th className="px-6 py-3 font-medium">Nama Kader</th>
+                                    <th className="px-4 py-3 font-medium">Mentor</th>
+                                    <th className="px-4 py-3 font-medium">Fase Aktif</th>
+                                    <th className="px-4 py-3 font-medium w-55">Progress Overall</th>
+                                    <th className="px-4 py-3 font-medium text-right">Avg Score</th>
+                                    <th className="px-6 py-3 font-medium">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {pageItems.map((k) => {
+                                    const pct = Number(k.progress_overall || 0);
+                                    const initials = (k.nama_kader || '?').split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() || '').join('');
+                                    return (
+                                        <tr key={k.k_id || k.id} className="hover:bg-slate-50/60 transition">
+                                            <td className="px-6 py-3">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-9 h-9 rounded-full bg-linear-to-br ${avatarColor(k.nik_kader || k.nama_kader || '')} flex items-center justify-center text-xs font-bold text-white shrink-0`}>
+                                                        {initials || '?'}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <div className="font-medium text-slate-900 truncate">{k.nama_kader}</div>
+                                                        <div className="text-[11px] text-slate-500 truncate">
+                                                            {k.divisi_name || '—'}{k.dept_name ? ` · ${k.dept_name}` : ''}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 text-slate-700">
+                                                {k.mentor_name || <span className="text-slate-400 italic">Belum di-assign</span>}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                {k.fase_aktif ? (
+                                                    <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-amber-50 text-amber-700 ring-1 ring-amber-200">
+                                                        {k.fase_aktif}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-slate-400 text-xs">—</span>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                                                        <div
+                                                            className={`h-full rounded-full transition-all ${progressBarColor(pct)}`}
+                                                            style={{ width: `${Math.min(100, pct)}%` }}
+                                                        />
+                                                    </div>
+                                                    <span className="text-xs font-semibold text-slate-700 w-10 text-right">{pct}%</span>
+                                                </div>
+                                                <div className="text-[10px] text-slate-400 mt-0.5">{k.total_moduls || 0} modul</div>
+                                            </td>
+                                            <td className="px-4 py-3 text-right font-semibold text-slate-900">
+                                                {k.avg_score != null ? k.avg_score : <span className="text-slate-300">—</span>}
+                                            </td>
+                                            <td className="px-6 py-3">
+                                                <StatusBadge status={k.status} />
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                        <div className="px-6 py-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                            <span className="text-xs text-slate-500">
+                                Menampilkan {start}–{end} dari {totalKader} kader
+                            </span>
+                            <div className="flex items-center gap-1">
+                                <button
+                                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                                    disabled={safePage === 1}
+                                    className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-30 disabled:pointer-events-none transition"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                                    </svg>
+                                </button>
+
+                                {pages.map((p, i) => {
+                                    const prev = pages[i - 1];
+                                    return (
+                                        <React.Fragment key={p}>
+                                            {prev && p - prev > 1 && (
+                                                <span className="w-8 h-8 flex items-center justify-center text-xs text-slate-400">…</span>
+                                            )}
+                                            <button
+                                                onClick={() => setPage(p)}
+                                                className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-medium transition ${
+                                                    p === safePage
+                                                        ? 'bg-blue-500 text-white shadow-sm'
+                                                        : 'text-slate-600 hover:bg-slate-100'
+                                                }`}
+                                            >
+                                                {p}
+                                            </button>
+                                        </React.Fragment>
+                                    );
+                                })}
+
+                                <button
+                                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={safePage === totalPages}
+                                    className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-30 disabled:pointer-events-none transition"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
+        </div>
+    );
+}
 
 export default function Dashboard({
     stats,
     departemenProgress,
     mentorMonitoring,
     modulPerKategori,
+    showMentorPanel,
+    mentors,
+    selectedMentor,
+    mentorFilter = 'all',
+    kaders,
+    buName,
+    buShort,
 }) {
     const s = stats || { totalKader: 0, mentorAktif: 0, modulTersedia: 0, dokPending: 0 };
+
+    const handleMentorFilter = (value) => {
+        const params = value && value !== 'all' ? { mentor_id: value } : {};
+        router.visit('/dashboard', { data: params, preserveScroll: true });
+    };
+
+    const headerLabel = selectedMentor
+        ? `Kader binaan — ${selectedMentor.nama}`
+        : `Semua Kader Aktif${buName ? ` — ${buName}` : ''}`;
+
     const dep = departemenProgress?.length
         ? departemenProgress
         : [
@@ -37,10 +401,10 @@ export default function Dashboard({
 
     return (
         <AppLayout title="DASHBOARD" breadcrumb="Talent & Development · ADAPT Program">
-            <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)] mb-6 flex flex-wrap items-center justify-between gap-6">
+            {/* <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)] mb-6 flex flex-wrap items-center justify-between gap-6">
                 <div>
                     <div className="text-xl font-bold text-slate-900">Dashboard</div>
-                    <div className="text-sm text-slate-500">Talent & Development · ADAPT Program</div>
+                    <div className="text-sm text-slate-500">Talent & Development · ADAPT Program{buShort ? ` · ${buShort}` : ''}</div>
                 </div>
                 <div className="flex gap-10 flex-wrap">
                     <div className="text-right">
@@ -60,7 +424,7 @@ export default function Dashboard({
                         <div className="text-xs text-slate-500">Dok. pending</div>
                     </div>
                 </div>
-            </div>
+            </div> */}
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <StatsCard title="Kader Aktif" value={s.totalKader} subtitle="3 batch berjalan" color="green" />
@@ -69,7 +433,7 @@ export default function Dashboard({
                 <StatsCard title="IDP belum lengkap" value="24" subtitle="dari 48 kader" color="red" />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+            {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
                 <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
                     <h3 className="font-semibold text-slate-900 mb-4">Progress kader per departemen</h3>
                     <div className="space-y-4">
@@ -95,7 +459,7 @@ export default function Dashboard({
                         ))}
                     </div>
                 </div>
-            </div>
+            </div> */}
 
             <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
                 <h3 className="font-semibold text-slate-900 mb-4">Kelola modul per kategori</h3>
@@ -112,6 +476,18 @@ export default function Dashboard({
                     ))}
                 </div>
             </div>
+
+            {showMentorPanel && (
+                <section className="mt-6">
+                    <KaderTable
+                        kaders={kaders || []}
+                        mentorFilter={mentorFilter}
+                        mentors={mentors || []}
+                        onMentorFilter={handleMentorFilter}
+                        headerLabel={headerLabel}
+                    />
+                </section>
+            )}
         </AppLayout>
     );
 }

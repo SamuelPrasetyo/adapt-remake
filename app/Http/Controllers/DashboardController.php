@@ -2,14 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\KaderPerMentorController;
 use App\Models\Jawaban;
 use App\Models\Kader;
+use App\Models\Mentor;
 use App\Models\Modul;
 use App\Models\User;
 use App\Models\Week;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -22,7 +25,7 @@ class DashboardController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
         $stats = [
             'totalKader'    => User::where('type', 'Kader')->where('status', 'Aktif')->count(),
@@ -31,11 +34,86 @@ class DashboardController extends Controller
             'dokPending'    => 0,
         ];
 
+        $user = Auth::user();
+        $isAdmin021      = $user->type === 'Admin' && $user->company_code === '021';
+        $isMentorUser    = $user->type === 'Mentor';
+        $showMentorPanel = $isAdmin021 || $isMentorUser;
+
+        $mentors        = collect();
+        $selectedMentor = null;
+        $kaders         = collect();
+        $buName         = null;
+        $buShort        = null;
+        $mentorFilter   = 'all';
+
+        if ($showMentorPanel) {
+            // Mentor user limited to BU sendiri; Admin 021 lihat semua
+            $targetCompanyCode = $isMentorUser ? $user->company_code : null;
+
+            $mentorsQuery = Mentor::select('mentor.*', 'company.company_shortname as bu', 'company.company_name as bu_full')
+                ->leftJoin('company', 'mentor.company_code', '=', 'company.company_code')
+                ->whereNull('mentor.deleted_at')
+                ->orderBy('mentor.nama', 'asc');
+
+            if ($targetCompanyCode) {
+                $mentorsQuery->where('mentor.company_code', $targetCompanyCode);
+            }
+
+            $mentors = $mentorsQuery->get();
+
+            // kader_count per mentor
+            $mentorIds = $mentors->pluck('id')->all();
+            $countMap = \App\Models\ListKaderPerMentor::whereIn('mentor_id', $mentorIds)
+                ->whereNull('deleted_at')
+                ->select('mentor_id', DB::raw('COUNT(*) as c'))
+                ->groupBy('mentor_id')
+                ->pluck('c', 'mentor_id');
+            $mentors->each(function ($m) use ($countMap) {
+                $m->kader_count = (int) ($countMap[$m->id] ?? 0);
+            });
+
+            // Nama BU untuk header (Mentor punya BU spesifik; Admin 021 = "Semua BU")
+            if ($targetCompanyCode) {
+                $first = $mentors->first();
+                $buName  = $first->bu_full ?? null;
+                $buShort = $first->bu ?? null;
+                if (!$buName) {
+                    $co = \App\Models\Company::where('company_code', $targetCompanyCode)->first();
+                    $buName  = $co->company_name ?? null;
+                    $buShort = $co->company_shortname ?? null;
+                }
+            }
+
+            $mentorFilter = $request->query('mentor_id', 'all');
+            $perMentor    = app(KaderPerMentorController::class);
+
+            if ($mentorFilter && $mentorFilter !== 'all') {
+                $selectedMentor = $mentors->firstWhere('id', $mentorFilter);
+                if ($selectedMentor) {
+                    $kaders = $perMentor->listByMentorQuery($mentorFilter);
+                } else {
+                    // mentor_id tidak ditemukan -> fallback ke all
+                    $mentorFilter = 'all';
+                }
+            }
+
+            if ($mentorFilter === 'all') {
+                $kaders = $perMentor->listAllKadersInBU($targetCompanyCode);
+            }
+        }
+
         return Inertia::render('Dashboard', [
             'stats'              => $stats,
             'departemenProgress' => [],
             'mentorMonitoring'   => [],
             'modulPerKategori'   => [],
+            'showMentorPanel'    => $showMentorPanel,
+            'mentors'            => $mentors,
+            'selectedMentor'     => $selectedMentor,
+            'mentorFilter'       => $mentorFilter,
+            'kaders'             => $kaders,
+            'buName'             => $buName,
+            'buShort'            => $buShort,
         ]);
     }
 
