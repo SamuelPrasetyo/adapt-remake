@@ -52,7 +52,7 @@ export default function WeeklyResult({
         : title.nama_mentor ?? '';
 
     return (
-        <AppLayout title="OJT MONITORING" breadcrumb={`Report / Weekly Monitoring / ${title.nama_kader}`}>
+        <AppLayout title="OJT MONITORING" breadcrumb={`Report / OJT Monitoring / ${title.nama_kader}`}>
             <div className="mb-4">
                 <Link href="/ojt-index" className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition">
                     ← Kembali

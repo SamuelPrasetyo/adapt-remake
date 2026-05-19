@@ -33,7 +33,7 @@ const ADMIN_NAV = [
         type: 'group', label: 'Report', icon: 'file',
         children: [
             { label: 'Learning Growth',   href: '/learning-index',       match: '/learning-index' },
-            { label: 'Weekly Monitoring', href: '/ojt-index',            match: '/ojt-index' },
+            { label: 'OJT Monitoring', href: '/ojt-index',            match: '/ojt-index' },
             { label: 'Feedback',          href: '/reportfeedback-index', match: '/reportfeedback-index' },
         ],
     },

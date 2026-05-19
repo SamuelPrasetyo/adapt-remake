@@ -16,11 +16,11 @@ export default function Weekly({ kaders }) {
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
 
     return (
-        <AppLayout title="WEEKLY MONITORING" breadcrumb="Report / Weekly Monitoring">
+        <AppLayout title="OJT MONITORING" breadcrumb="Report / OJT Monitoring">
             <div className="max-w-lg">
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
                     <h2 className="text-base font-semibold text-slate-800 mb-1">Pilih Kader & Periode OJT</h2>
-                    <p className="text-sm text-slate-500 mb-5">Pilih nama kader dan periode OJT untuk melihat laporan Weekly Monitoring.</p>
+                    <p className="text-sm text-slate-500 mb-5">Pilih nama kader dan periode OJT untuk melihat laporan OJT Monitoring.</p>
 
                     <form method="POST" action="/ojt-monitoring">
                         <input type="hidden" name="_token" value={csrf} />
