@@ -9,6 +9,7 @@ use App\Http\Controllers\Modul\DokumenController;
 use App\Http\Controllers\Report\FeedbackMaiController;
 use App\Http\Controllers\Modul\JawabanController;
 use App\Http\Controllers\KaderPerMentorController;
+use App\Http\Controllers\KaderSayaController;
 use App\Http\Controllers\Master\KaderController;
 use App\Http\Controllers\Modul\LearningController;
 use App\Http\Controllers\LoginController;
@@ -187,6 +188,8 @@ Route::middleware(['can:isAdmin021'])->group(function () {
 Route::middleware(['can:canMentorDashboard'])->group(function () {
     Route::get('/mentor/{mentor_id}/kaders', [KaderPerMentorController::class, 'listByMentor'])
         ->name('mentor.listKaders');
+    Route::get('/kader-saya', [KaderSayaController::class, 'index'])->name('kader.saya.index');
+    Route::get('/kader-saya/{kader_id}', [KaderSayaController::class, 'show'])->name('kader.saya.show');
 });
 Route::middleware(['can:isAdmin&Mentor'])->group(function () {
     Route::controller(ReportController::class)->group(function () {

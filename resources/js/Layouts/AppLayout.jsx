@@ -12,6 +12,15 @@ const ADMIN_NAV = [
         match: "/dashboard",
     },
     {
+        type: "item",
+        label: "Kader Saya",
+        icon: "people",
+        href: "/kader-saya",
+        match: "/kader-saya",
+        requires: "mentor_or_admin021",
+    },
+    { type: "divider", requires: "mentor_or_admin021" },
+    {
         type: "group",
         label: "Master",
         icon: "grid",
@@ -182,6 +191,14 @@ function Icon({ name, className = "w-5 h-5" }) {
                 strokeLinejoin="round"
                 strokeWidth="2"
                 d="M9 13h6m-6 4h6m2 4H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z"
+            />
+        ),
+        people: (
+            <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
             />
         ),
         chevron: (
@@ -736,6 +753,15 @@ export default function AppLayout({
                 {/* Nav — scrolls independently when overflow */}
                 <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
                     {nav.map((item, i) => {
+                        if (item.type === "divider") {
+                            if (item.requires === "mentor_or_admin021") {
+                                const ok = user?.type === "Mentor" ||
+                                    (user?.type === "Admin" && user?.company_code === "021");
+                                if (!ok) return null;
+                            }
+                            return <hr key={i} className="border-white/10 my-1" />;
+                        }
+
                         if (item.type === "group")
                             return (
                                 <NavGroup
@@ -745,6 +771,14 @@ export default function AppLayout({
                                     user={user}
                                 />
                             );
+
+                        // Check requires
+                        if (item.requires === "mentor_or_admin021") {
+                            const ok = user?.type === "Mentor" ||
+                                (user?.type === "Admin" && user?.company_code === "021");
+                            if (!ok) return null;
+                        }
+
                         const isActive =
                             url === item.match ||
                             url.startsWith(item.match + "/");
