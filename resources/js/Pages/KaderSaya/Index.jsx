@@ -140,9 +140,9 @@ function KaderCard({ kader }) {
     return (
         <Link
             href={`/kader-saya/${kader.k_id}`}
-            className="block bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 hover:shadow-md hover:ring-blue-300 transition-all group"
+            className="flex flex-col bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 hover:shadow-md hover:ring-blue-300 transition-all group"
         >
-            <div className="p-5">
+            <div className="p-5 flex-1">
                 {/* Header */}
                 <div className="flex items-start gap-3 mb-4">
                     <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${avatarColor(kader.nik_kader || kader.nama_kader)} flex items-center justify-center text-base font-bold text-white shrink-0`}>
