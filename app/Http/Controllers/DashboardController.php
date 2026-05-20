@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\KaderPerMentorController;
+use App\Http\Controllers\Master\Mentor\KaderPerMentorController;
 use App\Models\Jawaban;
 use App\Models\Kader;
 use App\Models\Mentor;
