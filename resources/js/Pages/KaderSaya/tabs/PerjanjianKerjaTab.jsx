@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
-import { router, usePage } from "@inertiajs/react";
+import { router } from "@inertiajs/react";
+import Toast from "@/Components/Toast";
 
 function formatDate(dateStr) {
     if (!dateStr) return "—";
@@ -63,23 +64,24 @@ function UploadZone({ hasDoc, uploading, onClick }) {
 }
 
 export default function PerjanjianKerjaTab({ kader, perjanjianKerja, canUpload, kaderId }) {
-    const { props }   = usePage();
-    const flash       = props.perjanjianSuccess;
     const [uploading, setUploading] = useState(false);
-    const [notice, setNotice]       = useState(flash || null);
-    const fileRef     = useRef(null);
+    const [toast, setToast]         = useState({ open: false, type: "success", message: "" });
+    const fileRef = useRef(null);
+
+    const showToast = (message, type = "success") => setToast({ open: true, type, message });
+    const closeToast = () => setToast(t => ({ ...t, open: false }));
 
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
         setUploading(true);
-        setNotice(null);
         const formData = new FormData();
         formData.append("file", file);
         router.post(`/kader-saya/${kaderId}/perjanjian-kerja`, formData, {
             forceFormData: true,
             preserveScroll: true,
-            onSuccess: () => setNotice("Dokumen berhasil diupload."),
+            onSuccess: () => showToast("Dokumen berhasil diupload."),
+            onError:   () => showToast("Gagal mengupload dokumen.", "error"),
             onFinish:  () => { setUploading(false); if (fileRef.current) fileRef.current.value = ""; },
         });
     };
@@ -88,12 +90,15 @@ export default function PerjanjianKerjaTab({ kader, perjanjianKerja, canUpload, 
         if (!perjanjianKerja || !confirm("Hapus dokumen perjanjian kerja ini?")) return;
         router.delete(`/perjanjian-kerja/${perjanjianKerja.id}`, {
             preserveScroll: true,
-            onSuccess: () => setNotice("Dokumen berhasil dihapus."),
+            onSuccess: () => showToast("Dokumen berhasil dihapus."),
+            onError:   () => showToast("Gagal menghapus dokumen.", "error"),
         });
     };
 
     return (
-        <div className="max-w-2xl space-y-4">
+        <>
+        <Toast open={toast.open} type={toast.type} message={toast.message} onClose={closeToast} />
+        <div className="space-y-4">
             {/* Section header */}
             <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-slate-800">Perjanjian Kerja</h2>
@@ -110,21 +115,11 @@ export default function PerjanjianKerjaTab({ kader, perjanjianKerja, canUpload, 
                         <p className="text-xs font-semibold text-slate-700 mb-1">Siapa yang bisa akses?</p>
                         <ul className="text-xs text-slate-500 space-y-1">
                             <li>· Mentor BU yang bersangkutan — upload &amp; unduh</li>
-                            <li>· Admin 021 (Holding) — upload, unduh &amp; kelola semua BU</li>
+                            <li>· Admin (Holding) — upload, unduh &amp; kelola semua BU</li>
                         </ul>
                     </div>
                 </div>
             </div>
-
-            {/* Flash notice */}
-            {notice && (
-                <div className="flex items-center gap-2 px-3 py-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-700">
-                    <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                    </svg>
-                    {notice}
-                </div>
-            )}
 
             {/* Current document card */}
             {perjanjianKerja ? (
@@ -207,11 +202,12 @@ export default function PerjanjianKerjaTab({ kader, perjanjianKerja, canUpload, 
                 <div>
                     <p className="text-sm font-semibold text-amber-800">Akses Holding</p>
                     <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
-                        Dokumen yang diupload dapat dilihat dan diunduh Super Admin Holding untuk keperluan
+                        Dokumen yang diupload dapat dilihat dan diunduh Admin Holding untuk keperluan
                         administrasi. Pastikan sudah ditandatangani sebelum upload.
                     </p>
                 </div>
             </div>
         </div>
+        </>
     );
 }
