@@ -115,8 +115,8 @@ class PerjanjianKerjaController extends Controller
         }
 
         if ($isMentor) {
-            $hasAccess = ListKaderPerMentor::where('kader_id', $kader_id)
-                ->whereNull('deleted_at')
+            $hasAccess = ListKaderPerMentor::where('list_kader_per_mentor.kader_id', $kader_id)
+                ->whereNull('list_kader_per_mentor.deleted_at')
                 ->join('mentor', 'list_kader_per_mentor.mentor_id', '=', 'mentor.id')
                 ->whereNull('mentor.deleted_at')
                 ->where('mentor.company_code', $user->company_code)
