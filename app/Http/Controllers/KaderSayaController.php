@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Log;
 
 class KaderSayaController extends Controller
 {
@@ -264,17 +265,194 @@ class KaderSayaController extends Controller
         $currentWeek = count($weeklyData);
         $totalWeeks  = Week::count();
 
-        return Inertia::render('KaderSaya/Detail', [
-            'kader'           => $kader,
-            'faseGroups'      => $faseGroups,
-            'overallProgress' => $overallProgress,
-            'avgScore'        => $avgScoreOverall,
-            'status'          => $status,
-            'totalModuls'     => $totalModuls,
-            'weeklyData'      => $weeklyData,
-            'cohortMap'       => $cohortMap,
-            'currentWeek'     => $currentWeek,
-            'totalWeeks'      => $totalWeeks,
+        // Weeks for feedback dropdown (grouped by bulan/tahun on frontend)
+        $weeks = Week::orderBy('id_week')->get(['id_week', 'angka_week', 'bulan', 'tahun']);
+
+        Log::info('[KaderSaya::show] kader NIK', ['nik' => $kader->nik, 'kader_id' => $kader_id]);
+
+        // ── Kader self-reflections (q7=dipelajari, q8=tantangan, q9=rencana) ──
+        $refleksiQuery = Jawaban::whereIn('jawaban.id_pertanyaan', [7, 8, 9])
+            ->where('jawaban.nik_kader', $kader->nik)
+            ->whereNull('jawaban.nama_mentor')
+            ->join('weeks', 'jawaban.id_week', '=', 'weeks.id_week')
+            ->select('jawaban.id_week', 'jawaban.id_pertanyaan', 'jawaban.jawaban',
+                     'jawaban.id_jawaban', 'weeks.angka_week', 'weeks.bulan', 'weeks.tahun')
+            ->orderBy('jawaban.id_week', 'desc')
+            ->orderBy('jawaban.id_jawaban', 'desc');
+
+        Log::info('[KaderSaya::show] refleksi SQL', [
+            'sql'      => $refleksiQuery->toSql(),
+            'bindings' => $refleksiQuery->getBindings(),
         ]);
+
+        $refleksiRaw = $refleksiQuery->get();
+        Log::info('[KaderSaya::show] refleksi rows', ['count' => $refleksiRaw->count(), 'rows' => $refleksiRaw->toArray()]);
+
+        // Mentor's motivasi (q5) per week for star display in refleksi cards
+        $motivasiMap = Jawaban::where('nik_kader', $kader->nik)
+            ->where('id_pertanyaan', 5)
+            ->whereNotNull('nama_mentor')
+            ->pluck('jawaban', 'id_week')
+            ->all();
+        Log::info('[KaderSaya::show] motivasiMap', $motivasiMap);
+
+        // Group refleksi by week, take latest submission per question
+        $refleksiByWeek = [];
+        foreach ($refleksiRaw as $r) {
+            $wk = $r->id_week;
+            if (!isset($refleksiByWeek[$wk])) {
+                $refleksiByWeek[$wk] = [
+                    'week_id'    => $wk,
+                    'angka_week' => $r->angka_week,
+                    'bulan'      => $r->bulan,
+                    'tahun'      => $r->tahun,
+                    'motivasi'   => isset($motivasiMap[$wk]) ? (int) $motivasiMap[$wk] : null,
+                    'dipelajari' => null,
+                    'tantangan'  => null,
+                    'rencana'    => null,
+                ];
+            }
+            $key = match ((int) $r->id_pertanyaan) {
+                7 => 'dipelajari',
+                8 => 'tantangan',
+                9 => 'rencana',
+                default => null,
+            };
+            if ($key && $refleksiByWeek[$wk][$key] === null) {
+                $refleksiByWeek[$wk][$key] = strip_tags($r->jawaban);
+            }
+        }
+        $refleksiList = array_values($refleksiByWeek);
+        Log::info('[KaderSaya::show] refleksiList', $refleksiList);
+
+        // ── Mentor feedback history sent to this kader (q1-6, nama_mentor not null) ──
+        $mentorFeedbackQuery = Jawaban::whereIn('jawaban.id_pertanyaan', [1, 2, 3, 4, 5, 6])
+            ->where('jawaban.nik_kader', $kader->nik)
+            ->whereNotNull('jawaban.nama_mentor')
+            ->join('weeks', 'jawaban.id_week', '=', 'weeks.id_week')
+            ->select('jawaban.id_week', 'jawaban.id_pertanyaan', 'jawaban.jawaban',
+                     'jawaban.nama_mentor', 'weeks.angka_week', 'weeks.bulan', 'weeks.tahun')
+            ->orderBy('jawaban.id_week', 'desc')
+            ->orderBy('jawaban.id_pertanyaan', 'asc');
+
+        Log::info('[KaderSaya::show] mentorFeedback SQL', [
+            'sql'      => $mentorFeedbackQuery->toSql(),
+            'bindings' => $mentorFeedbackQuery->getBindings(),
+        ]);
+
+        $mentorFeedbackRaw = $mentorFeedbackQuery->get();
+        Log::info('[KaderSaya::show] mentorFeedback rows', [
+            'count' => $mentorFeedbackRaw->count(),
+            'rows'  => $mentorFeedbackRaw->toArray(),
+        ]);
+
+        $motivasiLabel = [1 => 'Sangat Kurang', 2 => 'Kurang', 3 => 'Cukup', 4 => 'Baik', 5 => 'Sangat Baik'];
+
+        $feedbackByWeek = [];
+        foreach ($mentorFeedbackRaw as $r) {
+            $wk = $r->id_week;
+            if (!isset($feedbackByWeek[$wk])) {
+                $feedbackByWeek[$wk] = [
+                    'week_id'      => $wk,
+                    'angka_week'   => $r->angka_week,
+                    'bulan'        => $r->bulan,
+                    'tahun'        => $r->tahun,
+                    'nama_mentor'  => $r->nama_mentor,
+                    'routine_job'  => null,
+                    'assignment'   => null,
+                    'pemahaman_sop'=> null,
+                    'project'      => null,
+                    'motivasi'     => null,
+                    'area'         => null,
+                ];
+            }
+            $val = strip_tags($r->jawaban ?? '');
+            match ((int) $r->id_pertanyaan) {
+                1 => $feedbackByWeek[$wk]['routine_job']   = $val,
+                2 => $feedbackByWeek[$wk]['assignment']    = $val,
+                3 => $feedbackByWeek[$wk]['pemahaman_sop'] = $val,
+                4 => $feedbackByWeek[$wk]['project']       = $val,
+                5 => $feedbackByWeek[$wk]['motivasi']      = $motivasiLabel[(int)$val] ?? $val,
+                6 => $feedbackByWeek[$wk]['area']          = $val,
+                default => null,
+            };
+        }
+        $mentorFeedbackList = array_values($feedbackByWeek);
+        Log::info('[KaderSaya::show] mentorFeedbackList', $mentorFeedbackList);
+
+        return Inertia::render('KaderSaya/Detail', [
+            'kader'              => $kader,
+            'faseGroups'         => $faseGroups,
+            'overallProgress'    => $overallProgress,
+            'avgScore'           => $avgScoreOverall,
+            'status'             => $status,
+            'totalModuls'        => $totalModuls,
+            'weeklyData'         => $weeklyData,
+            'cohortMap'          => $cohortMap,
+            'currentWeek'        => $currentWeek,
+            'totalWeeks'         => $totalWeeks,
+            'weeks'              => $weeks,
+            'refleksi'           => $refleksiList,
+            'mentorFeedbackList' => $mentorFeedbackList,
+            'mentorName'         => $user->name,
+        ]);
+    }
+
+    public function storeFeedback(Request $request, $kader_id)
+    {
+        $user  = Auth::user();
+        $kader = Kader::where('id', $kader_id)->first();
+        if (!$kader) abort(404);
+
+        Log::info('[KaderSaya::storeFeedback] incoming request', [
+            'kader_id'   => $kader_id,
+            'kader_nik'  => $kader->nik,
+            'mentor'     => $user->name,
+            'request'    => $request->only(['id_week','p1','p2','p3','p4','p5','p6']),
+        ]);
+
+        $motivasiScore = [
+            'Sangat Kurang' => 1,
+            'Kurang'        => 2,
+            'Cukup'         => 3,
+            'Baik'          => 4,
+            'Sangat Baik'   => 5,
+        ];
+
+        $base = [
+            'id_week'     => $request->id_week,
+            'nama_mentor' => $user->name,
+            'nik_kader'   => $kader->nik,
+            'created_at'  => now(),
+            'updated_at'  => now(),
+            'created_by'  => $user->id,
+        ];
+
+        $answers = [
+            1 => $request->p1,
+            2 => $request->p2,
+            3 => $request->p3,
+            4 => $request->p4,
+            5 => $motivasiScore[$request->p5] ?? null,
+            6 => $request->p6,
+        ];
+
+        Log::info('[KaderSaya::storeFeedback] answers to insert', $answers);
+
+        $inserted = 0;
+        foreach ($answers as $pertanyaan => $jawaban) {
+            if ($jawaban === null || $jawaban === '') {
+                Log::debug("[KaderSaya::storeFeedback] skipping pertanyaan {$pertanyaan} — empty value");
+                continue;
+            }
+            $row = array_merge($base, ['id_pertanyaan' => $pertanyaan, 'jawaban' => $jawaban]);
+            Log::debug('[KaderSaya::storeFeedback] inserting', $row);
+            Jawaban::create($row);
+            $inserted++;
+        }
+
+        Log::info("[KaderSaya::storeFeedback] done — {$inserted} rows inserted");
+
+        return back()->with('feedbackSuccess', true);
     }
 }

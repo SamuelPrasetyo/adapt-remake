@@ -190,6 +190,7 @@ Route::middleware(['can:canMentorDashboard'])->group(function () {
         ->name('mentor.listKaders');
     Route::get('/kader-saya', [KaderSayaController::class, 'index'])->name('kader.saya.index');
     Route::get('/kader-saya/{kader_id}', [KaderSayaController::class, 'show'])->name('kader.saya.show');
+    Route::post('/kader-saya/{kader_id}/feedback', [KaderSayaController::class, 'storeFeedback'])->name('kader.saya.storeFeedback');
 });
 Route::middleware(['can:isAdmin&Mentor'])->group(function () {
     Route::controller(ReportController::class)->group(function () {
