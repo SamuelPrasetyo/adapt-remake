@@ -8,12 +8,13 @@ use App\Http\Controllers\Master\DivisiController;
 use App\Http\Controllers\Modul\DokumenController;
 use App\Http\Controllers\Report\FeedbackMaiController;
 use App\Http\Controllers\Modul\JawabanController;
-use App\Http\Controllers\KaderPerMentorController;
-use App\Http\Controllers\KaderSayaController;
+use App\Http\Controllers\Master\Mentor\KaderPerMentorController;
+use App\Http\Controllers\KaderSaya\PerjanjianKerjaController;
+use App\Http\Controllers\KaderSaya\KaderSayaController;
 use App\Http\Controllers\Master\KaderController;
 use App\Http\Controllers\Modul\LearningController;
 use App\Http\Controllers\LoginController;
-use App\Http\Controllers\Master\MentorController;
+use App\Http\Controllers\Master\Mentor\MentorController;
 use App\Http\Controllers\Modul\ModulController;
 use App\Http\Controllers\Master\NilaiController;
 use App\Http\Controllers\Master\PertanyaanController;
@@ -191,6 +192,9 @@ Route::middleware(['can:canMentorDashboard'])->group(function () {
     Route::get('/kader-saya', [KaderSayaController::class, 'index'])->name('kader.saya.index');
     Route::get('/kader-saya/{kader_id}', [KaderSayaController::class, 'show'])->name('kader.saya.show');
     Route::post('/kader-saya/{kader_id}/feedback', [KaderSayaController::class, 'storeFeedback'])->name('kader.saya.storeFeedback');
+    Route::post('/kader-saya/{kader_id}/perjanjian-kerja', [PerjanjianKerjaController::class, 'store'])->name('perjanjian.store');
+    Route::delete('/perjanjian-kerja/{id}', [PerjanjianKerjaController::class, 'destroy'])->name('perjanjian.destroy');
+    Route::get('/perjanjian-kerja/{id}/download', [PerjanjianKerjaController::class, 'download'])->name('perjanjian.download');
 });
 Route::middleware(['can:isAdmin&Mentor'])->group(function () {
     Route::controller(ReportController::class)->group(function () {

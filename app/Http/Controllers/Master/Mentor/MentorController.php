@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Master;
+namespace App\Http\Controllers\Master\Mentor;
 
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
@@ -30,7 +30,6 @@ class MentorController extends Controller
             ->orderBy('mentor.nama', 'asc')
             ->get();
 
-        // Attach kader_count so AppLayout sidebar shows correct numbers
         $mentorIds = $mentors->pluck('id')->all();
         $countMap  = ListKaderPerMentor::whereIn('mentor_id', $mentorIds)
             ->whereNull('deleted_at')
@@ -54,7 +53,6 @@ class MentorController extends Controller
             ->orderBy('kader.nama', 'asc')
             ->get();
 
-        // Existing assignments: array of {mentor_id, kader_id}
         $assignments = ListKaderPerMentor::whereIn('mentor_id', $mentorIds)
             ->whereNull('deleted_at')
             ->get(['mentor_id', 'kader_id']);

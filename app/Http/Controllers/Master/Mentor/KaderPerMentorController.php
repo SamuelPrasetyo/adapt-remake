@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Master\Mentor;
 
+use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\Company;
 use App\Models\Dokumen;
@@ -173,11 +174,6 @@ class KaderPerMentorController extends Controller
         return $this->attachProgressStats($rows);
     }
 
-    /**
-     * Hitung stats progress untuk koleksi baris kader. Setiap baris harus punya:
-     * - k_id (kader.id), nik_kader, company_code
-     * Menambahkan field: fase_aktif, progress_overall, avg_score, status, total_moduls.
-     */
     protected function attachProgressStats($rows)
     {
         if ($rows->isEmpty()) return $rows;
@@ -186,27 +182,21 @@ class KaderPerMentorController extends Controller
         $niks          = $rows->pluck('nik_kader')->unique()->filter()->values()->all();
         $companyCodes  = $rows->pluck('company_code')->unique()->filter()->values()->all();
 
-        // nik => user_id
         $userMap = User::whereIn('nik', $niks)->pluck('id', 'nik');
 
-        // company_code => company_id
         $companyIdMap = Company::whereIn('company_code', $companyCodes)
             ->pluck('company_id', 'company_code');
 
-        // Modul assignments — user-level
         $userAssigns = ModulAssignment::where('assignable_type', 'user')
             ->whereIn('assignable_id', $kaderIds)
             ->get(['modul_id', 'assignable_id']);
 
-        // Modul assignments — company-level
         $companyAssigns = ModulAssignment::where('assignable_type', 'company')
             ->whereIn('assignable_id', $companyIdMap->values()->all())
             ->get(['modul_id', 'assignable_id']);
 
-        // company_id => company_code (inverse)
         $companyCodeByPk = $companyIdMap->flip();
 
-        // Build kader_id => Set(modul_id)
         $kaderModuls = [];
         foreach ($kaderIds as $kid) {
             $kaderModuls[$kid] = [];
@@ -214,7 +204,6 @@ class KaderPerMentorController extends Controller
         foreach ($userAssigns as $a) {
             $kaderModuls[$a->assignable_id][$a->modul_id] = true;
         }
-        // Map kader_id -> company_code from rows
         $kaderCompany = $rows->keyBy('k_id')->map(fn($r) => $r->company_code);
         foreach ($companyAssigns as $a) {
             $code = $companyCodeByPk[$a->assignable_id] ?? null;
@@ -226,7 +215,6 @@ class KaderPerMentorController extends Controller
             }
         }
 
-        // Fetch fase per modul
         $allModulIds = collect($kaderModuls)
             ->flatMap(fn($s) => array_keys($s))
             ->unique()
@@ -237,7 +225,6 @@ class KaderPerMentorController extends Controller
 
         $userIds = $userMap->values()->all();
 
-        // Reading progress map: user_id => [modul_id => progress]
         $rpRows = ModulReadingProgress::whereIn('user_id', $userIds)
             ->whereIn('modul_id', $allModulIds)
             ->get(['user_id', 'modul_id', 'progress']);
@@ -246,7 +233,6 @@ class KaderPerMentorController extends Controller
             $rpMap[$r->user_id][$r->modul_id] = (int) $r->progress;
         }
 
-        // Test results: user_id => [modul_id => ['pre'|'post' => score]]
         $trRows = ModulTestResult::whereIn('user_id', $userIds)
             ->whereIn('modul_id', $allModulIds)
             ->where('is_completed', 1)
@@ -256,7 +242,6 @@ class KaderPerMentorController extends Controller
             $trMap[$t->user_id][$t->modul_id][$t->tipe] = (float) $t->score;
         }
 
-        // Post-activity dokumen: kader_id (=user_id) => [modul_id => true]
         $docRows = Dokumen::whereIn('kader_id', $userIds)
             ->whereIn('modul_id', $allModulIds)
             ->where('jenis', 'POST_ACTIVITY')
@@ -266,7 +251,6 @@ class KaderPerMentorController extends Controller
             $docMap[$d->kader_id][$d->modul_id] = true;
         }
 
-        // Enrich each row
         return $rows->map(function ($row) use ($userMap, $kaderModuls, $modulFase, $rpMap, $trMap, $docMap) {
             $userId   = $userMap[$row->nik_kader] ?? null;
             $modulIds = array_filter(
@@ -303,7 +287,6 @@ class KaderPerMentorController extends Controller
             $totalCp = $total * 4;
             $progress = $totalCp > 0 ? (int) round(($doneCheckpoints / $totalCp) * 100) : 0;
 
-            // Fase aktif: fase terendah yang belum selesai
             ksort($faseStats);
             $faseAktif = null;
             foreach ($faseStats as $fase => $info) {

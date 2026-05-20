@@ -1,7 +1,9 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\KaderSaya;
 
+use App\Http\Controllers\Controller;
+use App\Http\Controllers\Master\Mentor\KaderPerMentorController;
 use App\Models\Company;
 use App\Models\Dokumen;
 use App\Models\Jawaban;
@@ -44,7 +46,6 @@ class KaderSayaController extends Controller
 
         $mentors = $mentorsQuery->get();
 
-        // Attach kader_count
         $mentorIds = $mentors->pluck('id')->all();
         $countMap  = ListKaderPerMentor::whereIn('mentor_id', $mentorIds)
             ->whereNull('deleted_at')
@@ -66,7 +67,6 @@ class KaderSayaController extends Controller
             ? $perMentor->listByMentorQuery($mentorFilter)
             : $perMentor->listAllKadersInBU($isMentor ? $user->company_code : null);
 
-        // Attach per-fase avg scores (batch query)
         $niks    = $kaders->pluck('nik_kader')->unique()->filter()->values()->all();
         $userMap = User::whereIn('nik', $niks)->pluck('id', 'nik');
 
@@ -142,7 +142,6 @@ class KaderSayaController extends Controller
         $kaderUser = User::where('nik', $kader->nik)->first();
         $userId    = $kaderUser?->id;
 
-        // Moduls assigned to this kader
         $companyId = Company::where('company_code', $kader->company_code)->value('company_id');
 
         $userModulIds    = $userId
@@ -155,7 +154,6 @@ class KaderSayaController extends Controller
 
         $moduls = Modul::whereIn('id', $allModulIds)->orderBy('fase')->orderBy('nama_modul')->get(['id', 'nama_modul as nama', 'fase']);
 
-        // Test results
         $testResults = $userId
             ? ModulTestResult::whereIn('modul_id', $allModulIds)->where('user_id', $userId)->where('is_completed', 1)->get(['modul_id', 'tipe', 'score'])
             : collect();
@@ -165,18 +163,15 @@ class KaderSayaController extends Controller
             $testMap[$t->modul_id][$t->tipe] = (float) $t->score;
         }
 
-        // Reading progress
         $readMap = $userId
             ? ModulReadingProgress::whereIn('modul_id', $allModulIds)->where('user_id', $userId)->pluck('progress', 'modul_id')->all()
             : [];
 
-        // Post-activity docs
         $docIds = $userId
             ? Dokumen::where('kader_id', $userId)->whereIn('modul_id', $allModulIds)->where('jenis', 'POST_ACTIVITY')->pluck('modul_id')->flip()->map(fn() => true)->all()
             : [];
 
-        // Build per-fase groups
-        $faseGroups = [];
+        $faseGroups      = [];
         $doneCheckpoints = 0;
         foreach ($moduls as $modul) {
             $fase = $modul->fase ?? 'Tanpa Fase';
@@ -228,7 +223,6 @@ class KaderSayaController extends Controller
         $avgScoreOverall = !empty($allFaseScores) ? (int) round(array_sum($allFaseScores) / count($allFaseScores)) : null;
         $status          = $overallProgress < 40 ? 'kritis' : ($overallProgress < 70 ? 'perlu_perhatian' : 'on_track');
 
-        // Weekly chart from jawaban table
         $weeklyData = [];
         if ($kader->nik) {
             $rows = Jawaban::selectRaw('SUM(jawaban) / 4 as avg_s, weeks.angka_week as week')
@@ -244,10 +238,9 @@ class KaderSayaController extends Controller
             }
         }
 
-        // Cohort average from same batch
         $cohortMap = [];
         if ($kader->id_batch) {
-            $batchNiks = Kader::where('id_batch', $kader->id_batch)->pluck('nik')->all();
+            $batchNiks  = Kader::where('id_batch', $kader->id_batch)->pluck('nik')->all();
             $cohortRows = DB::table('jawaban')
                 ->join('weeks', 'jawaban.id_week', '=', 'weeks.id_week')
                 ->selectRaw('weeks.angka_week as week, AVG(jawaban.jawaban) / 4 as avg_s')
@@ -264,13 +257,10 @@ class KaderSayaController extends Controller
 
         $currentWeek = count($weeklyData);
         $totalWeeks  = Week::count();
-
-        // Weeks for feedback dropdown (grouped by bulan/tahun on frontend)
-        $weeks = Week::orderBy('id_week')->get(['id_week', 'angka_week', 'bulan', 'tahun']);
+        $weeks       = Week::orderBy('id_week')->get(['id_week', 'angka_week', 'bulan', 'tahun']);
 
         Log::info('[KaderSaya::show] kader NIK', ['nik' => $kader->nik, 'kader_id' => $kader_id]);
 
-        // ── Kader self-reflections (q7=dipelajari, q8=tantangan, q9=rencana) ──
         $refleksiQuery = Jawaban::whereIn('jawaban.id_pertanyaan', [7, 8, 9])
             ->where('jawaban.nik_kader', $kader->nik)
             ->whereNull('jawaban.nama_mentor')
@@ -280,23 +270,14 @@ class KaderSayaController extends Controller
             ->orderBy('jawaban.id_week', 'desc')
             ->orderBy('jawaban.id_jawaban', 'desc');
 
-        Log::info('[KaderSaya::show] refleksi SQL', [
-            'sql'      => $refleksiQuery->toSql(),
-            'bindings' => $refleksiQuery->getBindings(),
-        ]);
-
         $refleksiRaw = $refleksiQuery->get();
-        Log::info('[KaderSaya::show] refleksi rows', ['count' => $refleksiRaw->count(), 'rows' => $refleksiRaw->toArray()]);
 
-        // Mentor's motivasi (q5) per week for star display in refleksi cards
         $motivasiMap = Jawaban::where('nik_kader', $kader->nik)
             ->where('id_pertanyaan', 5)
             ->whereNotNull('nama_mentor')
             ->pluck('jawaban', 'id_week')
             ->all();
-        Log::info('[KaderSaya::show] motivasiMap', $motivasiMap);
 
-        // Group refleksi by week, take latest submission per question
         $refleksiByWeek = [];
         foreach ($refleksiRaw as $r) {
             $wk = $r->id_week;
@@ -323,47 +304,34 @@ class KaderSayaController extends Controller
             }
         }
         $refleksiList = array_values($refleksiByWeek);
-        Log::info('[KaderSaya::show] refleksiList', $refleksiList);
 
-        // ── Mentor feedback history sent to this kader (q1-6, nama_mentor not null) ──
-        $mentorFeedbackQuery = Jawaban::whereIn('jawaban.id_pertanyaan', [1, 2, 3, 4, 5, 6])
+        $mentorFeedbackRaw = Jawaban::whereIn('jawaban.id_pertanyaan', [1, 2, 3, 4, 5, 6])
             ->where('jawaban.nik_kader', $kader->nik)
             ->whereNotNull('jawaban.nama_mentor')
             ->join('weeks', 'jawaban.id_week', '=', 'weeks.id_week')
             ->select('jawaban.id_week', 'jawaban.id_pertanyaan', 'jawaban.jawaban',
                      'jawaban.nama_mentor', 'weeks.angka_week', 'weeks.bulan', 'weeks.tahun')
             ->orderBy('jawaban.id_week', 'desc')
-            ->orderBy('jawaban.id_pertanyaan', 'asc');
+            ->orderBy('jawaban.id_pertanyaan', 'asc')
+            ->get();
 
-        Log::info('[KaderSaya::show] mentorFeedback SQL', [
-            'sql'      => $mentorFeedbackQuery->toSql(),
-            'bindings' => $mentorFeedbackQuery->getBindings(),
-        ]);
-
-        $mentorFeedbackRaw = $mentorFeedbackQuery->get();
-        Log::info('[KaderSaya::show] mentorFeedback rows', [
-            'count' => $mentorFeedbackRaw->count(),
-            'rows'  => $mentorFeedbackRaw->toArray(),
-        ]);
-
-        $motivasiLabel = [1 => 'Sangat Kurang', 2 => 'Kurang', 3 => 'Cukup', 4 => 'Baik', 5 => 'Sangat Baik'];
-
+        $motivasiLabel  = [1 => 'Sangat Kurang', 2 => 'Kurang', 3 => 'Cukup', 4 => 'Baik', 5 => 'Sangat Baik'];
         $feedbackByWeek = [];
         foreach ($mentorFeedbackRaw as $r) {
             $wk = $r->id_week;
             if (!isset($feedbackByWeek[$wk])) {
                 $feedbackByWeek[$wk] = [
-                    'week_id'      => $wk,
-                    'angka_week'   => $r->angka_week,
-                    'bulan'        => $r->bulan,
-                    'tahun'        => $r->tahun,
-                    'nama_mentor'  => $r->nama_mentor,
-                    'routine_job'  => null,
-                    'assignment'   => null,
-                    'pemahaman_sop'=> null,
-                    'project'      => null,
-                    'motivasi'     => null,
-                    'area'         => null,
+                    'week_id'       => $wk,
+                    'angka_week'    => $r->angka_week,
+                    'bulan'         => $r->bulan,
+                    'tahun'         => $r->tahun,
+                    'nama_mentor'   => $r->nama_mentor,
+                    'routine_job'   => null,
+                    'assignment'    => null,
+                    'pemahaman_sop' => null,
+                    'project'       => null,
+                    'motivasi'      => null,
+                    'area'          => null,
                 ];
             }
             $val = strip_tags($r->jawaban ?? '');
@@ -378,7 +346,16 @@ class KaderSayaController extends Controller
             };
         }
         $mentorFeedbackList = array_values($feedbackByWeek);
-        Log::info('[KaderSaya::show] mentorFeedbackList', $mentorFeedbackList);
+
+        $perjanjianKerja = Dokumen::where('kader_id', $kader_id)
+            ->where('jenis', 'PERJANJIAN_KERJA')
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        if ($perjanjianKerja) {
+            $uploader = User::find($perjanjianKerja->mentor_id);
+            $perjanjianKerja->uploaded_by_name = $uploader?->name ?? '—';
+        }
 
         return Inertia::render('KaderSaya/Detail', [
             'kader'              => $kader,
@@ -395,6 +372,8 @@ class KaderSayaController extends Controller
             'refleksi'           => $refleksiList,
             'mentorFeedbackList' => $mentorFeedbackList,
             'mentorName'         => $user->name,
+            'perjanjianKerja'    => $perjanjianKerja,
+            'canUpload'          => $isAdmin021 || $isMentor,
         ]);
     }
 
@@ -405,10 +384,10 @@ class KaderSayaController extends Controller
         if (!$kader) abort(404);
 
         Log::info('[KaderSaya::storeFeedback] incoming request', [
-            'kader_id'   => $kader_id,
-            'kader_nik'  => $kader->nik,
-            'mentor'     => $user->name,
-            'request'    => $request->only(['id_week','p1','p2','p3','p4','p5','p6']),
+            'kader_id'  => $kader_id,
+            'kader_nik' => $kader->nik,
+            'mentor'    => $user->name,
+            'request'   => $request->only(['id_week','p1','p2','p3','p4','p5','p6']),
         ]);
 
         $motivasiScore = [
@@ -437,17 +416,10 @@ class KaderSayaController extends Controller
             6 => $request->p6,
         ];
 
-        Log::info('[KaderSaya::storeFeedback] answers to insert', $answers);
-
         $inserted = 0;
         foreach ($answers as $pertanyaan => $jawaban) {
-            if ($jawaban === null || $jawaban === '') {
-                Log::debug("[KaderSaya::storeFeedback] skipping pertanyaan {$pertanyaan} — empty value");
-                continue;
-            }
-            $row = array_merge($base, ['id_pertanyaan' => $pertanyaan, 'jawaban' => $jawaban]);
-            Log::debug('[KaderSaya::storeFeedback] inserting', $row);
-            Jawaban::create($row);
+            if ($jawaban === null || $jawaban === '') continue;
+            Jawaban::create(array_merge($base, ['id_pertanyaan' => $pertanyaan, 'jawaban' => $jawaban]));
             $inserted++;
         }
 
