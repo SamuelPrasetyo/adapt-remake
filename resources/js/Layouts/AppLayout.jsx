@@ -10,6 +10,7 @@ const ADMIN_NAV = [
         icon: "home",
         href: "/dashboard",
         match: "/dashboard",
+        preserveMentor: true,
     },
     {
         type: "item",
@@ -18,6 +19,7 @@ const ADMIN_NAV = [
         href: "/kader-saya",
         match: "/kader-saya",
         requires: "mentor_or_admin021",
+        preserveMentor: true,
     },
     { type: "divider", requires: "mentor_or_admin021" },
     {
@@ -334,7 +336,7 @@ function NavGroup({ item, currentUrl, user }) {
     );
 }
 
-function MentorSelectorCard({ user, mentors, selectedMentor }) {
+function MentorSelectorCard({ user, mentors, selectedMentor, currentUrl }) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
     const ref = useRef(null);
@@ -368,17 +370,19 @@ function MentorSelectorCard({ user, mentors, selectedMentor }) {
 
     if (!showCard) return null;
 
+    const basePath = currentUrl?.startsWith("/kader-saya") ? "/kader-saya" : "/dashboard";
+
     const pickMentor = (m) => {
         setOpen(false);
         setSearch("");
-        router.visit(`/dashboard?mentor_id=${m.id}`, {
+        router.visit(`${basePath}?mentor_id=${m.id}`, {
             preserveScroll: true,
         });
     };
 
     const clearMentor = () => {
         setOpen(false);
-        router.visit("/dashboard", { preserveScroll: true });
+        router.visit(basePath, { preserveScroll: true });
     };
 
     const goToDashboard = () => {
@@ -637,6 +641,7 @@ export default function AppLayout({
     children,
 }) {
     const { url, props } = usePage();
+    const currentPath = url.split('?')[0];
     const user = props?.auth?.user;
     const flash = props?.flash;
     const mentors = props?.mentors;
@@ -748,6 +753,7 @@ export default function AppLayout({
                     user={user}
                     mentors={mentors}
                     selectedMentor={selectedMentor}
+                    currentUrl={currentPath}
                 />
 
                 {/* Nav — scrolls independently when overflow */}
@@ -767,7 +773,7 @@ export default function AppLayout({
                                 <NavGroup
                                     key={i}
                                     item={item}
-                                    currentUrl={url}
+                                    currentUrl={currentPath}
                                     user={user}
                                 />
                             );
@@ -780,12 +786,15 @@ export default function AppLayout({
                         }
 
                         const isActive =
-                            url === item.match ||
-                            url.startsWith(item.match + "/");
+                            currentPath === item.match ||
+                            currentPath.startsWith(item.match + "/");
+                        const navHref = item.preserveMentor && selectedMentor
+                            ? `${item.href}?mentor_id=${selectedMentor.id}`
+                            : item.href;
                         return (
                             <Link
                                 key={i}
-                                href={item.href}
+                                href={navHref}
                                 className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition ${
                                     isActive
                                         ? "bg-blue-500 text-white shadow-lg shadow-blue-500/30"
