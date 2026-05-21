@@ -69,12 +69,12 @@ function ModulCard({ modul }) {
                 )}
             </div>
 
-            {isViewOnly && (
+            {/* {isViewOnly && (
                 <p className="text-[11px] text-amber-600 flex items-center gap-1">
                     <LockIcon />
                     View &amp; Unduh saja
                 </p>
-            )}
+            )} */}
 
             {modul.file_materi && (
                 <div className="flex gap-2 mt-auto pt-2 border-t border-slate-100">
