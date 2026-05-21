@@ -63,7 +63,17 @@ Route::middleware(['can:isKader'])->group(function () {
 Route::middleware(['can:isMentor'])->group(function () {
     Route::get('/feedback_mai-kader', [FeedbackMaiController::class, 'fm_kader_index'])->name('fm.kader.index');
     Route::get('/feedback_mai-kader/export/{id_week}/{nik_kader}', [FeedbackMaiController::class, 'fm_kader_export'])->name('fm.kader.export');
+});
+
+// Program Saya & Modul — khusus user Mentor (learning miliknya sendiri)
+Route::middleware(['can:isMentor'])->group(function () {
     Route::get('/mentor-modul', [MentorModulController::class, 'index'])->name('mentor.modul');
+    Route::get('/program-saya', [MentorModulController::class, 'programSaya'])->name('mentor.programSaya');
+});
+
+// All Mentor — Admin021 monitoring progress semua mentor (read-only list)
+Route::middleware(['can:isAdmin021'])->group(function () {
+    Route::get('/all-mentor', [MentorModulController::class, 'allMentor'])->name('mentor.all');
 });
 
 Route::controller(LoginController::class)->group(function () {

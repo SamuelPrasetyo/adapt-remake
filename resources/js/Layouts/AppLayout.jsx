@@ -192,6 +192,10 @@ export default function AppLayout({
                                 />
                             );
 
+                        if (item.requires === "admin021") {
+                            if (!(user?.type === "Admin" && user?.company_code === "021")) return null;
+                        }
+
                         if (item.requires === "mentor_or_admin021") {
                             const ok = user?.type === "Mentor" ||
                                 (user?.type === "Admin" && user?.company_code === "021");
