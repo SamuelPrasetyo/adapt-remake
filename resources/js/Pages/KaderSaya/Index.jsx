@@ -225,18 +225,18 @@ export default function KaderSayaIndex({ kaders = [], mentors = [], selectedMent
 
     return (
         <AppLayout title="KADER SAYA" breadcrumb="Kader Saya">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+            <div className="flex flex-col gap-3 mb-6">
                 <div>
                     <h2 className="text-lg font-semibold text-slate-900">{headerLabel}</h2>
                     <p className="text-sm text-slate-500">{filtered.length} kader ditampilkan</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                     <input
                         type="text"
                         placeholder="Cari nama / NIK / divisi..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 bg-white w-56"
+                        className="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 bg-white flex-1 min-w-0"
                     />
                     {mentors.length > 0 && (
                         <MentorDropdown mentors={mentors} value={mentorFilter} onChange={handleMentorFilter} />

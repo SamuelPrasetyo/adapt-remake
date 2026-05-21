@@ -25,6 +25,7 @@ export default function AppLayout({
 
     const [profileOpen, setProfileOpen] = useState(false);
     const [cpOpen, setCpOpen] = useState(false);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
     const profileRef = useRef(null);
     const [toast, setToast] = useState({
         open: false,
@@ -102,22 +103,43 @@ export default function AppLayout({
 
     return (
         <div className="flex min-h-screen bg-slate-100">
+            {/* Mobile overlay */}
+            {sidebarOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+                    onClick={() => setSidebarOpen(false)}
+                />
+            )}
+
             {/* Sidebar — fixed, independent scroll */}
-            <aside className="w-64 shrink-0 bg-slate-900 text-white flex flex-col fixed top-0 left-0 h-screen z-40">
+            <aside className={`w-64 shrink-0 bg-slate-900 text-white flex flex-col fixed top-0 left-0 h-screen z-40 transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}>
                 {/* Sidebar header — pinned, never scrolls */}
                 <div className="shrink-0 px-6 py-6 border-b border-white/10">
-                    <div className="flex items-center gap-2">
-                        <div className="w-9 h-9 rounded-lg bg-linear-to-br from-blue-500 to-indigo-500 flex items-center justify-center font-bold text-sm shadow-lg shadow-blue-500/30">
-                            T
-                        </div>
-                        <div>
-                            <div className="font-bold text-sm tracking-wide">
-                                TALENT & DEV
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <div className="w-9 h-9 rounded-lg bg-linear-to-br from-blue-500 to-indigo-500 flex items-center justify-center font-bold text-sm shadow-lg shadow-blue-500/30">
+                                T
                             </div>
-                            <div className="text-[10px] text-slate-400 uppercase tracking-widest">
-                                ADAPT Program
+                            <div>
+                                <div className="font-bold text-sm tracking-wide">
+                                    TALENT & DEV
+                                </div>
+                                <div className="text-[10px] text-slate-400 uppercase tracking-widest">
+                                    ADAPT Program
+                                </div>
                             </div>
                         </div>
+                        {/* Close button — mobile only */}
+                        <button
+                            type="button"
+                            onClick={() => setSidebarOpen(false)}
+                            className="lg:hidden p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition"
+                            aria-label="Close menu"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
                     </div>
                 </div>
 
@@ -204,19 +226,32 @@ export default function AppLayout({
                 </nav>
             </aside>
 
-            {/* Main content — offset by sidebar width */}
-            <div className="flex-1 flex flex-col min-w-0 ml-64">
+            {/* Main content — offset by sidebar width on desktop */}
+            <div className="flex-1 flex flex-col min-w-0 lg:ml-64">
                 {/* Header — fixed, stays on top while page scrolls */}
-                <header className="fixed top-0 left-64 right-0 h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 z-30">
-                    <div>
-                        <h1 className="text-lg font-semibold tracking-wide uppercase text-slate-900">
-                            {title || "TALENT & DEVELOPMENT"}
-                        </h1>
-                        {breadcrumb && (
-                            <div className="text-xs text-slate-500 mt-0.5">
-                                {breadcrumb}
-                            </div>
-                        )}
+                <header className="fixed top-0 left-0 right-0 lg:left-64 h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-8 z-20">
+                    <div className="flex items-center gap-3">
+                        {/* Hamburger button — mobile only */}
+                        <button
+                            type="button"
+                            onClick={() => setSidebarOpen(true)}
+                            className="lg:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100 transition"
+                            aria-label="Open menu"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                        </button>
+                        <div>
+                            <h1 className="text-sm lg:text-lg font-semibold tracking-wide uppercase text-slate-900">
+                                {title || "TALENT & DEVELOPMENT"}
+                            </h1>
+                            {breadcrumb && (
+                                <div className="text-xs text-slate-500 mt-0.5 hidden sm:block">
+                                    {breadcrumb}
+                                </div>
+                            )}
+                        </div>
                     </div>
                     <div className="flex items-center gap-4">
                         {headerActions}
@@ -300,7 +335,7 @@ export default function AppLayout({
                     }
                 />
 
-                <main className="flex-1 p-8 overflow-x-hidden">{children}</main>
+                <main className="flex-1 p-4 lg:p-8 overflow-x-hidden">{children}</main>
 
                 <footer className="px-8 py-4 text-center text-xs text-slate-500 border-t border-slate-200 bg-white">
                     2024 © IT Mekar Armada Investama

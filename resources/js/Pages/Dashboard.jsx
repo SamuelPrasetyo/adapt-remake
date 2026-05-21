@@ -169,7 +169,7 @@ function MentorFilter({ mentors, value, onChange }) {
 
 const PAGE_SIZE = 10;
 
-function KaderTable({ kaders, mentorFilter, mentors, onMentorFilter, headerLabel }) {
+function KaderTable({ kaders, mentorFilter, mentors, onMentorFilter, headerTitle, headerSubtitle }) {
     const list = kaders || [];
     const totalKader = list.length;
     const [page, setPage] = useState(1);
@@ -195,23 +195,31 @@ function KaderTable({ kaders, mentorFilter, mentors, onMentorFilter, headerLabel
     return (
         <div className="bg-white rounded-2xl shadow-[var(--shadow-card)] overflow-hidden mb-6">
             {/* Header */}
-            <div className="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+            <div className="px-4 lg:px-6 py-4 border-b border-slate-100">
+                <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
                     </div>
-                    <div className="min-w-0">
-                        <div className="font-semibold text-slate-900 truncate">{headerLabel}</div>
+                    <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-slate-900">{headerTitle}</div>
+                        {headerSubtitle && (
+                            <div className="text-xs font-medium text-slate-600">{headerSubtitle}</div>
+                        )}
                         <div className="text-xs text-slate-500">{totalKader} kader ditampilkan</div>
+                        {/* Filter — mobile: below info, desktop: hidden here */}
+                        <div className="mt-2 sm:hidden">
+                            <MentorFilter mentors={mentors} value={mentorFilter} onChange={onMentorFilter} />
+                        </div>
                     </div>
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 ring-1 ring-blue-200">
-                        {totalKader} Kader
-                    </span>
-                    <MentorFilter mentors={mentors} value={mentorFilter} onChange={onMentorFilter} />
+                    {/* Filter — desktop only */}
+                    <div className="hidden sm:flex items-center gap-2 shrink-0">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 ring-1 ring-blue-200">
+                            {totalKader} Kader
+                        </span>
+                        <MentorFilter mentors={mentors} value={mentorFilter} onChange={onMentorFilter} />
+                    </div>
                 </div>
             </div>
 
@@ -231,12 +239,12 @@ function KaderTable({ kaders, mentorFilter, mentors, onMentorFilter, headerLabel
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="text-left text-[11px] uppercase tracking-wider text-slate-500 bg-slate-50">
-                                    <th className="px-6 py-3 font-medium">Nama Kader</th>
-                                    <th className="px-4 py-3 font-medium">Mentor</th>
-                                    <th className="px-4 py-3 font-medium">Fase Aktif</th>
-                                    <th className="px-4 py-3 font-medium w-55">Progress Overall</th>
-                                    <th className="px-4 py-3 font-medium text-right">Avg Score</th>
-                                    <th className="px-6 py-3 font-medium">Status</th>
+                                    <th className="px-6 py-3 font-medium whitespace-nowrap">Nama Kader</th>
+                                    <th className="px-4 py-3 font-medium whitespace-nowrap">Mentor</th>
+                                    <th className="px-4 py-3 font-medium whitespace-nowrap">Fase Aktif</th>
+                                    <th className="px-4 py-3 font-medium whitespace-nowrap min-w-40">Progress Overall</th>
+                                    <th className="px-4 py-3 font-medium whitespace-nowrap text-right">Avg Score</th>
+                                    <th className="px-6 py-3 font-medium whitespace-nowrap">Status</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -245,23 +253,23 @@ function KaderTable({ kaders, mentorFilter, mentors, onMentorFilter, headerLabel
                                     const initials = (k.nama_kader || '?').split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() || '').join('');
                                     return (
                                         <tr key={k.k_id || k.id} className="hover:bg-slate-50/60 transition">
-                                            <td className="px-6 py-3">
+                                            <td className="px-6 py-3 whitespace-nowrap">
                                                 <div className="flex items-center gap-3">
                                                     <div className={`w-9 h-9 rounded-full bg-linear-to-br ${avatarColor(k.nik_kader || k.nama_kader || '')} flex items-center justify-center text-xs font-bold text-white shrink-0`}>
                                                         {initials || '?'}
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <div className="font-medium text-slate-900 truncate">{k.nama_kader}</div>
-                                                        <div className="text-[11px] text-slate-500 truncate">
+                                                        <div className="font-medium text-slate-900 truncate max-w-40">{k.nama_kader}</div>
+                                                        <div className="text-[11px] text-slate-500 truncate max-w-40">
                                                             {k.divisi_name || '—'}{k.dept_name ? ` · ${k.dept_name}` : ''}
                                                         </div>
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-3 text-slate-700">
+                                            <td className="px-4 py-3 whitespace-nowrap text-slate-700">
                                                 {k.mentor_name || <span className="text-slate-400 italic">Belum di-assign</span>}
                                             </td>
-                                            <td className="px-4 py-3">
+                                            <td className="px-4 py-3 whitespace-nowrap">
                                                 {k.fase_aktif ? (
                                                     <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-amber-50 text-amber-700 ring-1 ring-amber-200">
                                                         {k.fase_aktif}
@@ -270,9 +278,9 @@ function KaderTable({ kaders, mentorFilter, mentors, onMentorFilter, headerLabel
                                                     <span className="text-slate-400 text-xs">—</span>
                                                 )}
                                             </td>
-                                            <td className="px-4 py-3">
+                                            <td className="px-4 py-3 whitespace-nowrap">
                                                 <div className="flex items-center gap-2">
-                                                    <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                                                    <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden shrink-0">
                                                         <div
                                                             className={`h-full rounded-full transition-all ${progressBarColor(pct)}`}
                                                             style={{ width: `${Math.min(100, pct)}%` }}
@@ -282,10 +290,10 @@ function KaderTable({ kaders, mentorFilter, mentors, onMentorFilter, headerLabel
                                                 </div>
                                                 <div className="text-[10px] text-slate-400 mt-0.5">{k.total_moduls || 0} modul</div>
                                             </td>
-                                            <td className="px-4 py-3 text-right font-semibold text-slate-900">
+                                            <td className="px-4 py-3 whitespace-nowrap text-right font-semibold text-slate-900">
                                                 {k.avg_score != null ? k.avg_score : <span className="text-slate-300">—</span>}
                                             </td>
-                                            <td className="px-6 py-3">
+                                            <td className="px-6 py-3 whitespace-nowrap">
                                                 <StatusBadge status={k.status} />
                                             </td>
                                         </tr>
@@ -371,9 +379,10 @@ export default function Dashboard({
         router.visit('/dashboard', { data: params, preserveScroll: true });
     };
 
-    const headerLabel = selectedMentor
+    const headerTitle = selectedMentor
         ? `Kader binaan — ${selectedMentor.nama}`
-        : `Semua Kader Aktif${buName ? ` — ${buName}` : ''}`;
+        : 'Semua Kader Aktif';
+    const headerSubtitle = !selectedMentor && buName ? buName : null;
 
     const dep = departemenProgress?.length
         ? departemenProgress
@@ -484,7 +493,8 @@ export default function Dashboard({
                         mentorFilter={mentorFilter}
                         mentors={mentors || []}
                         onMentorFilter={handleMentorFilter}
-                        headerLabel={headerLabel}
+                        headerTitle={headerTitle}
+                        headerSubtitle={headerSubtitle}
                     />
                 </section>
             )}

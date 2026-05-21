@@ -120,9 +120,9 @@ export default function MentorModulIndex({ moduls = [] }) {
 
     return (
         <AppLayout title="Modul" breadcrumb="Program & Modul / Modul">
-            <p className="text-sm text-slate-500 mb-6">
+            {/* <p className="text-sm text-slate-500 mb-6">
                 Library modul mengajar program MT
-            </p>
+            </p> */}
 
             {/* Tab filter */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 mb-6 p-1.5 flex flex-wrap gap-1">
