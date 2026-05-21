@@ -16,15 +16,36 @@ class ModulController extends Controller
 {
     public function index()
     {
-        $moduls = Modul::orderBy('created_at', 'desc')->get();
         $companies = Company::get();
         $users = Kader::get();
         $moduls = Modul::get();
+
+        // Mentor dari tabel users (punya akun login, untuk Program Saya)
+        $mentorUsers = DB::table('users')
+            ->where('users.type', 'Mentor')
+            ->where('users.status', 'Aktif')
+            ->leftJoin('company', 'users.company_code', '=', 'company.company_code')
+            ->select('users.id', 'users.name as nama', 'users.nik', 'company.company_shortname as bu')
+            ->orderBy('users.name')
+            ->get()
+            ->map(fn($m) => array_merge((array) $m, ['_source' => 'user']));
+
+        // Mentor dari tabel master mentor
+        $mentorMasters = DB::table('mentor')
+            ->whereNull('mentor.deleted_at')
+            ->leftJoin('company', 'mentor.company_code', '=', 'company.company_code')
+            ->select('mentor.id', 'mentor.nama', DB::raw('NULL as nik'), 'company.company_shortname as bu')
+            ->orderBy('mentor.nama')
+            ->get()
+            ->map(fn($m) => array_merge((array) $m, ['_source' => 'master']));
+
+        $mentors = $mentorUsers->concat($mentorMasters)->sortBy('nama')->values();
 
         return Inertia::render('Modul/Index', [
             'moduls'    => $moduls,
             'companies' => $companies,
             'users'     => $users,
+            'mentors'   => $mentors,
         ]);
     }
 
@@ -96,28 +117,49 @@ class ModulController extends Controller
     public function assign(Request $request)
     {
         $request->validate([
-            'type'       => 'required|in:user,company',
-            'modul_id'   => 'required|array|min:1',
-            'user_id'    => 'required_if:type,user|array|min:1',
-            'company_id' => 'required_if:type,company|array|min:1',
+            'type'               => 'required|in:user,company,mentor',
+            'modul_id'           => 'required|array|min:1',
+            'user_id'            => 'required_if:type,user|array|min:1',
+            'company_id'         => 'required_if:type,company|array|min:1',
+            'mentor_user_ids'    => 'array',
+            'mentor_master_ids'  => 'array',
         ]);
 
-        $type      = $request->type;
-        $modulIds  = $request->modul_id;
-        $targetIds = $type === 'user' ? $request->user_id : $request->company_id;
-
+        $type     = $request->type;
+        $modulIds = $request->modul_id;
         $dataInsert = [];
         $now        = now();
 
-        foreach ($targetIds as $targetId) {
-            foreach ($modulIds as $modulId) {
-                $dataInsert[] = [
-                    'modul_id'        => $modulId,
-                    'assignable_id'   => $targetId,
-                    'assignable_type' => $type,
-                    'created_at'      => $now,
-                    'updated_at'      => $now,
-                ];
+        if ($type === 'mentor') {
+            $mentorUserIds   = $request->mentor_user_ids   ?? [];
+            $mentorMasterIds = $request->mentor_master_ids ?? [];
+
+            if (empty($mentorUserIds) && empty($mentorMasterIds)) {
+                return back()->withErrors(['mentor' => 'Pilih minimal satu mentor.']);
+            }
+
+            foreach ($mentorUserIds as $uid) {
+                foreach ($modulIds as $modulId) {
+                    $dataInsert[] = ['modul_id' => $modulId, 'assignable_id' => $uid, 'assignable_type' => 'mentor', 'created_at' => $now, 'updated_at' => $now];
+                }
+            }
+            foreach ($mentorMasterIds as $mid) {
+                foreach ($modulIds as $modulId) {
+                    $dataInsert[] = ['modul_id' => $modulId, 'assignable_id' => $mid, 'assignable_type' => 'mentor_master', 'created_at' => $now, 'updated_at' => $now];
+                }
+            }
+        } else {
+            $targetIds = $type === 'user' ? $request->user_id : $request->company_id;
+            foreach ($targetIds as $targetId) {
+                foreach ($modulIds as $modulId) {
+                    $dataInsert[] = [
+                        'modul_id'        => $modulId,
+                        'assignable_id'   => $targetId,
+                        'assignable_type' => $type,
+                        'created_at'      => $now,
+                        'updated_at'      => $now,
+                    ];
+                }
             }
         }
 

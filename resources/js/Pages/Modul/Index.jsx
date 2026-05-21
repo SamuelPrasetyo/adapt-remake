@@ -46,7 +46,7 @@ function ActionBtn({ onClick, color, title, children }) {
     );
 }
 
-export default function ModulIndex({ moduls, companies = [], users = [] }) {
+export default function ModulIndex({ moduls, companies = [], users = [], mentors = [] }) {
     const [tambahOpen, setTambahOpen] = useState(false);
     const [editOpen, setEditOpen]     = useState(false);
     const [editRow, setEditRow]       = useState(null);
@@ -56,6 +56,7 @@ export default function ModulIndex({ moduls, companies = [], users = [] }) {
     const [assignType, setAssignType] = useState('');
     const [assignUserIds, setAssignUserIds] = useState([]);
     const [assignCompanyIds, setAssignCompanyIds] = useState([]);
+    const [assignMentorSelected, setAssignMentorSelected] = useState([]); // [{id, _source}]
     const [assignModulIds, setAssignModulIds] = useState([]);
     const [assignProcessing, setAssignProcessing] = useState(false);
 
@@ -123,13 +124,31 @@ export default function ModulIndex({ moduls, companies = [], users = [] }) {
         return companies.filter((c) => c.company_name?.toLowerCase().includes(q));
     }, [companies, assignTargetSearch]);
 
-    const toggleUser = (id) => setAssignUserIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+    const filteredMentors = useMemo(() => {
+        if (!assignTargetSearch.trim()) return mentors;
+        const q = assignTargetSearch.toLowerCase();
+        return mentors.filter((m) =>
+            m.nama?.toLowerCase().includes(q) ||
+            m.nik?.toLowerCase().includes(q) ||
+            m.bu?.toLowerCase().includes(q)
+        );
+    }, [mentors, assignTargetSearch]);
+
+    const toggleUser    = (id) => setAssignUserIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
     const toggleCompany = (id) => setAssignCompanyIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+    const toggleMentor  = (m) => {
+        setAssignMentorSelected((prev) => {
+            const exists = prev.find((x) => x.id === m.id && x._source === m._source);
+            return exists ? prev.filter((x) => !(x.id === m.id && x._source === m._source)) : [...prev, { id: m.id, _source: m._source }];
+        });
+    };
+    const isMentorChecked = (m) => assignMentorSelected.some((x) => x.id === m.id && x._source === m._source);
 
     const openAssign = () => {
         setAssignType('');
         setAssignUserIds([]);
         setAssignCompanyIds([]);
+        setAssignMentorSelected([]);
         setAssignModulIds([]);
         setAssignSearch('');
         setAssignTargetSearch('');
@@ -139,19 +158,30 @@ export default function ModulIndex({ moduls, companies = [], users = [] }) {
     const submitAssign = (e) => {
         e.preventDefault();
         if (!assignType) return;
+
+        if (assignType === 'mentor') {
+            if (assignMentorSelected.length === 0) { alert('Pilih minimal satu mentor.'); return; }
+            if (assignModulIds.length === 0) { alert('Pilih minimal satu modul.'); return; }
+            const mentorUserIds   = assignMentorSelected.filter((x) => x._source === 'user').map((x) => x.id);
+            const mentorMasterIds = assignMentorSelected.filter((x) => x._source === 'master').map((x) => x.id);
+            setAssignProcessing(true);
+            router.post('/modul/assign', {
+                type: 'mentor',
+                modul_id: assignModulIds,
+                mentor_user_ids:   mentorUserIds,
+                mentor_master_ids: mentorMasterIds,
+            }, { onFinish: () => setAssignProcessing(false), onSuccess: () => setAssignOpen(false) });
+            return;
+        }
+
         const targetIds = assignType === 'user' ? assignUserIds : assignCompanyIds;
-        if (targetIds.length === 0) {
-            alert(`Pilih minimal satu ${assignType === 'user' ? 'user' : 'Business Unit'}.`);
-            return;
-        }
-        if (assignModulIds.length === 0) {
-            alert('Pilih minimal satu modul.');
-            return;
-        }
+        if (targetIds.length === 0) { alert(`Pilih minimal satu ${assignType === 'user' ? 'user' : 'Business Unit'}.`); return; }
+        if (assignModulIds.length === 0) { alert('Pilih minimal satu modul.'); return; }
         const body = {
             type: assignType,
             modul_id: assignModulIds,
-            ...(assignType === 'user' ? { user_id: assignUserIds } : { company_id: assignCompanyIds }),
+            ...(assignType === 'user'    ? { user_id: assignUserIds }       : {}),
+            ...(assignType === 'company' ? { company_id: assignCompanyIds } : {}),
         };
         setAssignProcessing(true);
         router.post('/modul/assign', body, {
@@ -275,11 +305,12 @@ export default function ModulIndex({ moduls, companies = [], users = [] }) {
 
                             <Field label="Assign Ke">
                                 <select value={assignType} required
-                                    onChange={(e) => { setAssignType(e.target.value); setAssignUserIds([]); setAssignCompanyIds([]); setAssignTargetSearch(''); }}
+                                    onChange={(e) => { setAssignType(e.target.value); setAssignUserIds([]); setAssignCompanyIds([]); setAssignMentorIds([]); setAssignTargetSearch(''); }}
                                     className={inputCls}>
                                     <option value="">-- Pilih --</option>
                                     <option value="user">Individual</option>
                                     <option value="company">Business Unit</option>
+                                    <option value="mentor">Mentor</option>
                                 </select>
                             </Field>
 
@@ -340,6 +371,51 @@ export default function ModulIndex({ moduls, companies = [], users = [] }) {
                                                     <input type="checkbox" checked={checked} onChange={() => toggleCompany(c.company_id)}
                                                         className="w-4 h-4 accent-emerald-600 shrink-0" />
                                                     <span className="text-sm text-slate-800 truncate">{c.company_name}</span>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
+                            {assignType === 'mentor' && (
+                                <div className="flex flex-col flex-1 min-h-0">
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                                        Pilih Mentor
+                                        {assignMentorSelected.length > 0 && (
+                                            <span className="ml-2 text-xs font-normal text-emerald-600">{assignMentorSelected.length} dipilih</span>
+                                        )}
+                                    </label>
+                                    <input type="text" value={assignTargetSearch}
+                                        onChange={(e) => setAssignTargetSearch(e.target.value)}
+                                        placeholder="Cari mentor..." className={`${inputCls} mb-2`} />
+                                    <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+                                        {filteredMentors.length === 0 && (
+                                            <p className="text-xs text-slate-400 text-center py-4">Tidak ada mentor ditemukan.</p>
+                                        )}
+                                        {filteredMentors.map((m, idx) => {
+                                            const checked = isMentorChecked(m);
+                                            const isUser = m._source === 'user';
+                                            return (
+                                                <label key={`${m._source}-${m.id}-${idx}`}
+                                                    className={`flex items-center gap-2.5 p-2.5 rounded-lg border cursor-pointer transition ${
+                                                        checked ? 'border-emerald-400 bg-emerald-50' : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50/50'
+                                                    }`}>
+                                                    <input type="checkbox" checked={checked} onChange={() => toggleMentor(m)}
+                                                        className="w-4 h-4 accent-emerald-600 shrink-0" />
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="text-sm text-slate-800 truncate">{m.nama}</p>
+                                                        <p className="text-xs text-slate-400 truncate">
+                                                            {m.nik ?? '—'}{m.bu ? ` · ${m.bu}` : ''}
+                                                        </p>
+                                                    </div>
+                                                    <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                                                        isUser
+                                                            ? 'bg-blue-100 text-blue-700'
+                                                            : 'bg-slate-100 text-slate-500'
+                                                    }`}>
+                                                        {isUser ? 'User' : 'Master'}
+                                                    </span>
                                                 </label>
                                             );
                                         })}
