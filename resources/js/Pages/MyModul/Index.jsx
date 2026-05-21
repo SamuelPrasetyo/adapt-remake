@@ -3,7 +3,10 @@ import AppLayout from '@/Layouts/AppLayout';
 
 function ModulCard({ modul }) {
     return (
-        <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col gap-2 hover:shadow-md transition">
+        <Link
+            href={`/learning/${modul.id}`}
+            className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col gap-2 hover:shadow-md hover:border-emerald-300 transition cursor-pointer"
+        >
             <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                     <p className="text-xs font-mono text-slate-400">{modul.kode_modul}</p>
@@ -16,31 +19,15 @@ function ModulCard({ modul }) {
             {modul.tag_kompetensi && (
                 <p className="text-xs text-slate-500">{modul.tag_kompetensi}</p>
             )}
-            <div className="flex items-center gap-3 mt-auto pt-2 border-t border-slate-100">
-                {modul.file_materi && (
-                    <a
-                        href={`/${modul.file_materi}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
-                    >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" />
-                        </svg>
-                        Unduh
-                    </a>
-                )}
-                <Link
-                    href={`/learning/${modul.id}`}
-                    className="inline-flex items-center gap-1 text-xs text-emerald-600 hover:underline ml-auto"
-                >
+            <div className="flex items-center mt-auto pt-2 border-t border-slate-100">
+                <span className="inline-flex items-center gap-1 text-xs text-emerald-600 ml-auto">
                     Buka Modul
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                     </svg>
-                </Link>
+                </span>
             </div>
-        </div>
+        </Link>
     );
 }
 
