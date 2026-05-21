@@ -13,7 +13,7 @@ function ModulCard({ modul }) {
                     <p className="text-sm font-semibold text-slate-800 mt-0.5 leading-snug">{modul.nama_modul}</p>
                 </div>
                 <span className="shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                    FASE {modul.fase}
+                    {modul.fase}
                 </span>
             </div>
             {modul.tag_kompetensi && (

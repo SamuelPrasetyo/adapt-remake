@@ -17,6 +17,15 @@ export const ADMIN_NAV = [
         requires: "mentor_or_admin021",
         preserveMentor: true,
     },
+    { type: "section", label: "Program & Modul" },
+    {
+        type: "item",
+        label: "Modul",
+        icon: "layers",
+        href: "/mentor-modul",
+        match: "/mentor-modul",
+        requires: "mentor_only",
+    },
     { type: "section", label: "Master" },
     {
         type: "group",

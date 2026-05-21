@@ -15,6 +15,7 @@ use App\Http\Controllers\Master\KaderController;
 use App\Http\Controllers\Modul\LearningController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\Master\Mentor\MentorController;
+use App\Http\Controllers\Modul\MentorModulController;
 use App\Http\Controllers\Modul\ModulController;
 use App\Http\Controllers\Master\NilaiController;
 use App\Http\Controllers\Master\PertanyaanController;
@@ -62,6 +63,7 @@ Route::middleware(['can:isKader'])->group(function () {
 Route::middleware(['can:isMentor'])->group(function () {
     Route::get('/feedback_mai-kader', [FeedbackMaiController::class, 'fm_kader_index'])->name('fm.kader.index');
     Route::get('/feedback_mai-kader/export/{id_week}/{nik_kader}', [FeedbackMaiController::class, 'fm_kader_export'])->name('fm.kader.export');
+    Route::get('/mentor-modul', [MentorModulController::class, 'index'])->name('mentor.modul');
 });
 
 Route::controller(LoginController::class)->group(function () {

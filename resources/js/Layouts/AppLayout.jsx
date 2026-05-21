@@ -149,6 +149,7 @@ export default function AppLayout({
                                 if (next.requires === "admin") return isAdmin;
                                 if (next.requires === "admin021") return isAdmin021;
                                 if (next.requires === "mentor_or_admin021") return isMentor || isAdmin021;
+                                if (next.requires === "mentor_only") return isMentor;
                                 return true;
                             });
                             if (!sectionVisible) return null;
@@ -173,6 +174,10 @@ export default function AppLayout({
                             const ok = user?.type === "Mentor" ||
                                 (user?.type === "Admin" && user?.company_code === "021");
                             if (!ok) return null;
+                        }
+
+                        if (item.requires === "mentor_only") {
+                            if (user?.type !== "Mentor") return null;
                         }
 
                         const isActive =
