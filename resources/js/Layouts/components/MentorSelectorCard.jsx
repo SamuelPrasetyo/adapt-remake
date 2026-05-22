@@ -32,7 +32,8 @@ export default function MentorSelectorCard({ user, mentors, selectedMentor, curr
         );
     }, [mentors, search]);
 
-    const onDashboard = Array.isArray(mentors);
+    const onDashboard = Array.isArray(mentors) &&
+        (currentUrl?.startsWith("/dashboard") || currentUrl?.startsWith("/kader-saya"));
 
     if (!showCard) return null;
 
