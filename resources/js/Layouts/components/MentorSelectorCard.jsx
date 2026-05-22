@@ -39,7 +39,7 @@ export default function MentorSelectorCard({ user, mentors, selectedMentor, curr
     if (currentUrl?.startsWith("/all-mentor")) return null;
 
     // Deteksi halaman program mentor
-    const isMentorProgramPage = ["/program-saya", "/mentor-modul"].some(
+    const isMentorProgramPage = ["/program-saya", "/mentor-modul", "/learning"].some(
         (p) => currentUrl?.startsWith(p)
     );
 

@@ -24,6 +24,7 @@ export const ADMIN_NAV = [
         href: "/kader-saya",
         match: "/kader-saya",
         requires: "mentor_only",
+        preserveMentor: true,
     },
     { type: "section", label: "Program & Modul" },
     {

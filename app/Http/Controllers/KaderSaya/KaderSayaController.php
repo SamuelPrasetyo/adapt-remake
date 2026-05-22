@@ -259,8 +259,6 @@ class KaderSayaController extends Controller
         $totalWeeks  = Week::count();
         $weeks       = Week::orderBy('id_week')->get(['id_week', 'angka_week', 'bulan', 'tahun']);
 
-        Log::info('[KaderSaya::show] kader NIK', ['nik' => $kader->nik, 'kader_id' => $kader_id]);
-
         $refleksiQuery = Jawaban::whereIn('jawaban.id_pertanyaan', [7, 8, 9])
             ->where('jawaban.nik_kader', $kader->nik)
             ->whereNull('jawaban.nama_mentor')

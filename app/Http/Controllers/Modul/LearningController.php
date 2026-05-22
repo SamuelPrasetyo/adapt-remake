@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Modul;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\Dokumen;
+use App\Models\Mentor;
 use App\Models\JawabanModul;
 use App\Models\Kader;
 use App\Models\Modul;
@@ -108,11 +109,27 @@ class LearningController extends Controller
             ->where('tipe', 'post')
             ->get();
 
+        $mentors        = null;
+        $selectedMentor = null;
+        if ($user->type === 'Mentor') {
+            $mentors = Mentor::select('mentor.*', 'company.company_shortname as bu')
+                ->leftJoin('company', 'mentor.company_code', '=', 'company.company_code')
+                ->whereNull('mentor.deleted_at')
+                ->where('mentor.company_code', $user->company_code)
+                ->orderBy('mentor.nama')
+                ->get();
+
+            $mentorId       = request()->query('mentor_id');
+            $selectedMentor = $mentorId ? $mentors->firstWhere('id', $mentorId) : null;
+        }
+
         return Inertia::render('MyModul/Detail', [
-            'modul'    => $modul,
-            'progress' => $progress,
-            'pretest'  => $pretest,
-            'posttest' => $posttest,
+            'modul'          => $modul,
+            'progress'       => $progress,
+            'pretest'        => $pretest,
+            'posttest'       => $posttest,
+            'mentors'        => $mentors,
+            'selectedMentor' => $selectedMentor,
         ]);
     }
 

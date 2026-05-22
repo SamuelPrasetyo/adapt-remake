@@ -18,6 +18,12 @@ const COLS = [
             </span>
         ),
     },
+    {
+        key: 'user_id', label: 'User Account',
+        render: (v) => v
+            ? <span className="inline-flex items-center gap-1 text-xs text-emerald-700"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />Terhubung</span>
+            : <span className="text-xs text-slate-400">—</span>,
+    },
 ];
 
 function FormField({ label, error, children }) {
@@ -44,7 +50,7 @@ function ActionBtn({ onClick, color, title, children }) {
     );
 }
 
-export default function MentorIndex({ mentors, companys, kaders = [], assignments = [] }) {
+export default function MentorIndex({ mentors, companys, kaders = [], assignments = [], mentorUsers = [] }) {
     const [tambahOpen, setTambahOpen] = useState(false);
     const [editOpen, setEditOpen]     = useState(false);
     const [editRow, setEditRow]       = useState(null);
@@ -54,8 +60,8 @@ export default function MentorIndex({ mentors, companys, kaders = [], assignment
     const [assignKaderIds, setAssignKaderIds] = useState([]);
     const [assignProcessing, setAssignProcessing] = useState(false);
 
-    const addForm  = useForm({ nama: '', jabatan: '', company_code: '' });
-    const editForm = useForm({ nama: '', jabatan: '', company_code: '' });
+    const addForm  = useForm({ nama: '', jabatan: '', company_code: '', user_id: '' });
+    const editForm = useForm({ nama: '', jabatan: '', company_code: '', user_id: '' });
 
     const submitAdd = (e) => {
         e.preventDefault();
@@ -70,6 +76,7 @@ export default function MentorIndex({ mentors, companys, kaders = [], assignment
             nama:         row.nama         ?? '',
             jabatan:      row.jabatan      ?? '',
             company_code: row.company_code ?? '',
+            user_id:      row.user_id      ?? '',
         });
         setEditOpen(true);
     };
@@ -200,12 +207,21 @@ export default function MentorIndex({ mentors, companys, kaders = [], assignment
                     </FormField>
                     <FormField label="Company (BU)" error={addForm.errors.company_code}>
                         <select required value={addForm.data.company_code}
-                            onChange={(e) => addForm.setData('company_code', e.target.value)} className={inputCls}>
+                            onChange={(e) => { addForm.setData('company_code', e.target.value); addForm.setData('user_id', ''); }} className={inputCls}>
                             <option value="">Pilih Company...</option>
                             {companys.map((c) => (
                                 <option key={c.company_code} value={c.company_code}>
                                     {c.company_name} ({c.company_shortname})
                                 </option>
+                            ))}
+                        </select>
+                    </FormField>
+                    <FormField label="User Account (Login)" error={addForm.errors.user_id}>
+                        <select value={addForm.data.user_id}
+                            onChange={(e) => addForm.setData('user_id', e.target.value)} className={inputCls}>
+                            <option value="">— Tidak dihubungkan —</option>
+                            {mentorUsers.filter(u => !addForm.data.company_code || u.company_code === addForm.data.company_code).map((u) => (
+                                <option key={u.id} value={u.id}>{u.name} ({u.nik})</option>
                             ))}
                         </select>
                     </FormField>
@@ -242,12 +258,21 @@ export default function MentorIndex({ mentors, companys, kaders = [], assignment
                     </FormField>
                     <FormField label="Company (BU)" error={editForm.errors.company_code}>
                         <select required value={editForm.data.company_code}
-                            onChange={(e) => editForm.setData('company_code', e.target.value)} className={inputCls}>
+                            onChange={(e) => { editForm.setData('company_code', e.target.value); editForm.setData('user_id', ''); }} className={inputCls}>
                             <option value="">Pilih Company...</option>
                             {companys.map((c) => (
                                 <option key={c.company_code} value={c.company_code}>
                                     {c.company_name} ({c.company_shortname})
                                 </option>
+                            ))}
+                        </select>
+                    </FormField>
+                    <FormField label="User Account (Login)" error={editForm.errors.user_id}>
+                        <select value={editForm.data.user_id}
+                            onChange={(e) => editForm.setData('user_id', e.target.value)} className={inputCls}>
+                            <option value="">— Tidak dihubungkan —</option>
+                            {mentorUsers.filter(u => !editForm.data.company_code || u.company_code === editForm.data.company_code).map((u) => (
+                                <option key={u.id} value={u.id}>{u.name} ({u.nik})</option>
                             ))}
                         </select>
                     </FormField>

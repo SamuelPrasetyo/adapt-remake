@@ -8,6 +8,7 @@ use App\Models\Company;
 use App\Models\Kader;
 use App\Models\ListKaderPerMentor;
 use App\Models\Mentor;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -57,11 +58,16 @@ class MentorController extends Controller
             ->whereNull('deleted_at')
             ->get(['mentor_id', 'kader_id']);
 
+        $mentorUsers = User::where('type', 'Mentor')
+            ->orderBy('name')
+            ->get(['id', 'name', 'nik', 'company_code']);
+
         return Inertia::render('Master/Mentor/Index', [
             'mentors'     => $mentors,
             'companys'    => $companys,
             'kaders'      => $kaders,
             'assignments' => $assignments,
+            'mentorUsers' => $mentorUsers,
         ]);
     }
 
@@ -78,6 +84,7 @@ class MentorController extends Controller
             'nama'         => $request->nama,
             'jabatan'      => $request->jabatan,
             'company_code' => $request->company_code,
+            'user_id'      => $request->user_id ?: null,
             'created_by'   => Auth::user()->id,
             'created_at'   => now(),
         ]);
@@ -101,6 +108,7 @@ class MentorController extends Controller
                 'nama'         => $request->nama,
                 'jabatan'      => $request->jabatan,
                 'company_code' => $request->company_code,
+                'user_id'      => $request->user_id ?: null,
                 'updated_by'   => Auth::user()->id,
                 'updated_at'   => now(),
             ]);

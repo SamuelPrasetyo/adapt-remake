@@ -61,17 +61,13 @@ class MentorModulController extends Controller
         if ($selectedMentor) {
             // Lihat program mentor lain dari BU yang sama
             $mentorMaster = $selectedMentor;
-            $targetUser   = User::where('type', 'Mentor')
-                ->where('company_code', $mentorMaster->company_code)
-                ->where('name', $mentorMaster->nama)
-                ->first();
+            $targetUser   = $selectedMentor->user_id
+                ? User::find($selectedMentor->user_id)
+                : User::where('company_code', $mentorMaster->company_code)->where('name', $mentorMaster->nama)->first();
         } else {
-            // Default: program mentor yang sedang login
-            $mentorMaster = Mentor::whereNull('deleted_at')
-                ->where('company_code', $authUser->company_code)
-                ->where('nama', $authUser->name)
-                ->first();
-            $targetUser = $authUser;
+            // Default: program mentor sendiri — hanya modul yang di-assign ke user account ini
+            $mentorMaster = null;
+            $targetUser   = $authUser;
         }
 
         $filters = [];
@@ -116,8 +112,8 @@ class MentorModulController extends Controller
         $company = Company::where('company_code', ($mentorMaster?->company_code ?? $authUser->company_code))->first();
 
         $profile = [
-            'nama'    => $mentorMaster?->nama ?? $authUser->name,
-            'jabatan' => $mentorMaster?->jabatan,
+            'nama'    => $selectedMentor ? ($mentorMaster?->nama ?? $authUser->name) : $authUser->name,
+            'jabatan' => $selectedMentor ? $mentorMaster?->jabatan : null,
             'company' => $company?->company_name,
         ];
 

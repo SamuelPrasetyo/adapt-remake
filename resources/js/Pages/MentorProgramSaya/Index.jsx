@@ -1,10 +1,13 @@
 import { Link } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 
-function ModulCard({ modul }) {
+function ModulCard({ modul, selectedMentor }) {
+    const href = selectedMentor
+        ? `/learning/${modul.id}?mentor_id=${selectedMentor.id}`
+        : `/learning/${modul.id}`;
     return (
         <Link
-            href={`/learning/${modul.id}`}
+            href={href}
             className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col gap-2 hover:shadow-md hover:border-emerald-300 transition cursor-pointer"
         >
             <div className="flex items-start justify-between gap-2">
@@ -47,6 +50,7 @@ export default function MentorProgramSayaIndex({
     moduls  = [],
     profile = {},
     stats   = {},
+    selectedMentor = null,
 }) {
     const { progress = 0, completed = 0, total = 0, avg_score = 0, status = 'On Track' } = stats;
     const { nama = '', jabatan, company } = profile;
@@ -139,7 +143,7 @@ export default function MentorProgramSayaIndex({
                             </span>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                            {items.map((m) => <ModulCard key={m.id} modul={m} />)}
+                            {items.map((m) => <ModulCard key={m.id} modul={m} selectedMentor={selectedMentor} />)}
                         </div>
                     </div>
                 );
