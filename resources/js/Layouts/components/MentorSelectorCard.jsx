@@ -34,9 +34,7 @@ export default function MentorSelectorCard({ user, mentors, selectedMentor, curr
 
     const onDashboard = Array.isArray(mentors);
 
-    // Hanya sembunyikan di /all-mentor; program-saya & mentor-modul tetap tampil
     if (!showCard) return null;
-    if (currentUrl?.startsWith("/all-mentor")) return null;
 
     // Deteksi halaman program mentor
     const isMentorProgramPage = ["/program-saya", "/mentor-modul", "/learning"].some(
