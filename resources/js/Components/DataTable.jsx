@@ -100,6 +100,7 @@ export default function DataTable({
     onSort,
     loading = false,
     headerActions,
+    searchPrefix,
     emptyMessage = 'Tidak ada data',
     perPage = 10,
 }) {
@@ -177,17 +178,20 @@ export default function DataTable({
                 </div>
 
                 {searchable && (
-                    <div className="relative">
-                        <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                        <input
-                            type="text"
-                            placeholder="Cari..."
-                            value={query}
-                            onChange={(e) => handleSearch(e.target.value)}
-                            className="pl-9 pr-4 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 w-64"
-                        />
+                    <div className="flex items-center gap-2">
+                        {searchPrefix}
+                        <div className="relative">
+                            <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            <input
+                                type="text"
+                                placeholder="Cari..."
+                                value={query}
+                                onChange={(e) => handleSearch(e.target.value)}
+                                className="pl-9 pr-4 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 w-64"
+                            />
+                        </div>
                     </div>
                 )}
             </div>

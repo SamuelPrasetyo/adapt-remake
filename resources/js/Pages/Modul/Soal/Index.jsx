@@ -268,34 +268,35 @@ export default function SoalModulIndex({ soals, moduls }) {
                         </ActionBtn>
                     </div>
                 )}
+                searchPrefix={
+                    <div className="relative" ref={filterRef}>
+                        <button type="button" onClick={() => setFilterOpen(v => !v)}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border transition ${filterModulId ? 'text-blue-700 bg-blue-50 border-blue-300' : 'text-slate-700 bg-white border-slate-300 hover:bg-slate-50'}`}>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4h18M7 8h10M11 12h2M11 16h2" />
+                            </svg>
+                            Filter
+                            {filterModulId && <span className="w-2 h-2 rounded-full bg-blue-600" />}
+                        </button>
+                        {filterOpen && (
+                            <div className="absolute right-0 mt-1 w-56 bg-white border border-slate-200 rounded-lg shadow-lg z-20 py-1">
+                                <button type="button" onClick={() => { setFilterModulId(''); setFilterOpen(false); }}
+                                    className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-50 ${!filterModulId ? 'font-medium text-blue-600' : 'text-slate-700'}`}>
+                                    Semua Modul
+                                </button>
+                                {moduls.map(m => (
+                                    <button key={m.id} type="button"
+                                        onClick={() => { setFilterModulId(String(m.id)); setFilterOpen(false); }}
+                                        className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-50 ${String(filterModulId) === String(m.id) ? 'font-medium text-blue-600' : 'text-slate-700'}`}>
+                                        {m.nama_modul}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                }
                 headerActions={
                     <div className="flex items-center gap-2">
-                        {/* Filter Modul */}
-                        <div className="relative" ref={filterRef}>
-                            <button type="button" onClick={() => setFilterOpen(v => !v)}
-                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border transition ${filterModulId ? 'text-blue-700 bg-blue-50 border-blue-300' : 'text-slate-700 bg-white border-slate-300 hover:bg-slate-50'}`}>
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4h18M7 8h10M11 12h2M11 16h2" />
-                                </svg>
-                                Filter
-                                {filterModulId && <span className="w-2 h-2 rounded-full bg-blue-600" />}
-                            </button>
-                            {filterOpen && (
-                                <div className="absolute left-0 mt-1 w-56 bg-white border border-slate-200 rounded-lg shadow-lg z-20 py-1">
-                                    <button type="button" onClick={() => { setFilterModulId(''); setFilterOpen(false); }}
-                                        className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-50 ${!filterModulId ? 'font-medium text-blue-600' : 'text-slate-700'}`}>
-                                        Semua Modul
-                                    </button>
-                                    {moduls.map(m => (
-                                        <button key={m.id} type="button"
-                                            onClick={() => { setFilterModulId(String(m.id)); setFilterOpen(false); }}
-                                            className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-50 ${String(filterModulId) === String(m.id) ? 'font-medium text-blue-600' : 'text-slate-700'}`}>
-                                            {m.nama_modul}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
                         <a href="/soal-modul/template"
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg transition">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

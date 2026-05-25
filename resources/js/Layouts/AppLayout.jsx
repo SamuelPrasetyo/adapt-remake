@@ -27,6 +27,17 @@ export default function AppLayout({
     const [cpOpen, setCpOpen] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const profileRef = useRef(null);
+    const navRef = useRef(null);
+
+    useEffect(() => {
+        const nav = navRef.current;
+        if (!nav) return;
+        const saved = sessionStorage.getItem('sidebar-scroll');
+        if (saved) nav.scrollTop = parseInt(saved, 10);
+        const onScroll = () => sessionStorage.setItem('sidebar-scroll', nav.scrollTop);
+        nav.addEventListener('scroll', onScroll, { passive: true });
+        return () => nav.removeEventListener('scroll', onScroll);
+    }, []);
     const [toast, setToast] = useState({
         open: false,
         type: "success",
@@ -152,7 +163,7 @@ export default function AppLayout({
                 />
 
                 {/* Nav — scrolls independently when overflow */}
-                <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+                <nav ref={navRef} className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
                     {nav.map((item, i) => {
                         if (item.type === "section") {
                             const isAdmin = user?.type === "Admin";
