@@ -107,7 +107,10 @@ class LearningController extends Controller
         $posttest = SoalModul::with('jawabans')
             ->where('modul_id', $modul->id)
             ->where('tipe', 'post')
-            ->get();
+            ->get()
+            ->shuffle()
+            ->map(fn($s) => tap($s, fn($s) => $s->setRelation('jawabans', $s->jawabans->shuffle()->values())))
+            ->values();
 
         $mentors        = null;
         $selectedMentor = null;
@@ -301,6 +304,12 @@ class LearningController extends Controller
             ->where('modul_id', $id)
             ->where('tipe', $type)
             ->get();
+
+        if ($type === 'post') {
+            $soals = $soals->shuffle()
+                ->map(fn($s) => tap($s, fn($s) => $s->setRelation('jawabans', $s->jawabans->shuffle()->values())))
+                ->values();
+        }
 
         return response()->json($soals);
     }
