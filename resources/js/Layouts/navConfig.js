@@ -133,6 +133,12 @@ export const ADMIN_NAV = [
                 exact: true,
             },
             {
+                label: "Assign Modul",
+                href: "/modul/assign",
+                match: "/modul/assign",
+                requires: "admin",
+            },
+            {
                 label: "Soal Pre/Post Test",
                 href: "/soal-modul",
                 match: "/soal-modul",
@@ -142,12 +148,6 @@ export const ADMIN_NAV = [
                 label: "Dokumen",
                 href: "/dokumen",
                 match: "/dokumen",
-                requires: "admin",
-            },
-            {
-                label: "Peserta Kader",
-                href: "/modul/peserta",
-                match: "/modul/peserta",
                 requires: "admin",
             },
         ],

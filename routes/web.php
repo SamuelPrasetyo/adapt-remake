@@ -172,7 +172,9 @@ Route::middleware(['can:isAdmin'])->group(function () {
 
     Route::controller(ModulController::class)->group(function () {
         Route::get('/modul', 'index')->name('modul.index');
-        Route::get('/modul/peserta', 'peserta')->name('modul.peserta');
+        Route::get('/modul/assign', 'assignPage')->name('modul.assignPage');
+        Route::get('/modul/assign/locked', 'getLockedModuls')->name('modul.locked');
+        Route::post('/modul/assign/update', 'updateAssign')->name('modul.updateAssign');
         Route::post('/modul/store', 'store')->name('modul.store');
         Route::post('/modul/update/{id}', 'update')->name('modul.update');
         Route::delete('/modul/delete/{id}', 'destroy')->name('modul.destroy');
