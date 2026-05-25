@@ -432,10 +432,12 @@ export default function ModulDetail({ modul, progress = {}, pretest = [], postte
                         <CheckItem done={progress.posttest}
                             title="Post-Test"
                             sub={progress.posttest ? `Skor: ${progress.posttest_score}` : 'Belum dikerjakan'}>
-                            <button type="button" onClick={openPost}
-                                className="text-sm px-3 py-1.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 transition">
-                                {progress.posttest ? 'Lihat Jawaban' : 'Kerjakan Post-Test'}
-                            </button>
+                            {!progress.posttest && (
+                                <button type="button" onClick={openPost}
+                                    className="text-sm px-3 py-1.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 transition">
+                                    Kerjakan Post-Test
+                                </button>
+                            )}
                         </CheckItem>
 
                         <CheckItem done={progress.post_activity}
