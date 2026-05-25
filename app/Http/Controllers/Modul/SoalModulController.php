@@ -27,8 +27,8 @@ class SoalModulController extends Controller
         $soals = SoalModul::with('jawabans')
             ->join('modul', 'soal_modul.modul_id', '=', 'modul.id')
             ->select('soal_modul.*', 'modul.nama_modul')
+            ->where('soal_modul.tipe', 'pre')
             ->orderBy('soal_modul.modul_id', 'asc')
-            ->orderBy('soal_modul.tipe', 'asc')
             ->orderBy('soal_modul.id', 'asc')
             ->get();
 
