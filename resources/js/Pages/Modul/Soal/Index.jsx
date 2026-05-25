@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { useForm, router } from '@inertiajs/react';
+import { useState, useRef, useEffect } from 'react';
+import { useForm, router, usePage } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import DataTable from '@/Components/DataTable';
 import Modal from '@/Components/Modal';
@@ -89,7 +89,7 @@ function JawabanFields({ jawabans, setFn, prefix }) {
     );
 }
 
-export default function SoalModulIndex({ soals, moduls, importErrors = [] }) {
+export default function SoalModulIndex({ soals, moduls }) {
     const [tambahOpen, setTambahOpen]   = useState(false);
     const [editOpen, setEditOpen]       = useState(false);
     const [editRow, setEditRow]         = useState(null);
@@ -105,27 +105,33 @@ export default function SoalModulIndex({ soals, moduls, importErrors = [] }) {
     const fileInputRef = useRef(null);
 
     const [notif, setNotif] = useState({ open: false, type: 'success', message: '', key: 0 });
+    const { flash = {} } = usePage().props;
+    const importErrors = flash.import_errors ?? [];
+
+    useEffect(() => {
+        if (flash.import_success) showNotif('success', flash.import_success);
+    }, [flash.import_success]);
 
     const showNotif = (type, msg) => {
         setNotif(prev => ({ open: true, type, message: msg, key: prev.key + 1 }));
     };
 
-    const closeImport = () => { setImportOpen(false); setImportModulId(''); setImportFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; };
+    const closeImport = () => {
+        setImportOpen(false);
+        setImportModulId('');
+        setImportFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
 
     const submitImport = (e) => {
         e.preventDefault();
         if (!importModulId || !importFile) return;
         setImporting(true);
-        const fd = new FormData();
-        fd.append('modul_id', importModulId);
-        fd.append('file', importFile);
-        fd.append('_token', document.querySelector('meta[name="csrf-token"]').content);
-        fetch('/soal-modul/import', { method: 'POST', body: fd })
-            .then(res => {
-                if (res.redirected) { window.location.href = res.url; return; }
-                return res.json();
-            })
-            .catch(() => { setImporting(false); showNotif('error', 'Gagal mengimport file.'); });
+        router.post('/soal-modul/import', { modul_id: importModulId, file: importFile }, {
+            forceFormData: true,
+            onSuccess: () => { setImporting(false); closeImport(); },
+            onError: () => { setImporting(false); showNotif('error', 'Gagal mengimport file. Periksa format file.'); },
+        });
     };
 
     const addForm  = useForm({ modul_id: '', soal: '', jawabans: emptyJawabans() });

@@ -35,9 +35,8 @@ class SoalModulController extends Controller
         $moduls = Modul::orderBy('nama_modul', 'asc')->get(['id', 'nama_modul']);
 
         return Inertia::render('Modul/Soal/Index', [
-            'soals'        => $soals,
-            'moduls'       => $moduls,
-            'importErrors' => session('import_errors', []),
+            'soals'  => $soals,
+            'moduls' => $moduls,
         ]);
     }
 
@@ -177,15 +176,11 @@ class SoalModulController extends Controller
         if ($importer->skipped > 0) {
             $msg .= " {$importer->skipped} soal dilewati karena sudah ada.";
         }
-        if ($importer->imported > 0 || $importer->skipped > 0) {
-            Alert::success('Success', $msg);
-        }
 
-        if (!empty($importer->errors)) {
-            session()->flash('import_errors', $importer->errors);
-        }
-
-        return redirect()->route('soal-modul.index');
+        return redirect()->route('soal-modul.index')->with([
+            'import_success' => ($importer->imported > 0 || $importer->skipped > 0) ? $msg : null,
+            'import_errors'  => $importer->errors,
+        ]);
     }
 
     public function destroy(int $id)
