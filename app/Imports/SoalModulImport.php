@@ -13,6 +13,7 @@ class SoalModulImport implements ToCollection, WithHeadingRow
 {
     private int $modulId;
     public int $imported = 0;
+    public int $skipped  = 0;
     public array $errors = [];
 
     public function __construct(int $modulId)
@@ -41,6 +42,15 @@ class SoalModulImport implements ToCollection, WithHeadingRow
 
             if (!$jawabanA || !$jawabanB || !$jawabanC || !$jawabanD) {
                 $this->errors[] = "Baris {$rowNum}: semua pilihan jawaban (A-D) wajib diisi.";
+                continue;
+            }
+
+            // Skip jika soal dengan teks yang sama sudah ada di modul ini
+            $alreadyExists = SoalModul::where('modul_id', $this->modulId)
+                ->where('soal', $soal)
+                ->exists();
+            if ($alreadyExists) {
+                $this->skipped++;
                 continue;
             }
 

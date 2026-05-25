@@ -173,8 +173,12 @@ class SoalModulController extends Controller
 
         ActivityLog::activity_log('Import Soal Modul via Excel');
 
-        if ($importer->imported > 0) {
-            Alert::success('Success', "{$importer->imported} soal berhasil diimport!");
+        $msg = "{$importer->imported} soal berhasil diimport!";
+        if ($importer->skipped > 0) {
+            $msg .= " {$importer->skipped} soal dilewati karena sudah ada.";
+        }
+        if ($importer->imported > 0 || $importer->skipped > 0) {
+            Alert::success('Success', $msg);
         }
 
         if (!empty($importer->errors)) {
