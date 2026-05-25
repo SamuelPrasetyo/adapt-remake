@@ -174,7 +174,7 @@ Route::middleware(['can:isAdmin'])->group(function () {
         Route::get('/modul', 'index')->name('modul.index');
         Route::get('/modul/peserta', 'peserta')->name('modul.peserta');
         Route::post('/modul/store', 'store')->name('modul.store');
-        Route::put('/modul/update/{id}', 'update')->name('modul.update');
+        Route::post('/modul/update/{id}', 'update')->name('modul.update');
         Route::delete('/modul/delete/{id}', 'destroy')->name('modul.destroy');
     });
     Route::post('/modul/assign', [ModulController::class, 'assign'])->name('modul.assign');

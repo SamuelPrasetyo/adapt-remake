@@ -52,22 +52,24 @@ class ModulController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'kode_modul' => 'required',
-            'nama_modul' => 'required',
-            'fase' => 'required',
+            'kode_modul'     => 'required',
+            'nama_modul'     => 'required',
+            'tipe'           => 'required|in:KADER,MENTOR',
+            'fase'           => 'required_if:tipe,KADER',
             'tag_kompetensi' => 'nullable',
-            'file_materi' => 'required|mimes:pdf|max:10240'
+            'file_materi'    => 'required|mimes:pdf|max:10240'
         ]);
         $fileName = time() . '_' . $request->file_materi->getClientOriginalName();
         $request->file_materi->move(public_path('uploads/modul'), $fileName);
 
         Modul::create([
-            'kode_modul' => $request->kode_modul,
-            'nama_modul' => $request->nama_modul,
-            'fase' => $request->fase,
-            'batch' => $request->batch,
+            'kode_modul'     => $request->kode_modul,
+            'nama_modul'     => $request->nama_modul,
+            'tipe'           => $request->tipe,
+            'fase'           => $request->tipe === 'MENTOR' ? null : $request->fase,
+            'batch'          => $request->batch,
             'tag_kompetensi' => $request->tag_kompetensi,
-            'file_materi' => 'uploads/modul/' . $fileName
+            'file_materi'    => 'uploads/modul/' . $fileName
         ]);
         Alert::success('Success', 'Modul berhasil ditambahkan!');
         return back()->with('success', 'Modul berhasil ditambahkan');
@@ -89,13 +91,15 @@ class ModulController extends Controller
             $modul->file_materi = 'uploads/modul/' . $fileName;
         }
 
+        $tipe = $request->tipe ?? $modul->tipe;
         $modul->update([
-            'kode_modul' => $request->kode_modul,
-            'nama_modul' => $request->nama_modul,
-            'fase' => $request->fase,
-            'batch' => $request->batch,
+            'kode_modul'     => $request->kode_modul,
+            'nama_modul'     => $request->nama_modul,
+            'tipe'           => $tipe,
+            'fase'           => $tipe === 'MENTOR' ? null : $request->fase,
+            'batch'          => $request->batch,
             'tag_kompetensi' => $request->tag_kompetensi,
-            'file_materi' => $modul->file_materi
+            'file_materi'    => $modul->file_materi
         ]);
         Alert::success('Success', 'Modul berhasil diupdate!');
         return back()->with('success', 'Modul berhasil diupdate');
@@ -105,8 +109,8 @@ class ModulController extends Controller
     {
         $modul = Modul::findOrFail($id);
 
-        if ($modul->file && file_exists(public_path($modul->file))) {
-            unlink(public_path($modul->file));
+        if ($modul->file_materi && file_exists(public_path($modul->file_materi))) {
+            unlink(public_path($modul->file_materi));
         }
 
         $modul->delete();

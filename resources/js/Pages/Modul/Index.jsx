@@ -5,11 +5,15 @@ import DataTable from '@/Components/DataTable';
 import Modal from '@/Components/Modal';
 
 const FASE_OPTIONS = ['1', '2', '3', '4'].map((v) => ({ value: v, label: `Fase ${v}` }));
+const TIPE_OPTIONS = [{ value: 'KADER', label: 'Kader' }, { value: 'MENTOR', label: 'Mentor' }];
 
 const COLS = [
     { key: '_no',        label: 'No',   width: '52px', render: (_, __, i) => i + 1 },
     { key: 'kode_modul', label: 'Kode', sortable: true },
     { key: 'nama_modul', label: 'Nama Modul', sortable: true },
+    { key: 'tipe',       label: 'Tipe', sortable: true, render: (v) => (
+        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${v === 'MENTOR' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>{v ?? 'KADER'}</span>
+    )},
     { key: 'fase',       label: 'Fase', sortable: true },
     { key: 'tag_kompetensi', label: 'Tag Kompetensi' },
     {
@@ -46,6 +50,83 @@ function ActionBtn({ onClick, color, title, children }) {
     );
 }
 
+function ModulForm({ form, formId, onSubmit, currentFile }) {
+    const isMentor = form.data.tipe === 'MENTOR';
+    return (
+        <form id={formId} onSubmit={onSubmit}>
+            <div className="grid grid-cols-2 gap-x-4">
+                <Field label="Kode Modul" error={form.errors.kode_modul}>
+                    <input type="text" value={form.data.kode_modul} required
+                        onChange={(e) => form.setData('kode_modul', e.target.value)} className={inputCls} />
+                </Field>
+                <Field label="Tipe Modul" error={form.errors.tipe}>
+                    <select value={form.data.tipe} required
+                        onChange={(e) => { form.setData('tipe', e.target.value); if (e.target.value === 'MENTOR') form.setData('fase', ''); }}
+                        className={inputCls}>
+                        {TIPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                </Field>
+            </div>
+            <div className="grid grid-cols-2 gap-x-4">
+                <Field label="Fase" error={form.errors.fase}>
+                    <select value={form.data.fase} required={!isMentor} disabled={isMentor}
+                        onChange={(e) => form.setData('fase', e.target.value)}
+                        className={`${inputCls} ${isMentor ? 'opacity-50 cursor-not-allowed bg-slate-100' : ''}`}>
+                        <option value="">{isMentor ? 'Tidak berlaku' : 'Pilih Fase...'}</option>
+                        {!isMentor && FASE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                </Field>
+            </div>
+            <Field label="Nama Modul" error={form.errors.nama_modul}>
+                <input type="text" value={form.data.nama_modul} required
+                    onChange={(e) => form.setData('nama_modul', e.target.value)} className={inputCls} />
+            </Field>
+            <Field label="Tag Kompetensi" error={form.errors.tag_kompetensi}>
+                <input type="text" value={form.data.tag_kompetensi}
+                    onChange={(e) => form.setData('tag_kompetensi', e.target.value)} className={inputCls}
+                    placeholder="Opsional" />
+            </Field>
+            <Field label="File Materi (PDF, maks 10MB)" error={form.errors.file_materi}>
+                <input type="file" accept=".pdf"
+                    onChange={(e) => form.setData('file_materi', e.target.files[0])}
+                    className="w-full text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                {currentFile && !form.data.file_materi && (
+                    <div className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
+                        <svg className="w-3.5 h-3.5 text-green-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span>File saat ini:&nbsp;</span>
+                        <a href={`/${currentFile}`} target="_blank" rel="noreferrer"
+                            className="text-blue-600 hover:underline truncate max-w-xs">
+                            {currentFile.split('/').pop().replace(/^\d+_/, '')}
+                        </a>
+                        <span className="text-slate-400">(kosongkan jika tidak ingin mengganti)</span>
+                    </div>
+                )}
+                {form.data.file_materi && (
+                    <p className="mt-1.5 text-xs text-emerald-600 flex items-center gap-1">
+                        <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        File baru dipilih: {form.data.file_materi.name}
+                    </p>
+                )}
+            </Field>
+        </form>
+    );
+}
+
+function BtnRow({ onCancel, formId, processing }) {
+    return (
+        <>
+            <button type="button" onClick={onCancel}
+                className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition">Batal</button>
+            <button type="submit" form={formId} disabled={processing}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition">Simpan</button>
+        </>
+    );
+}
+
 export default function ModulIndex({ moduls, companies = [], users = [], mentors = [] }) {
     const [tambahOpen, setTambahOpen] = useState(false);
     const [editOpen, setEditOpen]     = useState(false);
@@ -60,8 +141,8 @@ export default function ModulIndex({ moduls, companies = [], users = [], mentors
     const [assignModulIds, setAssignModulIds] = useState([]);
     const [assignProcessing, setAssignProcessing] = useState(false);
 
-    const addForm  = useForm({ kode_modul: '', nama_modul: '', fase: '', tag_kompetensi: '', file_materi: null });
-    const editForm = useForm({ kode_modul: '', nama_modul: '', fase: '', tag_kompetensi: '', file_materi: null });
+    const addForm  = useForm({ kode_modul: '', nama_modul: '', tipe: 'KADER', fase: '', tag_kompetensi: '', file_materi: null });
+    const editForm = useForm({ kode_modul: '', nama_modul: '', tipe: 'KADER', fase: '', tag_kompetensi: '', file_materi: null });
 
     const submitAdd = (e) => {
         e.preventDefault();
@@ -76,6 +157,7 @@ export default function ModulIndex({ moduls, companies = [], users = [], mentors
         editForm.setData({
             kode_modul:     row.kode_modul     ?? '',
             nama_modul:     row.nama_modul     ?? '',
+            tipe:           row.tipe           ?? 'KADER',
             fase:           row.fase           ?? '',
             tag_kompetensi: row.tag_kompetensi ?? '',
             file_materi:    null,
@@ -97,14 +179,17 @@ export default function ModulIndex({ moduls, companies = [], users = [], mentors
     };
 
     const filteredModuls = useMemo(() => {
-        if (!assignSearch.trim()) return moduls;
+        let list = moduls;
+        if (assignType === 'mentor') list = list.filter((m) => (m.tipe ?? 'KADER') === 'MENTOR');
+        else if (assignType) list = list.filter((m) => (m.tipe ?? 'KADER') === 'KADER');
+        if (!assignSearch.trim()) return list;
         const q = assignSearch.toLowerCase();
-        return moduls.filter(
+        return list.filter(
             (m) =>
                 m.kode_modul?.toLowerCase().includes(q) ||
                 m.nama_modul?.toLowerCase().includes(q)
         );
-    }, [moduls, assignSearch]);
+    }, [moduls, assignSearch, assignType]);
 
     const toggleModul = (id) => {
         setAssignModulIds((prev) =>
@@ -190,47 +275,6 @@ export default function ModulIndex({ moduls, companies = [], users = [], mentors
         });
     };
 
-    const ModulForm = ({ form, formId, onSubmit }) => (
-        <form id={formId} onSubmit={onSubmit}>
-            <div className="grid grid-cols-2 gap-x-4">
-                <Field label="Kode Modul" error={form.errors.kode_modul}>
-                    <input type="text" value={form.data.kode_modul} required
-                        onChange={(e) => form.setData('kode_modul', e.target.value)} className={inputCls} />
-                </Field>
-                <Field label="Fase" error={form.errors.fase}>
-                    <select value={form.data.fase} required
-                        onChange={(e) => form.setData('fase', e.target.value)} className={inputCls}>
-                        <option value="">Pilih Fase...</option>
-                        {FASE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
-                </Field>
-            </div>
-            <Field label="Nama Modul" error={form.errors.nama_modul}>
-                <input type="text" value={form.data.nama_modul} required
-                    onChange={(e) => form.setData('nama_modul', e.target.value)} className={inputCls} />
-            </Field>
-            <Field label="Tag Kompetensi" error={form.errors.tag_kompetensi}>
-                <input type="text" value={form.data.tag_kompetensi}
-                    onChange={(e) => form.setData('tag_kompetensi', e.target.value)} className={inputCls}
-                    placeholder="Opsional" />
-            </Field>
-            <Field label="File Materi (PDF, maks 10MB)" error={form.errors.file_materi}>
-                <input type="file" accept=".pdf"
-                    onChange={(e) => form.setData('file_materi', e.target.files[0])}
-                    className="w-full text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
-            </Field>
-        </form>
-    );
-
-    const BtnRow = ({ onCancel, formId, processing }) => (
-        <>
-            <button type="button" onClick={onCancel}
-                className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition">Batal</button>
-            <button type="submit" form={formId} disabled={processing}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition">Simpan</button>
-        </>
-    );
-
     return (
         <AppLayout title="MODUL PEMBELAJARAN" breadcrumb="Modul / Modul Pembelajaran">
             <DataTable
@@ -272,15 +316,15 @@ export default function ModulIndex({ moduls, companies = [], users = [], mentors
 
             {/* ===== TAMBAH MODAL ===== */}
             <Modal open={tambahOpen} onClose={() => { setTambahOpen(false); addForm.reset(); }}
-                title="Tambah Modul" size="lg"
+                title="Tambah Modul" size="2xl"
                 footer={<BtnRow onCancel={() => { setTambahOpen(false); addForm.reset(); }} formId="add-form" processing={addForm.processing} />}>
                 <ModulForm form={addForm} formId="add-form" onSubmit={submitAdd} />
             </Modal>
 
             {/* ===== EDIT MODAL ===== */}
-            <Modal open={editOpen} onClose={() => setEditOpen(false)} title="Edit Modul" size="lg"
+            <Modal open={editOpen} onClose={() => setEditOpen(false)} title="Edit Modul" size="2xl"
                 footer={<BtnRow onCancel={() => setEditOpen(false)} formId="edit-form" processing={editForm.processing} />}>
-                <ModulForm form={editForm} formId="edit-form" onSubmit={submitEdit} />
+                <ModulForm form={editForm} formId="edit-form" onSubmit={submitEdit} currentFile={editRow?.file_materi} />
             </Modal>
 
             {/* ===== ASSIGN MODAL ===== */}
@@ -474,9 +518,10 @@ export default function ModulIndex({ moduls, companies = [], users = [], mentors
                                                     </p>
                                                 </div>
                                             </div>
-                                            <span className="shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                                                Fase {m.fase}
-                                            </span>
+                                            {(m.tipe ?? 'KADER') === 'MENTOR'
+                                                ? <span className="shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">Mentor</span>
+                                                : <span className="shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Fase {m.fase}</span>
+                                            }
                                         </label>
                                     );
                                 })}
