@@ -42,7 +42,6 @@ class SoalModulController extends Controller
         $request->validate([
             'modul_id'              => 'required|exists:modul,id',
             'soal'                  => 'required|string',
-            'tipe'                  => 'required|in:pre,post',
             'jawabans'              => 'required|array|size:4',
             'jawabans.*.jawaban'    => 'required|string',
             'jawabans.*.is_benar'   => 'required|boolean',
@@ -51,18 +50,20 @@ class SoalModulController extends Controller
         DB::beginTransaction();
 
         try {
-            $soalModul = SoalModul::create([
-                'modul_id' => $request->modul_id,
-                'soal'     => $request->soal,
-                'tipe'     => $request->tipe,
-            ]);
-
-            foreach ($request->jawabans as $jawaban) {
-                JawabanModul::create([
-                    'soal_id'  => $soalModul->id,
-                    'jawaban'  => $jawaban['jawaban'],
-                    'is_benar' => $jawaban['is_benar'] ? 1 : 0,
+            foreach (['pre', 'post'] as $tipe) {
+                $soalModul = SoalModul::create([
+                    'modul_id' => $request->modul_id,
+                    'soal'     => $request->soal,
+                    'tipe'     => $tipe,
                 ]);
+
+                foreach ($request->jawabans as $jawaban) {
+                    JawabanModul::create([
+                        'soal_id'  => $soalModul->id,
+                        'jawaban'  => $jawaban['jawaban'],
+                        'is_benar' => $jawaban['is_benar'] ? 1 : 0,
+                    ]);
+                }
             }
 
             ActivityLog::activity_log('Menambah data Soal Modul');
@@ -86,35 +87,69 @@ class SoalModulController extends Controller
     public function update(Request $request, int $id)
     {
         $request->validate([
-            'modul_id'     => 'required|exists:modul,id',
-            'soal'         => 'required|string',
-            'tipe'         => 'required|in:pre,post',
-            'jawabans'     => 'required|array|size:4',
-            'jawabans.*.id'         => 'nullable|exists:jawaban_modul,id',
+            'modul_id'              => 'required|exists:modul,id',
+            'soal'                  => 'required|string',
+            'jawabans'              => 'required|array|size:4',
             'jawabans.*.jawaban'    => 'required|string',
-            'jawabans.*.is_benar' => 'required|boolean',
+            'jawabans.*.is_benar'   => 'required|boolean',
         ]);
 
         $soalModul = SoalModul::findOrFail($id);
-        $soalModul->update([
-            'modul_id' => $request->modul_id,
-            'soal'     => $request->soal,
-            'tipe'     => $request->tipe,
-        ]);
+        $oldSoal   = $soalModul->soal;
+        $oldModulId = $soalModul->modul_id;
 
-        // delete old jawabans and recreate
-        JawabanModul::where('soal_id', $id)->delete();
-        foreach ($request->jawabans as $jawaban) {
-            JawabanModul::create([
-                'soal_id'    => $id,
-                'jawaban'    => $jawaban['jawaban'],
-                'is_benar' => $jawaban['is_benar'] ? 1 : 0,
-            ]);
+        // Cari pasangan (tipe berlawanan, soal & modul sama)
+        $pairedTipe   = $soalModul->tipe === 'pre' ? 'post' : 'pre';
+        $pairedRecord = SoalModul::where('modul_id', $oldModulId)
+            ->where('soal', $oldSoal)
+            ->where('tipe', $pairedTipe)
+            ->first();
+
+        DB::beginTransaction();
+
+        try {
+            $targets = collect([$soalModul]);
+            if ($pairedRecord) {
+                $targets->push($pairedRecord);
+            } else {
+                // Pasangan belum ada, buat baru
+                $pairedRecord = SoalModul::create([
+                    'modul_id' => $request->modul_id,
+                    'soal'     => $request->soal,
+                    'tipe'     => $pairedTipe,
+                ]);
+                $targets->push($pairedRecord);
+            }
+
+            foreach ($targets as $target) {
+                $target->update([
+                    'modul_id' => $request->modul_id,
+                    'soal'     => $request->soal,
+                ]);
+
+                JawabanModul::where('soal_id', $target->id)->delete();
+                foreach ($request->jawabans as $jawaban) {
+                    JawabanModul::create([
+                        'soal_id'  => $target->id,
+                        'jawaban'  => $jawaban['jawaban'],
+                        'is_benar' => $jawaban['is_benar'] ? 1 : 0,
+                    ]);
+                }
+            }
+
+            ActivityLog::activity_log('Mengubah data Soal Modul');
+
+            DB::commit();
+
+            Alert::success('Success', 'Soal berhasil diupdate!');
+            return redirect()->route('soal-modul.index');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            Alert::error('Error', 'Gagal mengupdate soal!');
+
+            return back()->withErrors(['message' => $e->getMessage()]);
         }
-
-        ActivityLog::activity_log('Mengubah data Soal Modul');
-        Alert::success('Success', 'Soal berhasil diupdate!');
-        return redirect()->route('soal-modul.index');
     }
 
     public function destroy(int $id)

@@ -105,8 +105,8 @@ export default function SoalModulIndex({ soals, moduls }) {
         setNotif(prev => ({ open: true, type, message: msg, key: prev.key + 1 }));
     };
 
-    const addForm  = useForm({ modul_id: '', soal: '', tipe: '', jawabans: emptyJawabans() });
-    const editForm = useForm({ modul_id: '', soal: '', tipe: '', jawabans: emptyJawabans() });
+    const addForm  = useForm({ modul_id: '', soal: '', jawabans: emptyJawabans() });
+    const editForm = useForm({ modul_id: '', soal: '', jawabans: emptyJawabans() });
 
     // --- jawaban helpers ---
     const setAddJawaban = (idx, field, value) => {
@@ -144,7 +144,7 @@ export default function SoalModulIndex({ soals, moduls }) {
         const jawabans = row.jawabans && row.jawabans.length === 4
             ? row.jawabans.map(j => ({ jawaban: j.jawaban, is_benar: !!j.is_benar }))
             : emptyJawabans();
-        editForm.setData({ modul_id: row.modul_id, soal: row.soal, tipe: row.tipe, jawabans });
+        editForm.setData({ modul_id: row.modul_id, soal: row.soal, jawabans });
         setEditOpen(true);
     };
 
@@ -253,15 +253,6 @@ export default function SoalModulIndex({ soals, moduls }) {
                             className={inputCls} />
                         {addForm.errors.soal && <p className="text-xs text-red-600 mt-1">{addForm.errors.soal}</p>}
                     </Field>
-                    <Field label="Tipe">
-                        <select value={addForm.data.tipe} required
-                            onChange={(e) => addForm.setData('tipe', e.target.value)}
-                            className={inputCls}>
-                            <option value="">Pilih Tipe...</option>
-                            {TIPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
-                        {addForm.errors.tipe && <p className="text-xs text-red-600 mt-1">{addForm.errors.tipe}</p>}
-                    </Field>
                     <Field label="Pilihan Jawaban">
                         <JawabanFields jawabans={addForm.data.jawabans} setFn={setAddJawaban} prefix="add" />
                     </Field>
@@ -284,14 +275,6 @@ export default function SoalModulIndex({ soals, moduls }) {
                         <textarea rows="3" value={editForm.data.soal} required
                             onChange={(e) => editForm.setData('soal', e.target.value)}
                             className={inputCls} />
-                    </Field>
-                    <Field label="Tipe">
-                        <select value={editForm.data.tipe} required
-                            onChange={(e) => editForm.setData('tipe', e.target.value)}
-                            className={inputCls}>
-                            <option value="">Pilih Tipe...</option>
-                            {TIPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
                     </Field>
                     <Field label="Pilihan Jawaban">
                         <JawabanFields jawabans={editForm.data.jawabans} setFn={setEditJawaban} prefix="edit" />
