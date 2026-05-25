@@ -261,7 +261,8 @@ export default function AssignModul({
     };
 
     const toggleEditModul = (id) => {
-        if (editLockedIds.includes(id) || editBuModulIds.includes(id)) return;
+        const rowLockedIds = (editRow?.locked_modul_ids ?? []).map(Number);
+        if (rowLockedIds.includes(id) || editBuModulIds.includes(id)) return;
         setEditModulIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
     };
 
@@ -476,7 +477,7 @@ export default function AssignModul({
                         <button
                             type="submit"
                             form="edit-assign-form"
-                            disabled={editProcessing || editLoading}
+                            disabled={editProcessing}
                             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition"
                         >
                             {editProcessing ? 'Menyimpan...' : 'Simpan'}
