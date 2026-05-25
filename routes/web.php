@@ -166,6 +166,8 @@ Route::middleware(['can:isAdmin'])->group(function () {
         Route::post('/soal-modul/store', 'store')->name('soal-modul.store');
         Route::put('/soal-modul/update/{id}', 'update')->name('soal-modul.update');
         Route::delete('/soal-modul/delete/{id}', 'destroy')->name('soal-modul.delete');
+        Route::get('/soal-modul/template', 'downloadTemplate')->name('soal-modul.template');
+        Route::post('/soal-modul/import', 'import')->name('soal-modul.import');
     });
 
     Route::controller(ModulController::class)->group(function () {

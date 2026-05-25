@@ -2,13 +2,16 @@
 
 namespace App\Http\Controllers\Modul;
 
+use App\Exports\SoalModulTemplateExport;
 use App\Http\Controllers\Controller;
+use App\Imports\SoalModulImport;
 use App\Models\ActivityLog;
 use App\Models\JawabanModul;
 use App\Models\Modul;
 use App\Models\SoalModul;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Maatwebsite\Excel\Facades\Excel;
 use RealRashid\SweetAlert\Facades\Alert;
 use Illuminate\Support\Facades\DB;
 
@@ -32,8 +35,9 @@ class SoalModulController extends Controller
         $moduls = Modul::orderBy('nama_modul', 'asc')->get(['id', 'nama_modul']);
 
         return Inertia::render('Modul/Soal/Index', [
-            'soals'  => $soals,
-            'moduls' => $moduls,
+            'soals'        => $soals,
+            'moduls'       => $moduls,
+            'importErrors' => session('import_errors', []),
         ]);
     }
 
@@ -150,6 +154,34 @@ class SoalModulController extends Controller
 
             return back()->withErrors(['message' => $e->getMessage()]);
         }
+    }
+
+    public function downloadTemplate()
+    {
+        return Excel::download(new SoalModulTemplateExport(), 'template_soal_prepost.xlsx');
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'modul_id' => 'required|exists:modul,id',
+            'file'     => 'required|file|mimes:xlsx,xls,csv|max:2048',
+        ]);
+
+        $importer = new SoalModulImport((int) $request->modul_id);
+        Excel::import($importer, $request->file('file'));
+
+        ActivityLog::activity_log('Import Soal Modul via Excel');
+
+        if ($importer->imported > 0) {
+            Alert::success('Success', "{$importer->imported} soal berhasil diimport!");
+        }
+
+        if (!empty($importer->errors)) {
+            session()->flash('import_errors', $importer->errors);
+        }
+
+        return redirect()->route('soal-modul.index');
     }
 
     public function destroy(int $id)
