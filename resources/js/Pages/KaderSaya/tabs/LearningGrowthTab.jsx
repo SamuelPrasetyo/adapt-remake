@@ -117,9 +117,9 @@ export default function LearningGrowthTab({ faseGroups, weeklyData, cohortMap, a
                                         <svg className="w-4 h-4 text-amber-500 cursor-pointer" fill="currentColor" viewBox="0 0 20 20">
                                             <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                                         </svg>
-                                        <div className="absolute right-0 bottom-full mb-2 hidden group-hover:block z-10 w-52 bg-slate-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg pointer-events-none">
+                                        <div className="absolute right-0 top-full mt-2 hidden group-hover:block z-50 w-52 bg-slate-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg pointer-events-none">
                                             Modul {label} belum di-assign ke kader ini
-                                            <div className="absolute top-full right-2 border-4 border-transparent border-t-slate-800" />
+                                            <div className="absolute bottom-full right-2 border-4 border-transparent border-b-slate-800" />
                                         </div>
                                     </div>
                                 </div>
@@ -167,16 +167,16 @@ export default function LearningGrowthTab({ faseGroups, weeklyData, cohortMap, a
                     const label = faseLabel(fase);
                     if (!fg) {
                         return (
-                            <div key={fase} className="bg-white rounded-xl border border-dashed border-slate-300 overflow-hidden">
-                                <div className="px-5 py-3 flex items-center justify-between bg-slate-50 border-b border-slate-200">
+                            <div key={fase} className="bg-white rounded-xl border border-dashed border-slate-300">
+                                <div className="px-5 py-3 flex items-center justify-between bg-slate-50 border-b border-slate-200 rounded-t-xl">
                                     <span className="text-sm font-semibold text-slate-500">{label}</span>
                                     <div className="relative group">
                                         <svg className="w-4 h-4 text-amber-500 cursor-pointer" fill="currentColor" viewBox="0 0 20 20">
                                             <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                                         </svg>
-                                        <div className="absolute right-0 bottom-full mb-2 hidden group-hover:block z-10 w-52 bg-slate-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg pointer-events-none">
+                                        <div className="absolute right-0 top-full mt-2 hidden group-hover:block z-50 w-52 bg-slate-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg pointer-events-none">
                                             Modul {label} belum di-assign ke kader ini
-                                            <div className="absolute top-full right-2 border-4 border-transparent border-t-slate-800" />
+                                            <div className="absolute bottom-full right-2 border-4 border-transparent border-b-slate-800" />
                                         </div>
                                     </div>
                                 </div>
