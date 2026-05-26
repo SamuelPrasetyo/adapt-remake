@@ -37,7 +37,13 @@ export function scoreColor(score) {
     return "text-rose-600";
 }
 
-export default function LearningGrowthTab({ faseGroups, weeklyData, cohortMap }) {
+const faseNum = (f) => String(f).replace(/^Fase\s+/i, '');
+const faseLabel = (f) => `Fase ${faseNum(f)}`;
+
+export default function LearningGrowthTab({ faseGroups, weeklyData, cohortMap, allFases = [] }) {
+    const displayFases = allFases.length > 0 ? allFases : faseGroups.map((fg) => fg.fase);
+    const fgByFase = (fase) => faseGroups.find((g) => faseNum(g.fase) === faseNum(fase));
+
     const chartRef      = useRef(null);
     const chartInstance = useRef(null);
 
@@ -97,12 +103,35 @@ export default function LearningGrowthTab({ faseGroups, weeklyData, cohortMap })
     return (
         <div className="space-y-6">
             {/* Fase summary cards */}
-            <div className={`grid grid-cols-1 gap-4 ${faseGroups.length > 1 ? "sm:grid-cols-2 lg:grid-cols-3" : ""}`}>
-                {faseGroups.map((fg, idx) => {
+            <div className={`grid grid-cols-1 gap-4 ${displayFases.length > 1 ? "sm:grid-cols-2 lg:grid-cols-3" : ""}`}>
+                {displayFases.map((fase, idx) => {
                     const pal = FASE_PALETTE[idx % FASE_PALETTE.length];
+                    const fg = fgByFase(fase);
+                    const label = faseLabel(fase);
+                    if (!fg) {
+                        return (
+                            <div key={fase} className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
+                                <div className="flex items-center justify-between mb-1">
+                                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
+                                    <div className="relative group">
+                                        <svg className="w-4 h-4 text-amber-500 cursor-pointer" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                        </svg>
+                                        <div className="absolute right-0 bottom-full mb-2 hidden group-hover:block z-10 w-52 bg-slate-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg pointer-events-none">
+                                            Modul {label} belum di-assign ke kader ini
+                                            <div className="absolute top-full right-2 border-4 border-transparent border-t-slate-800" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="text-3xl font-bold mb-2 text-slate-400">—</div>
+                                <div className="h-1.5 rounded-full bg-white/60 overflow-hidden mb-2" />
+                                <div className="text-xs text-slate-500">Belum di-assign</div>
+                            </div>
+                        );
+                    }
                     return (
-                        <div key={fg.fase} className={`rounded-xl border p-4 ${pal.bg} ${pal.border}`}>
-                            <div className={`text-xs font-semibold uppercase tracking-wide mb-1 ${pal.text}`}>{fg.fase}</div>
+                        <div key={fase} className={`rounded-xl border p-4 ${pal.bg} ${pal.border}`}>
+                            <div className={`text-xs font-semibold uppercase tracking-wide mb-1 ${pal.text}`}>{label}</div>
                             <div className={`text-3xl font-bold mb-2 ${pal.text}`}>{fg.progress}%</div>
                             <div className="h-1.5 rounded-full bg-white/60 overflow-hidden mb-2">
                                 <div className={`h-full rounded-full ${pal.bar}`} style={{ width: `${fg.progress}%` }} />
@@ -132,12 +161,35 @@ export default function LearningGrowthTab({ faseGroups, weeklyData, cohortMap })
 
             {/* Per-modul detail by fase */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {faseGroups.map((fg, idx) => {
+                {displayFases.map((fase, idx) => {
                     const pal = FASE_PALETTE[idx % FASE_PALETTE.length];
+                    const fg = fgByFase(fase);
+                    const label = faseLabel(fase);
+                    if (!fg) {
+                        return (
+                            <div key={fase} className="bg-white rounded-xl border border-dashed border-slate-300 overflow-hidden">
+                                <div className="px-5 py-3 flex items-center justify-between bg-slate-50 border-b border-slate-200">
+                                    <span className="text-sm font-semibold text-slate-500">{label}</span>
+                                    <div className="relative group">
+                                        <svg className="w-4 h-4 text-amber-500 cursor-pointer" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                        </svg>
+                                        <div className="absolute right-0 bottom-full mb-2 hidden group-hover:block z-10 w-52 bg-slate-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg pointer-events-none">
+                                            Modul {label} belum di-assign ke kader ini
+                                            <div className="absolute top-full right-2 border-4 border-transparent border-t-slate-800" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="px-5 py-6 text-center text-sm text-slate-400">
+                                    Belum ada modul {label} yang di-assign
+                                </div>
+                            </div>
+                        );
+                    }
                     return (
-                        <div key={fg.fase} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                        <div key={fase} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
                             <div className={`px-5 py-3 flex items-center justify-between ${pal.bg} border-b ${pal.border}`}>
-                                <span className={`text-sm font-semibold ${pal.text}`}>{fg.fase}</span>
+                                <span className={`text-sm font-semibold ${pal.text}`}>{label}</span>
                                 {fg.avg_score != null && (
                                     <span className="text-sm text-slate-500">
                                         Avg: <span className={`font-bold ${pal.text}`}>{fg.avg_score}</span>
