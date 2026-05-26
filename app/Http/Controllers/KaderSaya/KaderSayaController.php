@@ -216,7 +216,7 @@ class KaderSayaController extends Controller
             unset($fg['scores']);
         }
         unset($fg);
-        ksort($faseGroups);
+        uksort($faseGroups, fn($a, $b) => (int) preg_replace('/[^0-9]/', '', $a) <=> (int) preg_replace('/[^0-9]/', '', $b));
         $faseGroups = array_values($faseGroups);
 
         $totalModuls     = count($moduls);
@@ -359,6 +359,14 @@ class KaderSayaController extends Controller
 
         $penilaianData = PenilaianOjtController::getDataForKader($kader->id);
 
+        $allFases = Modul::distinct()
+            ->whereNotNull('fase')
+            ->pluck('fase')
+            ->filter()
+            ->sortBy(fn($f) => (int) preg_replace('/[^0-9]/', '', $f))
+            ->values()
+            ->all();
+
         return Inertia::render('KaderSaya/Detail', [
             'kader'              => $kader,
             'faseGroups'         => $faseGroups,
@@ -381,6 +389,7 @@ class KaderSayaController extends Controller
             'penilaianKomentarMap' => $penilaianData['komentarMap'],
             'penilaianStructure' => PenilaianOjtStructure::all(),
             'canEditPenilaian'   => $isMentor,
+            'allFases'           => $allFases,
         ]);
     }
 
