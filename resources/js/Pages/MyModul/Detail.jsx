@@ -4,6 +4,24 @@ import AppLayout from '@/Layouts/AppLayout';
 import Modal from '@/Components/Modal';
 import Toast from '@/Components/Toast';
 
+/* ── Locked button with tooltip ──────────────────────────── */
+function LockedBtn({ message, label }) {
+    return (
+        <div className="relative group inline-block">
+            <div className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border border-slate-200 text-slate-400 cursor-not-allowed bg-slate-50 select-none">
+                <svg className="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                </svg>
+                {label}
+            </div>
+            <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block z-20 w-56 bg-slate-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg pointer-events-none">
+                {message}
+                <div className="absolute top-full left-5 border-4 border-transparent border-t-slate-800" />
+            </div>
+        </div>
+    );
+}
+
 /* ── Stepper item ─────────────────────────────────────────── */
 function CheckItem({ done, title, sub, subColor = 'text-emerald-600', children, last }) {
     return (
@@ -367,14 +385,24 @@ export default function ModulDetail({ modul, progress = {}, pretest = [], postte
     const hasPre     = modul?.fase != 3;
     const finalScore = progress.final_score ?? '—';
 
+    const materiLocked = hasPre && !progress.pretest;
+    const postLocked   = (progress.materi_progress ?? 0) < 100;
+    const paLocked     = !progress.posttest;
+
     const openPre = () => {
         if (progress.pretest) { setReview({ tipe: 'pre', title: 'Pre-Test' }); return; }
         setShowPre(true);
     };
 
     const openPost = () => {
+        if (postLocked) return;
         if (progress.posttest) { setReview({ tipe: 'post', title: 'Post-Test' }); return; }
         setShowPost(true);
+    };
+
+    const openMateri = () => {
+        if (materiLocked) return;
+        setShowMateri(true);
     };
 
     return (
@@ -417,26 +445,37 @@ export default function ModulDetail({ modul, progress = {}, pretest = [], postte
 
                         <CheckItem done={(progress.materi_progress ?? 0) >= 100}
                             title="Materi Pembelajaran">
-                            <div className="flex items-center gap-1.5 mb-2">
-                                <svg className="w-4 h-4 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
-                                </svg>
-                                <span className="text-sm font-medium text-emerald-600">{progress.materi_progress ?? 0}%</span>
-                            </div>
-                            <button type="button" onClick={() => setShowMateri(true)}
-                                className="text-sm px-3 py-1.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 transition">
-                                Buka Materi
-                            </button>
+                            {!materiLocked && (
+                                <div className="flex items-center gap-1.5 mb-2">
+                                    <svg className="w-4 h-4 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                    <span className="text-sm font-medium text-emerald-600">{progress.materi_progress ?? 0}%</span>
+                                </div>
+                            )}
+                            {materiLocked
+                                ? <LockedBtn label="Buka Materi" message="Selesaikan Pre-Test terlebih dahulu" />
+                                : (
+                                    <button type="button" onClick={openMateri}
+                                        className="text-sm px-3 py-1.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 transition">
+                                        Buka Materi
+                                    </button>
+                                )
+                            }
                         </CheckItem>
 
                         <CheckItem done={progress.posttest}
                             title="Post-Test"
                             sub={progress.posttest ? `Skor: ${progress.posttest_score}` : 'Belum dikerjakan'}>
                             {!progress.posttest && (
-                                <button type="button" onClick={openPost}
-                                    className="text-sm px-3 py-1.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 transition">
-                                    Kerjakan Post-Test
-                                </button>
+                                postLocked
+                                    ? <LockedBtn label="Kerjakan Post-Test" message="Baca materi hingga 100% terlebih dahulu" />
+                                    : (
+                                        <button type="button" onClick={openPost}
+                                            className="text-sm px-3 py-1.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 transition">
+                                            Kerjakan Post-Test
+                                        </button>
+                                    )
                             )}
                         </CheckItem>
 
@@ -458,6 +497,8 @@ export default function ModulDetail({ modul, progress = {}, pretest = [], postte
                                         </span>
                                     )}
                                 </div>
+                            ) : paLocked ? (
+                                <LockedBtn label="Upload Post Activity" message="Selesaikan Post-Test terlebih dahulu" />
                             ) : (
                                 <PostActivityUpload modulId={modul?.id} />
                             )}
@@ -481,14 +522,44 @@ export default function ModulDetail({ modul, progress = {}, pretest = [], postte
                                 Pre-Test
                             </button>
                         )}
-                        <button type="button" onClick={openPost}
-                            className="w-full py-3 rounded-xl font-semibold text-sm bg-emerald-600 hover:bg-emerald-700 text-white transition">
-                            Post-Test
-                        </button>
-                        <button type="button" onClick={() => setShowMateri(true)}
-                            className="w-full py-3 rounded-xl font-semibold text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
-                            Baca Materi
-                        </button>
+                        {postLocked ? (
+                            <div className="relative group">
+                                <div className="w-full py-3 rounded-xl font-semibold text-sm bg-slate-100 text-slate-400 cursor-not-allowed flex items-center justify-center gap-2 select-none">
+                                    <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                                    </svg>
+                                    Post-Test
+                                </div>
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-20 w-52 bg-slate-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg pointer-events-none text-center">
+                                    Baca materi hingga 100% terlebih dahulu
+                                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
+                                </div>
+                            </div>
+                        ) : (
+                            <button type="button" onClick={openPost}
+                                className="w-full py-3 rounded-xl font-semibold text-sm bg-emerald-600 hover:bg-emerald-700 text-white transition">
+                                Post-Test
+                            </button>
+                        )}
+                        {materiLocked ? (
+                            <div className="relative group">
+                                <div className="w-full py-3 rounded-xl font-semibold text-sm bg-slate-100 text-slate-400 cursor-not-allowed flex items-center justify-center gap-2 select-none">
+                                    <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                                    </svg>
+                                    Baca Materi
+                                </div>
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-20 w-52 bg-slate-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg pointer-events-none text-center">
+                                    Selesaikan Pre-Test terlebih dahulu
+                                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
+                                </div>
+                            </div>
+                        ) : (
+                            <button type="button" onClick={openMateri}
+                                className="w-full py-3 rounded-xl font-semibold text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
+                                Baca Materi
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -507,6 +578,7 @@ export default function ModulDetail({ modul, progress = {}, pretest = [], postte
                 onError={() => showToast('error', 'Gagal menyimpan jawaban. Coba lagi.')} />
 
             <MateriModal open={showMateri} onClose={() => setShowMateri(false)} modul={modul} />
+
 
             <ReviewModal open={review !== null} onClose={() => setReview(null)}
                 modulId={modul?.id} tipe={review?.tipe} title={review?.title ?? ''} />
