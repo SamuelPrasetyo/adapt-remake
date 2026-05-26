@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { router } from "@inertiajs/react";
 import Toast from "@/Components/Toast";
 
@@ -69,25 +69,30 @@ function computePresSectionScores(skor, presStruct) {
 function ScoreInput({ value, onChange, disabled }) {
     if (disabled) {
         return (
-            <div className="w-20 text-center text-sm font-semibold text-slate-700">
+            // teks nilai (read-only): ubah text-lg untuk lebih besar
+            <div className="w-24 text-center text-lg font-semibold text-slate-700">
                 {value !== null && value !== "" && value !== undefined ? value : "—"}
             </div>
         );
     }
     return (
+        // input nilai: ubah text-lg untuk lebih besar
         <input
             type="number"
             min="0"
             max="100"
             value={value ?? ""}
             placeholder="—"
+            onKeyDown={(e) => {
+                if (["-", "+", "e", "E", "."].includes(e.key)) e.preventDefault();
+            }}
             onChange={(e) => {
                 const v = e.target.value;
                 if (v === "") return onChange(null);
                 const n = Math.max(0, Math.min(100, Number(v)));
                 onChange(String(n));
             }}
-            className="w-20 px-2.5 py-1.5 text-sm text-center font-semibold border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            className="w-24 px-2.5 py-2 text-lg text-center font-semibold border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
         />
     );
 }
@@ -95,27 +100,30 @@ function ScoreInput({ value, onChange, disabled }) {
 function CommentField({ value, onChange, disabled, placeholder }) {
     if (disabled) {
         return (
-            <div className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-2.5 min-h-[44px] whitespace-pre-wrap">
+            // teks komentar (read-only): ubah text-base untuk lebih besar
+            <div className="text-base text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-3 min-h-13 whitespace-pre-wrap">
                 {value || <span className="italic text-slate-400">Belum ada komentar</span>}
             </div>
         );
     }
     return (
+        // textarea komentar: ubah text-base untuk lebih besar
         <textarea
             value={value ?? ""}
             onChange={(e) => onChange(e.target.value)}
             rows={2}
             placeholder={placeholder || "Tulis komentar untuk sub-aspek ini..."}
-            className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+            className="w-full px-3 py-2 text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
         />
     );
 }
 
 function ScoreRow({ no, text, value, onChange, disabled }) {
     return (
-        <div className="flex items-start gap-3 py-2 border-b border-slate-100 last:border-0">
-            <div className="w-6 text-xs font-semibold text-slate-400 pt-1.5 shrink-0">{no}.</div>
-            <div className="flex-1 text-xs text-slate-700 leading-relaxed pt-1.5">{text}</div>
+        <div className="flex items-start gap-3 py-3 border-b border-slate-100 last:border-0">
+            <div className="w-7 text-base font-semibold text-slate-400 pt-1 shrink-0">{no}.</div>
+            {/* teks indikator: ubah text-base untuk lebih besar */}
+            <div className="flex-1 text-base text-slate-700 leading-relaxed pt-1">{text}</div>
             <ScoreInput value={value} onChange={onChange} disabled={disabled} />
         </div>
     );
@@ -123,9 +131,9 @@ function ScoreRow({ no, text, value, onChange, disabled }) {
 
 function AspekScoreBadge({ label, score }) {
     return (
-        <div className="flex items-center justify-between bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 mt-2">
-            <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">{label}</span>
-            <span className="text-base font-bold text-slate-800">{fmt(score)}</span>
+        <div className="flex items-center justify-between bg-slate-100 border border-slate-200 rounded-lg px-4 py-2.5 mt-3">
+            <span className="text-sm font-semibold text-slate-600 uppercase tracking-wide">{label}</span>
+            <span className="text-lg font-bold text-slate-800">{fmt(score)}</span>
         </div>
     );
 }
@@ -144,14 +152,14 @@ function OjtSheet({ ojtStruct, skor, komentar, setSkor, setKomentar, disabled })
                 const aspekScore = avgOrNull(aspekVals);
 
                 return (
-                    <div key={aspek.no} className="bg-white rounded-xl border border-slate-200 p-4">
-                        <h3 className="text-sm font-bold text-slate-800">{aspek.no}. {aspek.name}</h3>
-                        {aspek.desc && <p className="text-xs italic text-slate-500 mt-1 leading-relaxed">{aspek.desc}</p>}
+                    <div key={aspek.no} className="bg-white rounded-xl border border-slate-200 p-5">
+                        <h3 className="text-base font-bold text-slate-800">{aspek.no}. {aspek.name}</h3>
+                        {aspek.desc && <p className="text-sm italic text-slate-500 mt-1 leading-relaxed">{aspek.desc}</p>}
 
-                        <div className="space-y-4 mt-3">
+                        <div className="space-y-4 mt-4">
                             {aspek.subs.map(sub => (
-                                <div key={sub.code} className="border-l-2 border-purple-200 pl-3">
-                                    <div className="text-xs font-bold text-purple-700 uppercase tracking-wide mb-1">
+                                <div key={sub.code} className="border-l-2 border-purple-200 pl-4">
+                                    <div className="text-sm font-bold text-purple-700 uppercase tracking-wide mb-2">
                                         {sub.code.toUpperCase()}. {sub.name}
                                     </div>
                                     <div className="divide-y divide-slate-100">
@@ -169,8 +177,8 @@ function OjtSheet({ ojtStruct, skor, komentar, setSkor, setKomentar, disabled })
                                             );
                                         })}
                                     </div>
-                                    <div className="mt-2">
-                                        <label className="block text-xs font-semibold text-slate-600 mb-1">Komentar Sub-Aspek {sub.code.toUpperCase()}</label>
+                                    <div className="mt-3">
+                                        <label className="block text-sm font-semibold text-slate-600 mb-1">Komentar Sub-Aspek {sub.code.toUpperCase()}</label>
                                         <CommentField
                                             value={komentar[`ojt.${aspek.no}.${sub.code}`]}
                                             onChange={(v) => setKomentar(`ojt.${aspek.no}.${sub.code}`, v)}
@@ -200,9 +208,9 @@ function ValueSheet({ valueStruct, skor, komentar, setSkor, setKomentar, disable
                 const aspekScore = avgOrNull(vals);
 
                 return (
-                    <div key={aspek.no} className="bg-white rounded-xl border border-slate-200 p-4">
-                        <h3 className="text-sm font-bold text-slate-800">{aspek.no}. {aspek.name}</h3>
-                        {aspek.desc && <p className="text-xs italic text-slate-500 mt-1 leading-relaxed">{aspek.desc}</p>}
+                    <div key={aspek.no} className="bg-white rounded-xl border border-slate-200 p-5">
+                        <h3 className="text-base font-bold text-slate-800">{aspek.no}. {aspek.name}</h3>
+                        {aspek.desc && <p className="text-sm italic text-slate-500 mt-1 leading-relaxed">{aspek.desc}</p>}
 
                         <div className="divide-y divide-slate-100 mt-3">
                             {aspek.indicators.map(ind => {
@@ -221,7 +229,7 @@ function ValueSheet({ valueStruct, skor, komentar, setSkor, setKomentar, disable
                         </div>
 
                         <div className="mt-3">
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">Komentar — {aspek.name}</label>
+                            <label className="block text-sm font-semibold text-slate-600 mb-1">Komentar — {aspek.name}</label>
                             <CommentField
                                 value={komentar[`value.${aspek.no}`]}
                                 onChange={(v) => setKomentar(`value.${aspek.no}`, v)}
@@ -248,9 +256,9 @@ function PresentationSheet({ presStruct, skor, komentar, setSkor, setKomentar, d
                 const sectionScore = avgOrNull(vals);
 
                 return (
-                    <div key={section.code} className="bg-white rounded-xl border border-slate-200 p-4">
-                        <h3 className="text-sm font-bold text-slate-800">{section.code}. {section.name}</h3>
-                        {section.desc && <p className="text-xs italic text-slate-500 mt-1 leading-relaxed">{section.desc}</p>}
+                    <div key={section.code} className="bg-white rounded-xl border border-slate-200 p-5">
+                        <h3 className="text-base font-bold text-slate-800">{section.code}. {section.name}</h3>
+                        {section.desc && <p className="text-sm italic text-slate-500 mt-1 leading-relaxed">{section.desc}</p>}
 
                         <div className="divide-y divide-slate-100 mt-3">
                             {section.indicators.map(ind => {
@@ -269,7 +277,7 @@ function PresentationSheet({ presStruct, skor, komentar, setSkor, setKomentar, d
                         </div>
 
                         <div className="mt-3">
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">Komentar — {section.name}</label>
+                            <label className="block text-sm font-semibold text-slate-600 mb-1">Komentar — {section.name}</label>
                             <CommentField
                                 value={komentar[`pres.${section.code}`]}
                                 onChange={(v) => setKomentar(`pres.${section.code}`, v)}
@@ -291,7 +299,7 @@ function FinalReportSheet({ finalReport, setFinalReport, scores, disabled }) {
     return (
         <div className="space-y-5">
             {/* Summary scores */}
-            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-5 text-white">
+            <div className="bg-linear-to-br from-slate-800 to-slate-900 rounded-xl p-5 text-white">
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-300 mb-3">Ringkasan Skor</h3>
                 <div className="grid grid-cols-3 gap-4 mb-4">
                     <div>
@@ -322,7 +330,7 @@ function FinalReportSheet({ finalReport, setFinalReport, scores, disabled }) {
                     Overview <span className="text-xs font-normal text-slate-400">(Opsional)</span>
                 </label>
                 {disabled ? (
-                    <div className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-3 min-h-[60px] whitespace-pre-wrap">
+                    <div className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-3 min-h-15 whitespace-pre-wrap">
                         {finalReport.overview || <span className="italic text-slate-400">—</span>}
                     </div>
                 ) : (
@@ -340,7 +348,7 @@ function FinalReportSheet({ finalReport, setFinalReport, scores, disabled }) {
             <div className="bg-white rounded-xl border border-slate-200 p-4">
                 <label className="block text-sm font-bold text-slate-800 mb-2">A. Strengths</label>
                 {disabled ? (
-                    <div className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-3 min-h-[60px] whitespace-pre-wrap">
+                    <div className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-3 min-h-15 whitespace-pre-wrap">
                         {finalReport.strengths || <span className="italic text-slate-400">—</span>}
                     </div>
                 ) : (
@@ -358,7 +366,7 @@ function FinalReportSheet({ finalReport, setFinalReport, scores, disabled }) {
             <div className="bg-white rounded-xl border border-slate-200 p-4">
                 <label className="block text-sm font-bold text-slate-800 mb-2">B. Weakness</label>
                 {disabled ? (
-                    <div className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-3 min-h-[60px] whitespace-pre-wrap">
+                    <div className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-3 min-h-15 whitespace-pre-wrap">
                         {finalReport.weakness || <span className="italic text-slate-400">—</span>}
                     </div>
                 ) : (
@@ -376,7 +384,7 @@ function FinalReportSheet({ finalReport, setFinalReport, scores, disabled }) {
             <div className="bg-white rounded-xl border border-slate-200 p-4">
                 <label className="block text-sm font-bold text-slate-800 mb-2">Mentor's Comments</label>
                 {disabled ? (
-                    <div className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-3 min-h-[60px] whitespace-pre-wrap">
+                    <div className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-3 min-h-15 whitespace-pre-wrap">
                         {finalReport.mentor_comments || <span className="italic text-slate-400">—</span>}
                     </div>
                 ) : (
@@ -438,6 +446,7 @@ export default function PenilaianOjtModal({
     onClose,
 }) {
     const [activeTab, setActiveTab] = useState("ojt");
+    const formScrollRef = useRef(null);
     const [skor, setSkorState] = useState(initialSkor || {});
     const [komentar, setKomentarState] = useState(initialKomentar || {});
     const [finalReport, setFinalReport] = useState({
@@ -515,7 +524,6 @@ export default function PenilaianOjtModal({
         });
     };
 
-    const showSheetFooter = activeTab !== "final";
     const footerScore =
         activeTab === "ojt"   ? scores.ojtGrand :
         activeTab === "value" ? scores.valueGrand :
@@ -528,92 +536,116 @@ export default function PenilaianOjtModal({
     return (
         <>
         <Toast open={toast.open} type={toast.type} message={toast.message} onClose={() => setToast(t => ({ ...t, open: false }))} />
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col">
+        <div className="fixed inset-0 z-50 flex bg-slate-900/60 backdrop-blur-sm">
+            <div className="bg-white w-full flex flex-col">
                 {/* Header */}
-                <div className="flex items-start justify-between p-5 border-b border-slate-200 shrink-0">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
                     <div>
-                        <h2 className="text-lg font-bold text-slate-900">Penilaian OJT — FMC-{fmc}</h2>
-                        <p className="text-xs text-slate-500 mt-0.5">
+                        <h2 className="text-xl font-bold text-slate-900">Penilaian OJT — FMC-{fmc}</h2>
+                        <p className="text-sm text-slate-500 mt-0.5">
                             {kader?.nama} {kader?.dept_name ? `· ${kader.dept_name}` : ""}
                         </p>
                     </div>
                     <button
                         onClick={onClose}
-                        className="text-slate-400 hover:text-slate-600 text-2xl leading-none p-1"
+                        className="text-slate-400 hover:text-slate-600 text-3xl leading-none p-1"
                         aria-label="Close"
                     >×</button>
                 </div>
 
                 {/* Tab strip */}
-                <div className="flex border-b border-slate-200 px-5 shrink-0 overflow-x-auto">
+                <div className="flex border-b border-slate-200 px-6 shrink-0">
                     {SHEET_TABS.map(t => (
                         <button
                             key={t.id}
                             type="button"
-                            onClick={() => setActiveTab(t.id)}
-                            className={`px-4 py-3 text-sm font-semibold transition border-b-2 -mb-px whitespace-nowrap ${
+                            onClick={() => {
+                                setActiveTab(t.id);
+                                formScrollRef.current?.scrollTo({ top: 0, behavior: "instant" });
+                            }}
+                            className={`px-5 py-3.5 text-base font-semibold transition border-b-2 -mb-px whitespace-nowrap ${
                                 activeTab === t.id
                                     ? "border-blue-500 text-blue-600"
                                     : "border-transparent text-slate-500 hover:text-slate-700"
                             }`}
                         >
-                            {t.label} {t.weight && <span className="text-xs font-normal text-slate-400 ml-1">({t.weight})</span>}
+                            {t.label} {t.weight && <span className="text-sm font-normal text-slate-400 ml-1">({t.weight})</span>}
                         </button>
                     ))}
                 </div>
 
-                {/* Body */}
-                <div className="flex-1 overflow-y-auto p-5 bg-slate-50">
-                    {activeTab === "ojt"   && <OjtSheet           ojtStruct={structure?.ojt || []}   skor={skor} komentar={komentar} setSkor={setSkor} setKomentar={setKomentar} disabled={!canEdit} />}
-                    {activeTab === "value" && <ValueSheet         valueStruct={structure?.value || []} skor={skor} komentar={komentar} setSkor={setSkor} setKomentar={setKomentar} disabled={!canEdit} />}
-                    {activeTab === "pres"  && <PresentationSheet  presStruct={structure?.presentation || []} skor={skor} komentar={komentar} setSkor={setSkor} setKomentar={setKomentar} disabled={!canEdit} />}
-                    {activeTab === "final" && <FinalReportSheet   finalReport={finalReport} setFinalReport={setFinalReport} scores={scores} disabled={!canEdit} />}
-                </div>
+                {/* Body: 2-column layout */}
+                <div className="flex-1 flex overflow-hidden">
+                    {/* Left: scrollable form */}
+                    <div ref={formScrollRef} className="flex-1 overflow-y-auto px-6 py-5 bg-slate-50">
+                        {activeTab === "ojt"   && <OjtSheet           ojtStruct={structure?.ojt || []}          skor={skor} komentar={komentar} setSkor={setSkor} setKomentar={setKomentar} disabled={!canEdit} />}
+                        {activeTab === "value" && <ValueSheet         valueStruct={structure?.value || []}       skor={skor} komentar={komentar} setSkor={setSkor} setKomentar={setKomentar} disabled={!canEdit} />}
+                        {activeTab === "pres"  && <PresentationSheet  presStruct={structure?.presentation || []} skor={skor} komentar={komentar} setSkor={setSkor} setKomentar={setKomentar} disabled={!canEdit} />}
+                        {activeTab === "final" && <FinalReportSheet   finalReport={finalReport} setFinalReport={setFinalReport} scores={scores} disabled={!canEdit} />}
+                    </div>
 
-                {/* Footer */}
-                {showSheetFooter && (
-                    <div className="px-5 py-3 bg-slate-900 text-white flex items-center justify-between shrink-0">
-                        <div>
-                            <div className="text-xs text-slate-400 uppercase tracking-wide">
-                                Grand Score Sheet (bobot {footerWeight}%)
+                    {/* Right: sticky sidebar — score card + action buttons */}
+                    <div className="w-72 shrink-0 border-l border-slate-200 bg-white flex flex-col gap-4 p-5 overflow-y-auto">
+                        {/* Score card */}
+                        {activeTab !== "final" ? (
+                            <div className="bg-slate-900 text-white rounded-2xl p-5">
+                                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">
+                                    Grand Score Sheet
+                                </div>
+                                <div className="text-xs text-slate-500 mb-4">Bobot {footerWeight}% · rata-rata semua aspek</div>
+                                <div className="text-5xl font-bold leading-none">{fmt(footerScore)}</div>
+                                <div className="text-sm text-slate-400 mt-2">{scoreLabel(footerScore) || "—"}</div>
                             </div>
-                            <div className="text-xs text-slate-500">Rata-rata dari semua aspek</div>
-                        </div>
-                        <div className="text-right">
-                            <div className="text-3xl font-bold">{fmt(footerScore)}</div>
-                            <div className="text-xs text-slate-400">{scoreLabel(footerScore)}</div>
+                        ) : (
+                            <div className="bg-slate-900 text-white rounded-2xl p-5 space-y-3">
+                                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Ringkasan Skor</div>
+                                {[
+                                    { label: "OJT (30%)",          score: scores.ojtGrand   },
+                                    { label: "Value (30%)",        score: scores.valueGrand },
+                                    { label: "Presentation (40%)", score: scores.presGrand  },
+                                ].map(({ label, score }) => (
+                                    <div key={label} className="flex items-center justify-between">
+                                        <span className="text-xs text-slate-400">{label}</span>
+                                        <span className="text-base font-bold">{fmt(score)}</span>
+                                    </div>
+                                ))}
+                                <div className="border-t border-slate-700 pt-3">
+                                    <div className="text-xs text-slate-400 mb-1">Final Score</div>
+                                    <div className="text-4xl font-bold text-emerald-400">{fmt(scores.finalScore)}</div>
+                                    <div className="text-sm text-slate-400 mt-1">{scoreLabel(scores.finalScore) || "—"}</div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Action buttons */}
+                        <div className="flex flex-col gap-2 mt-auto">
+                            {canEdit && (
+                                <button
+                                    type="button"
+                                    onClick={handleSubmit}
+                                    disabled={submitting}
+                                    className="w-full px-4 py-3 text-base font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
+                                >
+                                    {submitting ? (
+                                        <>
+                                            <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                            </svg>
+                                            Menyimpan...
+                                        </>
+                                    ) : "💾 Simpan Penilaian"}
+                                </button>
+                            )}
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                className="w-full px-4 py-3 text-base font-semibold text-slate-600 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition"
+                            >
+                                {canEdit ? "Batal" : "Tutup"}
+                            </button>
                         </div>
                     </div>
-                )}
-
-                {/* Action bar */}
-                <div className="p-4 border-t border-slate-200 flex items-center justify-end gap-2 shrink-0">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition"
-                    >
-                        {canEdit ? "Batal" : "Tutup"}
-                    </button>
-                    {canEdit && (
-                        <button
-                            type="button"
-                            onClick={handleSubmit}
-                            disabled={submitting}
-                            className="px-5 py-2 text-sm font-semibold text-white bg-blue-600 border border-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition flex items-center gap-2"
-                        >
-                            {submitting ? (
-                                <>
-                                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                                    </svg>
-                                    Menyimpan...
-                                </>
-                            ) : "💾 Simpan Penilaian"}
-                        </button>
-                    )}
                 </div>
             </div>
         </div>

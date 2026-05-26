@@ -96,14 +96,17 @@ class PenilaianOjtController extends Controller
             }
 
             // Final report fields
-            if (!empty($validated['final_report'])) {
+            if (isset($validated['final_report']) && is_array($validated['final_report'])) {
                 $fr = $validated['final_report'];
+                // Gunakan array_key_exists agar nilai null (field dikosongkan user) tetap tersimpan.
+                // Operator ?? akan memilih fallback ke nilai lama ketika nilai baru adalah null,
+                // padahal null di sini artinya user sengaja menghapus isi field.
                 $penilaian->fill([
-                    'overview'             => $fr['overview']             ?? $penilaian->overview,
-                    'strengths'            => $fr['strengths']            ?? $penilaian->strengths,
-                    'weakness'             => $fr['weakness']             ?? $penilaian->weakness,
-                    'mentor_comments'      => $fr['mentor_comments']      ?? $penilaian->mentor_comments,
-                    'final_recommendation' => $fr['final_recommendation'] ?? $penilaian->final_recommendation,
+                    'overview'             => array_key_exists('overview', $fr)             ? $fr['overview']             : $penilaian->overview,
+                    'strengths'            => array_key_exists('strengths', $fr)            ? $fr['strengths']            : $penilaian->strengths,
+                    'weakness'             => array_key_exists('weakness', $fr)             ? $fr['weakness']             : $penilaian->weakness,
+                    'mentor_comments'      => array_key_exists('mentor_comments', $fr)      ? $fr['mentor_comments']      : $penilaian->mentor_comments,
+                    'final_recommendation' => array_key_exists('final_recommendation', $fr) ? $fr['final_recommendation'] : $penilaian->final_recommendation,
                 ]);
                 $penilaian->save();
             }
