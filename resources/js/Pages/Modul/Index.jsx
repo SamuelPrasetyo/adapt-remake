@@ -14,7 +14,7 @@ const COLS = [
     { key: 'tipe',       label: 'Tipe', sortable: true, render: (v) => (
         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${v === 'MENTOR' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>{v ?? 'KADER'}</span>
     )},
-    { key: 'fase',       label: 'Fase', sortable: true },
+    { key: 'fase',       label: 'Fase', sortable: true, render: (v) => v ? `Fase ${String(v).replace(/^Fase\s+/i, '')}` : <span className="text-slate-400">—</span> },
     { key: 'tag_kompetensi', label: 'Tag Kompetensi' },
     {
         key: 'file_materi', label: 'File',
@@ -86,9 +86,18 @@ function ModulForm({ form, formId, onSubmit, currentFile }) {
                     onChange={(e) => form.setData('tag_kompetensi', e.target.value)} className={inputCls}
                     placeholder="Opsional" />
             </Field>
-            <Field label="File Materi (PDF, maks 10MB)" error={form.errors.file_materi}>
+            <Field label="File Materi (PDF, maks 8MB)" error={form.errors.file_materi}>
                 <input type="file" accept=".pdf"
-                    onChange={(e) => form.setData('file_materi', e.target.files[0])}
+                    onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+                        if (file.size > 8 * 1024 * 1024) {
+                            form.setError('file_materi', 'Ukuran file terlalu besar. Maksimal 8 MB.');
+                            e.target.value = '';
+                            return;
+                        }
+                        form.setData('file_materi', file);
+                    }}
                     className="w-full text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
                 {currentFile && !form.data.file_materi && (
                     <div className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">

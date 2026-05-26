@@ -3,35 +3,27 @@
 namespace App\Exceptions;
 
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Illuminate\Http\Exceptions\PostTooLargeException;
 
 class Handler extends ExceptionHandler
 {
-    /**
-     * A list of the exception types that are not reported.
-     *
-     * @var array
-     */
-    protected $dontReport = [
-        //
-    ];
+    protected $dontReport = [];
 
-    /**
-     * A list of the inputs that are never flashed for validation exceptions.
-     *
-     * @var array
-     */
     protected $dontFlash = [
         'password',
         'password_confirmation',
     ];
 
-    /**
-     * Register the exception handling callbacks for the application.
-     *
-     * @return void
-     */
     public function register()
     {
-        //
+        $this->renderable(function (PostTooLargeException $e, $request) {
+            $message = 'Ukuran file terlalu besar. Maksimal ukuran yang diizinkan adalah 8 MB.';
+
+            if ($request->header('X-Inertia')) {
+                return back()->withErrors(['file_materi' => $message]);
+            }
+
+            return back()->withErrors(['file_materi' => $message])->withInput();
+        });
     }
 }
