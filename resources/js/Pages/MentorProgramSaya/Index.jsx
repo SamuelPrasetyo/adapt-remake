@@ -15,9 +15,11 @@ function ModulCard({ modul, selectedMentor }) {
                     <p className="text-xs font-mono text-slate-400">{modul.kode_modul}</p>
                     <p className="text-sm font-semibold text-slate-800 mt-0.5 leading-snug">{modul.nama_modul}</p>
                 </div>
-                <span className="shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
-                    Fase {String(modul.fase ?? '').replace(/^Fase\s+/i, '')}
-                </span>
+                {modul.fase && (
+                    <span className="shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+                        Fase {String(modul.fase).replace(/^Fase\s+/i, '')}
+                    </span>
+                )}
             </div>
             {modul.tag_kompetensi && (
                 <p className="text-xs text-slate-500">{modul.tag_kompetensi}</p>
@@ -134,10 +136,13 @@ export default function MentorProgramSayaIndex({
 
             {faseKeys.map((fase) => {
                 const items = grouped[fase];
+                const hasFase = fase !== '' && fase !== 'null';
                 return (
                     <div key={fase} className="mb-8">
                         <div className="flex items-center gap-3 mb-4">
-                            <h3 className="text-base font-bold text-slate-800">Fase {fase}</h3>
+                            {hasFase && (
+                                <h3 className="text-base font-bold text-slate-800">Fase {fase}</h3>
+                            )}
                             <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
                                 {items.length} modul
                             </span>
