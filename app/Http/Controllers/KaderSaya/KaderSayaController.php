@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\KaderSaya;
 
+use App\Constants\PenilaianOjtStructure;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\KaderSaya\PenilaianOjtController;
 use App\Http\Controllers\Master\Mentor\KaderPerMentorController;
 use App\Models\Company;
 use App\Models\Dokumen;
@@ -355,6 +357,8 @@ class KaderSayaController extends Controller
             $perjanjianKerja->uploaded_by_name = $uploader?->name ?? '—';
         }
 
+        $penilaianData = PenilaianOjtController::getDataForKader($kader->id);
+
         return Inertia::render('KaderSaya/Detail', [
             'kader'              => $kader,
             'faseGroups'         => $faseGroups,
@@ -372,6 +376,11 @@ class KaderSayaController extends Controller
             'mentorName'         => $user->name,
             'perjanjianKerja'    => $perjanjianKerja,
             'canUpload'          => $isAdmin021 || $isMentor,
+            'penilaianList'      => $penilaianData['penilaianList'],
+            'penilaianSkorMap'   => $penilaianData['skorMap'],
+            'penilaianKomentarMap' => $penilaianData['komentarMap'],
+            'penilaianStructure' => PenilaianOjtStructure::all(),
+            'canEditPenilaian'   => $isMentor,
         ]);
     }
 

@@ -3,6 +3,7 @@ import { Link } from "@inertiajs/react";
 import AppLayout from "@/Layouts/AppLayout";
 import LearningGrowthTab from "./tabs/LearningGrowthTab";
 import FeedbackTab from "./tabs/FeedbackTab";
+import PenilaianOjtTab from "./tabs/PenilaianOjtTab";
 import PerjanjianKerjaTab from "./tabs/PerjanjianKerjaTab";
 
 const STATUS_META = {
@@ -29,6 +30,16 @@ const TABS = [
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
                     d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+            </svg>
+        ),
+    },
+    {
+        id: "penilaian",
+        label: "Penilaian OJT",
+        icon: (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
             </svg>
         ),
     },
@@ -63,6 +74,11 @@ export default function KaderSayaDetail({
     mentorName = "",
     perjanjianKerja = null,
     canUpload = false,
+    penilaianList = [],
+    penilaianSkorMap = {},
+    penilaianKomentarMap = {},
+    penilaianStructure = null,
+    canEditPenilaian = false,
 }) {
     const hashTab = typeof window !== "undefined" ? window.location.hash.replace("#", "") : "";
     const [tab, setTab] = useState(VALID_TABS.includes(hashTab) ? hashTab : "learning");
@@ -167,6 +183,17 @@ export default function KaderSayaDetail({
                     mentorFeedbackList={mentorFeedbackList}
                     mentorName={mentorName}
                     kaderId={kaderId}
+                />
+            )}
+            {tab === "penilaian" && (
+                <PenilaianOjtTab
+                    kader={kader}
+                    kaderId={kaderId}
+                    penilaianList={penilaianList}
+                    skorMap={penilaianSkorMap}
+                    komentarMap={penilaianKomentarMap}
+                    structure={penilaianStructure}
+                    canEdit={canEditPenilaian}
                 />
             )}
             {tab === "perjanjian" && (
