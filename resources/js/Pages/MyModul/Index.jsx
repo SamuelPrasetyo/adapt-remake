@@ -13,7 +13,7 @@ function ModulCard({ modul }) {
                     <p className="text-sm font-semibold text-slate-800 mt-0.5 leading-snug">{modul.nama_modul}</p>
                 </div>
                 <span className="shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                    {modul.fase}
+                    Fase {String(modul.fase).replace(/^Fase\s+/i, '')}
                 </span>
             </div>
             {modul.tag_kompetensi && (
@@ -36,7 +36,7 @@ export default function MyModulIndex({ moduls = [] }) {
 
     // Group di sisi React untuk menghindari masalah serialisasi PHP Collection keys
     const grouped = moduls.reduce((acc, m) => {
-        const key = String(m.fase);
+        const key = String(m.fase ?? '').replace(/^Fase\s+/i, '');
         if (!acc[key]) acc[key] = [];
         acc[key].push(m);
         return acc;
@@ -65,10 +65,11 @@ export default function MyModulIndex({ moduls = [] }) {
 
             {faseKeys.map((fase) => {
                 const items = grouped[fase];
+                const faseNum = String(fase).replace(/^Fase\s+/i, '');
                 return (
                     <div key={fase} className="mb-8">
                         <div className="flex items-center gap-3 mb-4">
-                            <h3 className="text-base font-bold text-slate-800">Fase {fase}</h3>
+                            <h3 className="text-base font-bold text-slate-800">Fase {faseNum}</h3>
                             <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
                                 {items.length} modul
                             </span>

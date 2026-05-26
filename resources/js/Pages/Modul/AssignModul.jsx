@@ -828,7 +828,7 @@ export default function AssignModul({
                                             </div>
                                             {(m.tipe ?? 'KADER') === 'MENTOR'
                                                 ? <span className="shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">Mentor</span>
-                                                : <span className="shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Fase {m.fase}</span>
+                                                : <span className="shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Fase {String(m.fase ?? '').replace(/^Fase\s+/i, '')}</span>
                                             }
                                         </label>
                                     );

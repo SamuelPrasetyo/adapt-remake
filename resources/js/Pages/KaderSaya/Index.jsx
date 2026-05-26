@@ -30,11 +30,11 @@ function progressColor(pct) {
 }
 
 function FaseScoreBadge({ fase, score }) {
-    const label = String(fase).replace('Fase ', 'F').replace('fase ', 'F');
+    const num = String(fase).replace(/^Fase\s+/i, '');
     const color = score >= 80 ? 'bg-emerald-100 text-emerald-700' : score >= 60 ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700';
     return (
         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${color}`}>
-            {label}: {score}
+            F{num}: {score}
         </span>
     );
 }

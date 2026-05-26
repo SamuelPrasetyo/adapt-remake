@@ -35,11 +35,13 @@ class ModulController extends Controller
         $fileName = time() . '_' . $request->file_materi->getClientOriginalName();
         $request->file_materi->move(public_path('uploads/modul'), $fileName);
 
+        $faseValue = $request->tipe === 'MENTOR' ? null : preg_replace('/[^0-9]/', '', (string) $request->fase);
+
         Modul::create([
             'kode_modul'     => $request->kode_modul,
             'nama_modul'     => $request->nama_modul,
             'tipe'           => $request->tipe,
-            'fase'           => $request->tipe === 'MENTOR' ? null : $request->fase,
+            'fase'           => $faseValue,
             'batch'          => $request->batch,
             'tag_kompetensi' => $request->tag_kompetensi,
             'file_materi'    => 'uploads/modul/' . $fileName
@@ -65,11 +67,12 @@ class ModulController extends Controller
         }
 
         $tipe = $request->tipe ?? $modul->tipe;
+        $faseValue = $tipe === 'MENTOR' ? null : preg_replace('/[^0-9]/', '', (string) $request->fase);
         $modul->update([
             'kode_modul'     => $request->kode_modul,
             'nama_modul'     => $request->nama_modul,
             'tipe'           => $tipe,
-            'fase'           => $tipe === 'MENTOR' ? null : $request->fase,
+            'fase'           => $faseValue,
             'batch'          => $request->batch,
             'tag_kompetensi' => $request->tag_kompetensi,
             'file_materi'    => $modul->file_materi
