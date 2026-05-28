@@ -26,6 +26,14 @@ export const ADMIN_NAV = [
         requires: "mentor_only",
         preserveMentor: true,
     },
+    {
+        type: "item",
+        label: "Approval",
+        icon: "check",
+        href: "/approval",
+        match: "/approval",
+        requires: "admin021",
+    },
     { type: "section", label: "Program & Modul" },
     {
         type: "item",

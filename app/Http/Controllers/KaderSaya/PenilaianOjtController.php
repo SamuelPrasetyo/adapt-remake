@@ -67,6 +67,8 @@ class PenilaianOjtController extends Controller
                     'fmc_number'       => $fmc,
                     'created_by'       => $user->id,
                 ]);
+            } elseif ($penilaian->approval_status === 'approved') {
+                abort(423, 'Penilaian sudah di-approve Admin MAI dan tidak dapat diubah.');
             }
 
             // Upsert skor: hanya item_code yg valid
@@ -109,6 +111,16 @@ class PenilaianOjtController extends Controller
                     'final_recommendation' => array_key_exists('final_recommendation', $fr) ? $fr['final_recommendation'] : $penilaian->final_recommendation,
                 ]);
                 $penilaian->save();
+            }
+
+            // Edit ulang dari Mentor (mis. setelah ditolak) mengembalikan ke antrian review.
+            if ($penilaian->approval_status === 'rejected') {
+                $penilaian->update([
+                    'approval_status'  => 'pending',
+                    'rejection_reason' => null,
+                    'approved_by'      => null,
+                    'approved_at'      => null,
+                ]);
             }
 
             $this->recomputeScores($penilaian);
@@ -261,6 +273,9 @@ class PenilaianOjtController extends Controller
                 'weakness'             => $rec?->weakness,
                 'mentor_comments'      => $rec?->mentor_comments,
                 'final_recommendation' => $rec?->final_recommendation,
+                'approval_status'      => $rec?->approval_status ?? 'pending',
+                'approved_at'          => $rec?->approved_at?->toIso8601String(),
+                'rejection_reason'     => $rec?->rejection_reason,
                 'updated_at'           => $rec?->updated_at?->toIso8601String(),
             ];
 

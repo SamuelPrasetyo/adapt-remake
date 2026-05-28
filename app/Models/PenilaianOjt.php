@@ -15,6 +15,10 @@ class PenilaianOjt extends Model
     protected $keyType = 'string';
     protected $guarded = [];
 
+    protected $casts = [
+        'approved_at' => 'datetime',
+    ];
+
     public function skor()
     {
         return $this->hasMany(PenilaianOjtSkor::class, 'id_penilaian_ojt', 'id_penilaian_ojt');

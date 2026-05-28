@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Approval\ApprovalController;
 use App\Http\Controllers\Master\BatchController;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\DashboardController;
@@ -215,6 +216,15 @@ Route::middleware(['can:canMentorDashboard'])->group(function () {
 
     // Penilaian OJT — write hanya Mentor, read Admin021 + Mentor (cek di controller)
     Route::post('/kader-saya/{kader_id}/penilaian/{fmc}', [PenilaianOjtController::class, 'store'])->name('penilaian.store');
+});
+
+// Approval Admin MAI (Admin021) — approve/tolak Nilai OJT & Post Activity
+Route::middleware(['can:isAdmin021'])->group(function () {
+    Route::get('/approval', [ApprovalController::class, 'index'])->name('approval.index');
+    Route::post('/approval/ojt/{kader_id}/{fmc}/approve', [ApprovalController::class, 'approveOjt'])->name('approval.ojt.approve');
+    Route::post('/approval/ojt/{kader_id}/{fmc}/reject', [ApprovalController::class, 'rejectOjt'])->name('approval.ojt.reject');
+    Route::post('/approval/post-activity/{dokumen}/approve', [ApprovalController::class, 'approvePostActivity'])->name('approval.pa.approve');
+    Route::post('/approval/post-activity/{dokumen}/reject', [ApprovalController::class, 'rejectPostActivity'])->name('approval.pa.reject');
 });
 Route::middleware(['can:isAdmin&Mentor'])->group(function () {
     Route::controller(ReportController::class)->group(function () {

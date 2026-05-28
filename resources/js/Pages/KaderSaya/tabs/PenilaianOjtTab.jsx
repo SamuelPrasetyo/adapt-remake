@@ -5,8 +5,10 @@ const FMC_LIST = [1, 2, 3];
 
 function statusFromPenilaian(p) {
     if (!p?.exists) return { label: "Belum mulai", cls: "text-slate-400" };
+    if (p.approval_status === "approved") return { label: "Disetujui ✓ (terkunci)", cls: "text-emerald-600" };
+    if (p.approval_status === "rejected") return { label: "Ditolak Admin MAI", cls: "text-red-600" };
     if (p.final_score == null) return { label: "Draft", cls: "text-amber-600" };
-    return { label: "Sudah dinilai ✓", cls: "text-emerald-600" };
+    return { label: "Menunggu approval", cls: "text-amber-600" };
 }
 
 function scoreLabel(score) {
@@ -40,6 +42,8 @@ export default function PenilaianOjtTab({
                     const p = byFmc[fmc];
                     const status = statusFromPenilaian(p);
                     const hasData = p?.exists;
+                    const locked = p?.approval_status === "approved";
+                    const fmcCanEdit = canEdit && !locked;
 
                     return (
                         <div key={fmc} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col">
@@ -57,6 +61,9 @@ export default function PenilaianOjtTab({
                                     <div className="text-3xl text-slate-300 font-bold">—</div>
                                 )}
                                 <div className={`text-xs font-medium mt-3 ${status.cls}`}>{status.label}</div>
+                                {p?.approval_status === "rejected" && p?.rejection_reason && (
+                                    <div className="text-[11px] text-red-500 mt-1 text-center px-2">"{p.rejection_reason}"</div>
+                                )}
                             </div>
 
                             <button
@@ -68,7 +75,7 @@ export default function PenilaianOjtTab({
                                         : "bg-blue-600 text-white hover:bg-blue-700"
                                 }`}
                             >
-                                {hasData ? (canEdit ? "✏️ Edit" : "👁️ Lihat") : (canEdit ? "📋 Isi Penilaian" : "👁️ Lihat")}
+                                {hasData ? (fmcCanEdit ? "✏️ Edit" : "👁️ Lihat") : (fmcCanEdit ? "📋 Isi Penilaian" : "👁️ Lihat")}
                             </button>
                         </div>
                     );

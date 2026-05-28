@@ -442,9 +442,12 @@ export default function PenilaianOjtModal({
     initialSkor = {},
     initialKomentar = {},
     initialFinalReport = {},
-    canEdit = false,
+    canEdit: canEditProp = false,
     onClose,
 }) {
+    const approvalStatus = initialFinalReport?.approval_status ?? "pending";
+    const locked = approvalStatus === "approved";
+    const canEdit = canEditProp && !locked;
     const [activeTab, setActiveTab] = useState("ojt");
     const formScrollRef = useRef(null);
     const [skor, setSkorState] = useState(initialSkor || {});
@@ -552,6 +555,18 @@ export default function PenilaianOjtModal({
                         aria-label="Close"
                     >×</button>
                 </div>
+
+                {/* Approval status banner */}
+                {locked && (
+                    <div className="px-6 py-2.5 bg-emerald-50 border-b border-emerald-200 text-sm text-emerald-700 shrink-0">
+                        🔒 Penilaian sudah <b>disetujui Admin MAI</b> dan terkunci — tidak dapat diubah.
+                    </div>
+                )}
+                {approvalStatus === "rejected" && canEditProp && (
+                    <div className="px-6 py-2.5 bg-red-50 border-b border-red-200 text-sm text-red-700 shrink-0">
+                        ❌ Ditolak Admin MAI{initialFinalReport?.rejection_reason ? `: "${initialFinalReport.rejection_reason}"` : ""}. Perbaiki lalu simpan ulang untuk diajukan kembali.
+                    </div>
+                )}
 
                 {/* Tab strip */}
                 <div className="flex border-b border-slate-200 px-6 shrink-0">
