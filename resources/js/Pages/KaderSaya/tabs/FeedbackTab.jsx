@@ -217,16 +217,26 @@ function KirimFeedbackForm({ kader, weeks, mentorName, kaderId }) {
                 </div>
 
                 <div>
-                    <p className="text-xs font-semibold text-slate-600 mb-2">Penilaian Kinerja</p>
-                    <div className="grid grid-cols-2 gap-2">
+                    <p className="text-xs font-semibold text-slate-600 mb-3">Penilaian Kinerja</p>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                         {[['p1','Routine Job'],['p2','Assignment'],['p3','Pemahaman SOP'],['p4','Project']].map(([field, label]) => (
                             <div key={field}>
-                                <label className="text-xs text-slate-500 block mb-1">{label}</label>
-                                <select value={form[field]} onChange={e => handleChange(field, e.target.value)}
-                                    className="w-full px-2.5 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 bg-white">
-                                    <option value="">—</option>
-                                    {SCORE_OPTIONS.map(n => <option key={n} value={n}>{n}</option>)}
-                                </select>
+                                <div className="flex items-center justify-between mb-1">
+                                    <label className="text-xs text-slate-500">{label}</label>
+                                    <span className={`text-sm font-bold w-6 text-right ${form[field] ? scoreColor(parseInt(form[field]) * 10) : 'text-slate-300'}`}>
+                                        {form[field] || '—'}
+                                    </span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="1" max="10" step="1"
+                                    value={form[field] || 1}
+                                    onChange={e => handleChange(field, e.target.value)}
+                                    className="w-full h-1.5 bg-slate-200 rounded-full appearance-none cursor-pointer accent-blue-600"
+                                />
+                                <div className="flex justify-between text-[9px] text-slate-400 mt-0.5">
+                                    <span>1</span><span>5</span><span>10</span>
+                                </div>
                             </div>
                         ))}
                     </div>

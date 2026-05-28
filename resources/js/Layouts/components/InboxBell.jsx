@@ -33,7 +33,7 @@ function itemKey(item) {
 
 function fmtDate(s) {
     if (!s) return "";
-    return new Date(s).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+    return new Date(s).toLocaleString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 /* ── Bell icon SVG ── */
@@ -46,22 +46,61 @@ function BellIcon({ className = "w-5 h-5" }) {
     );
 }
 
-/* ── Admin MAI: bell langsung ke /approval ── */
+/* ── Admin MAI: bell buka dropdown, klik item baru ke /approval ── */
 function AdminBell({ pendingCount }) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef(null);
+
+    useEffect(() => {
+        const handler = (e) => {
+            if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+        };
+        document.addEventListener("mousedown", handler);
+        return () => document.removeEventListener("mousedown", handler);
+    }, []);
+
     return (
-        <button
-            type="button"
-            onClick={() => router.visit("/approval")}
-            className="relative p-2 rounded-lg text-slate-500 hover:bg-slate-100 transition"
-            title={`${pendingCount} approval menunggu`}
-        >
-            <BellIcon />
-            {pendingCount > 0 && (
-                <span className="absolute top-1 right-1 min-w-[16px] h-4 px-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center leading-none">
-                    {pendingCount > 99 ? "99+" : pendingCount}
-                </span>
+        <div className="relative" ref={ref}>
+            <button
+                type="button"
+                onClick={() => setOpen((o) => !o)}
+                className="relative p-2 rounded-lg text-slate-500 hover:bg-slate-100 transition"
+                title="Notifikasi Approval"
+            >
+                <BellIcon />
+                {pendingCount > 0 && (
+                    <span className="absolute top-1 right-1 min-w-4 h-4 px-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center leading-none">
+                        {pendingCount > 99 ? "99+" : pendingCount}
+                    </span>
+                )}
+            </button>
+
+            {open && (
+                <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-200 z-50 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-slate-100">
+                        <span className="text-sm font-semibold text-slate-800">Notifikasi Approval</span>
+                    </div>
+                    <div className="px-4 py-4">
+                        {pendingCount > 0 ? (
+                            <p className="text-sm text-slate-600">
+                                Ada <span className="font-bold text-amber-600">{pendingCount}</span> item menunggu persetujuan Anda.
+                            </p>
+                        ) : (
+                            <p className="text-sm text-slate-400">Tidak ada item yang menunggu approval.</p>
+                        )}
+                    </div>
+                    <div className="px-4 pb-4">
+                        <button
+                            type="button"
+                            onClick={() => { setOpen(false); router.visit("/approval"); }}
+                            className="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition"
+                        >
+                            Buka Halaman Approval
+                        </button>
+                    </div>
+                </div>
             )}
-        </button>
+        </div>
     );
 }
 
@@ -112,7 +151,9 @@ function UserBell({ inbox, userId }) {
             >
                 <BellIcon />
                 {visible.length > 0 && (
-                    <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500" />
+                    <span className="absolute top-1 right-1 min-w-4 h-4 px-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center leading-none">
+                        {visible.length > 99 ? "99+" : visible.length}
+                    </span>
                 )}
             </button>
 
@@ -157,7 +198,7 @@ function UserBell({ inbox, userId }) {
                                     <div className="flex items-start gap-2.5 pr-6">
                                         <span className={`mt-1 shrink-0 w-2 h-2 rounded-full ${approved ? "bg-emerald-500" : "bg-red-500"}`} />
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-semibold text-slate-700 truncate">
+                                            <p className="text-xs font-semibold text-slate-700 line-clamp-2">
                                                 {item.type === "ojt"
                                                     ? `OJT FMC-${item.fmc_number}${item.kader_nama ? ` · ${item.kader_nama}` : ""}`
                                                     : `Post Activity${item.modul_nama ? ` · ${item.modul_nama}` : ""}${item.nama_file ? ` (${item.nama_file})` : ""}`
@@ -167,7 +208,7 @@ function UserBell({ inbox, userId }) {
                                                 {approved ? "✓ Disetujui Admin MAI" : "✗ Ditolak Admin MAI"}
                                             </p>
                                             {!approved && item.rejection_reason && (
-                                                <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2">"{item.rejection_reason}"</p>
+                                                <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-3">"{item.rejection_reason}"</p>
                                             )}
                                             {item.final_score != null && (
                                                 <p className="text-[11px] text-slate-400 mt-0.5">Score: {Number(item.final_score).toFixed(1)}</p>

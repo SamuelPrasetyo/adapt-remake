@@ -3,16 +3,16 @@ import AppLayout from '@/Layouts/AppLayout';
 
 const TABS = [
     { id: 'all', label: 'Semua' },
-    { id: '3', label: 'Modul Mentor', sublabel: 'Fase 3' },
-    { id: '1', label: 'Fase 1', sublabel: 'View' },
-    { id: '2', label: 'Fase 2', sublabel: 'View' },
+    { id: '3', label: 'Modul Mentor', sublabel: 'Monthly Training' },
+    { id: '1', label: 'Foundation', sublabel: 'View' },
+    { id: '2', label: 'Sub Function Rotation', sublabel: 'View' },
     { id: '4', label: 'Administrasi' },
 ];
 
 const FASE_CONFIG = {
-    '3': { label: 'Mentor', badgeClass: 'bg-emerald-900 text-emerald-100' },
-    '1': { label: 'Fase 1', badgeClass: 'bg-sky-100 text-sky-700' },
-    '2': { label: 'Fase 2', badgeClass: 'bg-green-100 text-green-700' },
+    '3': { label: 'Monthly Training (Leadership)', badgeClass: 'bg-emerald-900 text-emerald-100' },
+    '1': { label: 'Foundation', badgeClass: 'bg-sky-100 text-sky-700' },
+    '2': { label: 'Sub Function Rotation', badgeClass: 'bg-green-100 text-green-700' },
     '4': { label: 'Administrasi', badgeClass: 'bg-slate-100 text-slate-600' },
 };
 
