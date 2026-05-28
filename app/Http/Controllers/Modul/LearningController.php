@@ -93,9 +93,11 @@ class LearningController extends Controller
             'materi_progress'       => $readingProgress,
             'posttest'              => (bool) $posttestResult,
             'posttest_score'        => $posttestResult?->score,
-            'post_activity'         => (bool) $postActivityDoc,
-            'post_activity_file'    => $postActivityDoc?->nama_file,
-            'post_activity_status'  => $postActivityDoc?->status,
+            'post_activity'             => (bool) $postActivityDoc,
+            'post_activity_file'        => $postActivityDoc?->nama_file,
+            'post_activity_status'      => $postActivityDoc?->status,
+            'post_activity_rejection_reason' => $postActivityDoc?->rejection_reason,
+            'post_activity_can_reupload'     => !$postActivityDoc || $postActivityDoc->status === 'rejected',
             'final_score'           => $posttestResult?->score ?? null,
         ];
 
@@ -272,6 +274,21 @@ class LearningController extends Controller
 
         $user     = auth()->user();
         $userType = strtolower($user->type ?? '');
+
+        // Cegah upload ulang jika dokumen terakhir masih menunggu review / sudah disetujui.
+        $lastDoc = Dokumen::where('modul_id', $request->modul_id)
+            ->where('jenis', 'POST_ACTIVITY')
+            ->when($userType === 'kader', fn($q) => $q->where('kader_id', $user->id))
+            ->when($userType !== 'kader', fn($q) => $q->where('mentor_id', $user->id))
+            ->latest()
+            ->first();
+
+        if ($lastDoc && in_array($lastDoc->status, ['pending', 'approved'], true)) {
+            $msg = $lastDoc->status === 'approved'
+                ? 'Post Activity sudah disetujui Admin MAI dan tidak dapat diubah.'
+                : 'Post Activity masih menunggu review Admin MAI.';
+            return back()->withErrors(['file' => $msg]);
+        }
 
         $folder = public_path('uploads/post_activity');
         if (!file_exists($folder)) {

@@ -479,14 +479,14 @@ export default function ModulDetail({ modul, progress = {}, pretest = [], postte
                             )}
                         </CheckItem>
 
-                        <CheckItem done={progress.post_activity}
+                        <CheckItem done={progress.post_activity && progress.post_activity_status !== 'rejected'}
                             title="Post Activity"
                             sub={progress.post_activity
                                 ? `File: ${progress.post_activity_file}`
                                 : 'Belum diupload'}
                             subColor={progress.post_activity ? 'text-emerald-600' : 'text-slate-500'}
                             last={modul?.fase != 3}>
-                            {progress.post_activity ? (
+                            {progress.post_activity && progress.post_activity_status !== 'rejected' ? (
                                 <div className="flex items-center gap-2 flex-wrap">
                                     <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">
                                         ✓ Uploaded
@@ -496,6 +496,15 @@ export default function ModulDetail({ modul, progress = {}, pretest = [], postte
                                             · {STATUS_LABEL[progress.post_activity_status] ?? progress.post_activity_status}
                                         </span>
                                     )}
+                                </div>
+                            ) : progress.post_activity_status === 'rejected' ? (
+                                <div className="space-y-2">
+                                    <div className="text-xs text-red-600 font-medium">
+                                        ❌ Ditolak Admin MAI{progress.post_activity_rejection_reason ? `: "${progress.post_activity_rejection_reason}"` : ''}. Silakan upload ulang.
+                                    </div>
+                                    {paLocked
+                                        ? <LockedBtn label="Upload Post Activity" message="Selesaikan Post-Test terlebih dahulu" />
+                                        : <PostActivityUpload modulId={modul?.id} />}
                                 </div>
                             ) : paLocked ? (
                                 <LockedBtn label="Upload Post Activity" message="Selesaikan Post-Test terlebih dahulu" />
