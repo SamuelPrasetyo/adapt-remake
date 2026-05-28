@@ -43,39 +43,69 @@ export default function PenilaianOjtTab({
                     const status = statusFromPenilaian(p);
                     const hasData = p?.exists;
                     const locked = p?.approval_status === "approved";
-                    const fmcCanEdit = canEdit && !locked;
+                    // FMC-N terkunci jika FMC sebelumnya belum ada data
+                    const prevMissing = fmc > 1 && !byFmc[fmc - 1]?.exists;
+                    const fmcCanEdit = canEdit && !locked && !prevMissing;
 
                     return (
-                        <div key={fmc} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col">
-                            <div className="text-center mb-3">
+                        <div key={fmc} className={`bg-white rounded-2xl border shadow-sm p-5 flex flex-col transition ${
+                            prevMissing ? "border-slate-200 opacity-60" : "border-slate-200"
+                        }`}>
+                            <div className="text-center mb-3 flex items-center justify-center gap-1.5">
                                 <div className="text-xs font-semibold text-slate-500 tracking-wide">FMC-{fmc}</div>
+                                {prevMissing && (
+                                    <span title={`Isi FMC-${fmc - 1} terlebih dahulu`}>
+                                        <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                        </svg>
+                                    </span>
+                                )}
                             </div>
 
                             <div className="flex-1 flex flex-col items-center justify-center py-2">
-                                {p?.final_score != null ? (
-                                    <>
-                                        <div className="text-4xl font-bold text-emerald-600">{Number(p.final_score).toFixed(1)}</div>
-                                        <div className="text-xs text-slate-400 mt-1">{scoreLabel(p.final_score)}</div>
-                                    </>
+                                {prevMissing ? (
+                                    <div className="text-center px-2">
+                                        <div className="text-3xl text-slate-300 font-bold mb-2">🔒</div>
+                                        <p className="text-xs text-slate-400 leading-relaxed">
+                                            Isi FMC-{fmc - 1} terlebih dahulu sebelum mengisi FMC-{fmc}.
+                                        </p>
+                                    </div>
                                 ) : (
-                                    <div className="text-3xl text-slate-300 font-bold">—</div>
-                                )}
-                                <div className={`text-xs font-medium mt-3 ${status.cls}`}>{status.label}</div>
-                                {p?.approval_status === "rejected" && p?.rejection_reason && (
-                                    <div className="text-[11px] text-red-500 mt-1 text-center px-2">"{p.rejection_reason}"</div>
+                                    <>
+                                        {p?.final_score != null ? (
+                                            <>
+                                                <div className="text-4xl font-bold text-emerald-600">{Number(p.final_score).toFixed(1)}</div>
+                                                <div className="text-xs text-slate-400 mt-1">{scoreLabel(p.final_score)}</div>
+                                            </>
+                                        ) : (
+                                            <div className="text-3xl text-slate-300 font-bold">—</div>
+                                        )}
+                                        <div className={`text-xs font-medium mt-3 ${status.cls}`}>{status.label}</div>
+                                        {p?.approval_status === "rejected" && p?.rejection_reason && (
+                                            <div className="text-[11px] text-red-500 mt-1 text-center px-2">"{p.rejection_reason}"</div>
+                                        )}
+                                    </>
                                 )}
                             </div>
 
                             <button
                                 type="button"
-                                onClick={() => setOpenFmc(fmc)}
+                                disabled={prevMissing}
+                                onClick={() => !prevMissing && setOpenFmc(fmc)}
                                 className={`mt-3 w-full px-3 py-2 text-sm font-semibold rounded-lg transition flex items-center justify-center gap-1.5 ${
-                                    hasData
-                                        ? "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50"
-                                        : "bg-blue-600 text-white hover:bg-blue-700"
+                                    prevMissing
+                                        ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                                        : hasData
+                                            ? "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50"
+                                            : "bg-blue-600 text-white hover:bg-blue-700"
                                 }`}
                             >
-                                {hasData ? (fmcCanEdit ? "✏️ Edit" : "👁️ Lihat") : (fmcCanEdit ? "📋 Isi Penilaian" : "👁️ Lihat")}
+                                {prevMissing
+                                    ? "🔒 Terkunci"
+                                    : hasData
+                                        ? (fmcCanEdit ? "✏️ Edit" : "👁️ Lihat")
+                                        : (fmcCanEdit ? "📋 Isi Penilaian" : "👁️ Lihat")}
                             </button>
                         </div>
                     );
