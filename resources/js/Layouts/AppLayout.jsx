@@ -7,6 +7,7 @@ import Icon from "./components/Icon";
 import NavGroup from "./components/NavGroup";
 import MentorSelectorCard from "./components/MentorSelectorCard";
 import PasswordInput from "./components/PasswordInput";
+import InboxBell from "./components/InboxBell";
 
 export default function AppLayout({
     title,
@@ -22,6 +23,8 @@ export default function AppLayout({
     const selectedMentor = props?.selectedMentor;
 
     const nav = user?.type === "Kader" ? KADER_NAV : ADMIN_NAV;
+
+    const inbox = props?.inbox;
 
     const [profileOpen, setProfileOpen] = useState(false);
     const [cpOpen, setCpOpen] = useState(false);
@@ -270,6 +273,10 @@ export default function AppLayout({
                     </div>
                     <div className="flex items-center gap-4">
                         {headerActions}
+
+                        {/* Inbox Bell — Kader, Mentor & Admin021 */}
+                        <InboxBell inbox={inbox} user={user} />
+
                         {/* Profile: avatar + name always visible, click → dropdown */}
                         <div className="relative" ref={profileRef}>
                             <button
