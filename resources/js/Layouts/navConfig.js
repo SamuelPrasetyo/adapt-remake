@@ -201,6 +201,7 @@ export const KADER_NAV = [
         icon: "layers",
         children: [
             { label: "My Modul", href: "/my-learning", match: "/my-learning" },
+            { label: "Upload File IDP", href: "/form-idp", match: "/form-idp" },
         ],
     },
 ];

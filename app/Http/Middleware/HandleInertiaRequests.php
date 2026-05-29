@@ -58,13 +58,19 @@ class HandleInertiaRequests extends Middleware
                         ->where('jenis', 'POST_ACTIVITY')
                         ->where('status', 'pending')
                         ->count();
+                    $pendingIdp = DB::table('dokumen')
+                        ->where('jenis', 'FORM_IDP')
+                        ->where('status', 'pending')
+                        ->count();
+                    $total = $pendingOjt + $pendingPa + $pendingIdp;
                     return [
                         'items'         => [],
-                        'total'         => $pendingOjt + $pendingPa,
+                        'total'         => $total,
                         'is_admin'      => true,
-                        'pending_count' => $pendingOjt + $pendingPa,
+                        'pending_count' => $total,
                         'pending_ojt'   => $pendingOjt,
                         'pending_pa'    => $pendingPa,
+                        'pending_idp'   => $pendingIdp,
                     ];
                 }
 
@@ -92,6 +98,26 @@ class HandleInertiaRequests extends Middleware
                         'modul_nama'       => $modulNames[$r->modul_id] ?? null,
                         'nama_file'        => $r->nama_file,
                     ]);
+
+                    // Kader: notif File IDP (approved/rejected)
+                    $idpRaw = DB::table('dokumen')
+                        ->where('kader_id', $user->id)
+                        ->where('jenis', 'FORM_IDP')
+                        ->whereIn('status', ['approved', 'rejected'])
+                        ->orderBy('created_at', 'desc')
+                        ->get(['id', 'nama_file', 'status', 'rejection_reason', 'created_at']);
+                    $idpItems = $idpRaw->map(fn($r) => [
+                        'type'             => 'idp',
+                        'fmc_number'       => null,
+                        'approval_status'  => $r->status,
+                        'rejection_reason' => $r->rejection_reason,
+                        'final_score'      => null,
+                        'updated_at'       => $r->created_at,
+                        'kader_nama'       => null,
+                        'modul_nama'       => null,
+                        'nama_file'        => $r->nama_file,
+                    ]);
+                    $paItems = $paItems->merge($idpItems);
 
                 } elseif ($user->type === 'Mentor') {
                     // Mentor: OJT yang di-input + Post Activity yang di-upload

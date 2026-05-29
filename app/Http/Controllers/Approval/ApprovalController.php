@@ -58,11 +58,29 @@ class ApprovalController extends Controller
             ->get(['d.id','d.nama_file','d.path_file','d.tipe','d.created_at','d.approved_at','m.nama_modul',
                    DB::raw('COALESCE(ku.name, mu.name) as uploader_nama')]);
 
+        $idpBase = DB::table('dokumen as d')
+            ->leftJoin('users as ku', DB::raw('CONVERT(d.kader_id USING utf8mb4) COLLATE utf8mb4_unicode_ci'), '=', 'ku.id')
+            ->leftJoin('batch as b', 'd.id_batch', '=', 'b.id_batch')
+            ->where('d.jenis', 'FORM_IDP');
+
+        $idpPending = (clone $idpBase)
+            ->where('d.status', 'pending')
+            ->orderBy('d.created_at', 'desc')
+            ->get(['d.id','d.nama_file','d.path_file','d.created_at','b.nama_batch','ku.name as kader_nama']);
+
+        $idpApproved = (clone $idpBase)
+            ->where('d.status', 'approved')
+            ->orderBy('d.approved_at', 'desc')
+            ->limit(50)
+            ->get(['d.id','d.nama_file','d.path_file','d.created_at','d.approved_at','b.nama_batch','ku.name as kader_nama']);
+
         return Inertia::render('Approval/Index', [
             'ojtPending'  => $ojtPending,
             'paPending'   => $paPending,
+            'idpPending'  => $idpPending,
             'ojtApproved' => $ojtApproved,
             'paApproved'  => $paApproved,
+            'idpApproved' => $idpApproved,
         ]);
     }
 
@@ -132,6 +150,38 @@ class ApprovalController extends Controller
         ActivityLog::activity_log("Tolak Post Activity (Dokumen ID {$dokumen->id})");
 
         return back()->with('approvalSuccess', 'Post Activity ditolak.');
+    }
+
+    public function approveIdp(Dokumen $dokumen)
+    {
+        $dokumen->update([
+            'status'           => 'approved',
+            'approved_by'      => Auth::id(),
+            'approved_at'      => now(),
+            'rejection_reason' => null,
+        ]);
+
+        ActivityLog::activity_log("Approve File IDP (Dokumen ID {$dokumen->id})");
+
+        return back()->with('approvalSuccess', 'File IDP disetujui.');
+    }
+
+    public function rejectIdp(Request $request, Dokumen $dokumen)
+    {
+        $validated = $request->validate([
+            'rejection_reason' => 'nullable|string',
+        ]);
+
+        $dokumen->update([
+            'status'           => 'rejected',
+            'rejection_reason' => $validated['rejection_reason'] ?? null,
+            'approved_by'      => null,
+            'approved_at'      => null,
+        ]);
+
+        ActivityLog::activity_log("Tolak File IDP (Dokumen ID {$dokumen->id})");
+
+        return back()->with('approvalSuccess', 'File IDP ditolak.');
     }
 
     private function findOjt($kader_id, $fmc): PenilaianOjt

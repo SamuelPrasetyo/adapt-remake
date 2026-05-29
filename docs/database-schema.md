@@ -174,3 +174,33 @@ Komentar Mentor per sub-aspek (level paling granular: a/b/c untuk OJT; per aspek
 **Otorisasi:**
 - Write (POST): hanya Mentor pembimbing kader (cek `list_kader_per_mentor`)
 - Read (GET via Inertia props): Mentor + Admin021 (read-only untuk Admin021)
+
+---
+
+## dokumen
+
+Menyimpan semua dokumen yang diupload (Post Activity, Form IDP, dll). Satu tabel dipakai berbagai jenis dokumen, dibedakan kolom `jenis`. Collation: `utf8mb4_general_ci`.
+
+| Kolom            | Tipe                                                                   | Keterangan                                                        |
+|------------------|------------------------------------------------------------------------|-------------------------------------------------------------------|
+| id               | int(11)                                                                | Primary key, auto increment                                       |
+| kader_id         | char(36)                                                               | FK → users.id (uploader Kader), nullable                          |
+| mentor_id        | char(36)                                                               | FK → users.id (uploader Mentor), nullable                         |
+| nama_file        | varchar(255)                                                           | Nama asli file                                                    |
+| path_file        | varchar(255)                                                           | Path relatif file di `public/`                                    |
+| tipe             | enum('kader','mentor')                                                 | Tipe uploader                                                     |
+| status           | enum('pending','approved','rejected')                                  | Status approval, default `pending`                               |
+| approved_by      | char(36)                                                               | FK → users.id (Admin MAI yang approve), nullable                  |
+| approved_at      | timestamp                                                              | Waktu approve, nullable                                           |
+| rejection_reason | text                                                                   | Alasan penolakan, nullable                                        |
+| created_at       | timestamp                                                              | default `current_timestamp()`                                     |
+| updated_at       | timestamp                                                              | `on update current_timestamp()`                                   |
+| jenis            | enum('OJT_REPORT','POST_ACTIVITY','FORM_IDP','PERJANJIAN_KERJA','REFLEKSI') | Jenis dokumen, nullable                                      |
+| modul_id         | int(11)                                                                | FK → modul.id (untuk POST_ACTIVITY), nullable                     |
+| id_batch         | int(11)                                                                | FK → batch.id_batch (untuk FORM_IDP), nullable                    |
+
+**Catatan jenis `FORM_IDP`:**
+- Diupload oleh Kader, satu kali per batch (`tipe='kader'`, `kader_id=users.id`, `id_batch` diisi dari `kader.id_batch`).
+- Memerlukan approval Admin MAI (company_code `021`).
+- Unique key `uniq_idp_per_batch (kader_id, jenis, id_batch)` mencegah duplikat IDP per batch. Baris jenis lain berisi `id_batch` NULL sehingga tidak terpengaruh.
+- DDL perubahan ada di `database/sql/dokumen_form_idp.sql`.

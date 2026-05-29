@@ -7,6 +7,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Master\DepartemenController;
 use App\Http\Controllers\Master\DivisiController;
 use App\Http\Controllers\Modul\DokumenController;
+use App\Http\Controllers\Modul\FormIdpController;
 use App\Http\Controllers\Report\FeedbackMaiController;
 use App\Http\Controllers\Modul\JawabanController;
 use App\Http\Controllers\Master\Mentor\KaderPerMentorController;
@@ -58,6 +59,9 @@ Route::middleware(['can:isKader'])->group(function () {
     });
 
     Route::get('/my-learning', [LearningController::class, 'index'])->name('my.learning');
+
+    Route::get('/form-idp', [FormIdpController::class, 'index'])->name('form-idp.index');
+    Route::post('/form-idp/upload', [FormIdpController::class, 'store'])->name('form-idp.upload');
 
     Route::get('/feedback_mai-mentor', [FeedbackMaiController::class, 'fm_mentor_index'])->name('fm.mentor.index');
     Route::get('/feedback_mai-mentor/export/{id_week}/{nik_kader}', [FeedbackMaiController::class, 'fm_mentor_export'])->name('fm.mentor.export');
@@ -225,6 +229,8 @@ Route::middleware(['can:isAdmin021'])->group(function () {
     Route::post('/approval/ojt/{kader_id}/{fmc}/reject', [ApprovalController::class, 'rejectOjt'])->name('approval.ojt.reject');
     Route::post('/approval/post-activity/{dokumen}/approve', [ApprovalController::class, 'approvePostActivity'])->name('approval.pa.approve');
     Route::post('/approval/post-activity/{dokumen}/reject', [ApprovalController::class, 'rejectPostActivity'])->name('approval.pa.reject');
+    Route::post('/approval/idp/{dokumen}/approve', [ApprovalController::class, 'approveIdp'])->name('approval.idp.approve');
+    Route::post('/approval/idp/{dokumen}/reject', [ApprovalController::class, 'rejectIdp'])->name('approval.idp.reject');
 });
 Route::middleware(['can:isAdmin&Mentor'])->group(function () {
     Route::controller(ReportController::class)->group(function () {

@@ -28,6 +28,7 @@ function saveDismissed(userId, data) {
 
 function itemKey(item) {
     if (item.type === "ojt") return `ojt_fmc${item.fmc_number}_${item.updated_at ?? ""}${item.kader_nama ?? ""}`;
+    if (item.type === "idp") return `idp_${item.nama_file ?? ""}_${item.updated_at ?? ""}`;
     return `pa_${item.nama_file ?? ""}_${item.updated_at ?? ""}`;
 }
 
@@ -201,6 +202,8 @@ function UserBell({ inbox, userId }) {
                                             <p className="text-xs font-semibold text-slate-700 line-clamp-2">
                                                 {item.type === "ojt"
                                                     ? `OJT FMC-${item.fmc_number}${item.kader_nama ? ` · ${item.kader_nama}` : ""}`
+                                                    : item.type === "idp"
+                                                    ? `File IDP${item.nama_file ? ` (${item.nama_file})` : ""}`
                                                     : `Post Activity${item.modul_nama ? ` · ${item.modul_nama}` : ""}${item.nama_file ? ` (${item.nama_file})` : ""}`
                                                 }
                                             </p>
