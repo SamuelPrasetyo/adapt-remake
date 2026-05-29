@@ -16,8 +16,29 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4">
-            <div className="w-full max-w-sm">
+        <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4 relative overflow-hidden">
+
+            {/* Dot grid — top right */}
+            <div className="absolute top-8 right-8 grid grid-cols-7 gap-3 opacity-40 pointer-events-none select-none">
+                {Array.from({ length: 35 }).map((_, i) => (
+                    <span key={i} className="w-1.5 h-1.5 rounded-full bg-indigo-300" />
+                ))}
+            </div>
+
+            {/* Dot grid — bottom left */}
+            <div className="absolute bottom-8 left-8 grid grid-cols-7 gap-3 opacity-40 pointer-events-none select-none">
+                {Array.from({ length: 35 }).map((_, i) => (
+                    <span key={i} className="w-1.5 h-1.5 rounded-full bg-indigo-300" />
+                ))}
+            </div>
+
+            {/* Card placeholder decorations — bottom left */}
+            <div className="absolute bottom-16 left-16 pointer-events-none select-none">
+                <div className="w-36 h-24 rounded-xl bg-indigo-100/70 border border-indigo-200/60 shadow-sm" />
+                <div className="w-28 h-16 rounded-xl bg-indigo-50/80 border border-indigo-200/50 shadow-sm mt-2 ml-4" />
+            </div>
+
+            <div className="w-full max-w-sm relative z-10">
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
                     <div className="flex justify-center mb-6">
                         <img
