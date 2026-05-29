@@ -39,26 +39,7 @@ class JawabanController extends Controller
      */
     public function index($usertype)
     {
-        if ($usertype == 'Mentor') {
-            $jawabans = Jawaban::select('weeks.angka_week')
-                ->join('weeks', 'weeks.id_week', 'jawaban.id_week')
-                ->groupBy('weeks.angka_week')
-                ->get();
-            $weeks = Week::orderBy('angka_week', 'asc')->get();
-        } elseif ($usertype == 'Kader') {
-            $jawabans = Jawaban::select('weeks_kader.angka_week')
-                ->join('weeks_kader', 'weeks_kader.id_week', 'jawaban.id_week')
-                ->groupBy('weeks_kader.angka_week')
-                ->get();
-            $weeks = WeekKader::orderBy('angka_week', 'asc')->get();
-        }
-
-        $kaders = Kader::orderBy('nama', 'asc')->get();
-        $pertanyaans = Pertanyaan::get();
-
-        $userType = $usertype;
-
-        return view('pages.jawaban.index', compact('jawabans', 'weeks', 'kaders', 'pertanyaans', 'userType'));
+        return redirect()->route('feedbackadmin.index');
     }
     public function feedback()
     {
@@ -67,72 +48,57 @@ class JawabanController extends Controller
         $company = Company::where('company_code', $this->user->company_code)->first();
         $kaders = Kader::where('company_code', $company->company_code)
             ->orderBy('nama', 'asc')
-            ->get();
+            ->get(['nik', 'nama']);
+
         $pertanyaans = Pertanyaan::where('type', $this->user->type)->where('status', 'Aktif')->orderBy('id_pertanyaan', 'asc')->get();
+        $pertanyaan    = [];
+        $id_pertanyaan = [];
         $no = 1;
         foreach ($pertanyaans as $val) {
-            $pertanyaan[$no] = $val->nama_pertanyaan;
+            $pertanyaan[$no]    = strip_tags($val->nama_pertanyaan);
             $id_pertanyaan[$no] = $val->id_pertanyaan;
             $no++;
         }
-        $counts = count($pertanyaans);
 
-        $nilai = Nilai::orderBy('id_nilai', 'asc')->get();
+        $nilai = Nilai::orderBy('id_nilai', 'asc')->get(['nama_nilai']);
 
         if ($this->user->type == 'Mentor') {
-            $last_week = Jawaban::select('weeks.angka_week')
+            $done = Jawaban::select('weeks.angka_week')
                 ->join('weeks', 'jawaban.id_week', 'weeks.id_week')
-                ->where('jawaban.created_by', Auth::user()->id)
+                ->where('jawaban.created_by', $this->user->id)
                 ->groupBy('weeks.angka_week')
-                ->get()
+                ->pluck('weeks.angka_week')
                 ->toArray();
 
             $weeks = Week::orderBy('angka_week', 'asc')
-                ->whereNotIn('angka_week', $last_week)
-                ->get();
-
-            return view('pages.jawaban.feedback', compact('subject', 'weeks', 'kaders', 'counts', 'pertanyaan', 'id_pertanyaan', 'nilai'));
-        } elseif ($this->user->type == 'Kader') {
-            $last_week = Jawaban::select('weeks_kader.angka_week')
+                ->whereNotIn('angka_week', $done)
+                ->get(['id_week', 'angka_week']);
+        } else {
+            $done = Jawaban::select('weeks_kader.angka_week')
                 ->join('weeks_kader', 'jawaban.id_week', 'weeks_kader.id_week')
-                ->where('jawaban.created_by', Auth::user()->id)
+                ->where('jawaban.created_by', $this->user->id)
                 ->groupBy('weeks_kader.angka_week')
-                ->get()
+                ->pluck('weeks_kader.angka_week')
                 ->toArray();
 
-
             $weeks = WeekKader::orderBy('angka_week', 'asc')
-                ->whereNotIn('angka_week', $last_week)
-                ->get();
-
-            return view('pages.jawaban.feedback_kader', compact('subject', 'weeks', 'kaders', 'counts', 'pertanyaan', 'id_pertanyaan'));
+                ->whereNotIn('angka_week', $done)
+                ->get(['id_week', 'angka_week']);
         }
+
+        return Inertia::render('FeedbackSurvey/Index', [
+            'subject'      => $subject ? strip_tags($subject->nama_pertanyaan) : null,
+            'weeks'        => $weeks,
+            'kaders'       => $kaders,
+            'pertanyaan'   => $pertanyaan,
+            'idPertanyaan' => $id_pertanyaan,
+            'nilai'        => $nilai,
+            'userType'     => $this->user->type,
+        ]);
     }
     public function feedback_user($angka_week, $usertype)
     {
-
-        $kaders = Jawaban::select('users.name as nama', 'users.type', 'company.company_shortname as bu')
-            ->where('weeks.angka_week', $angka_week)
-            ->join('weeks', 'jawaban.id_week', 'weeks.id_week')
-            ->join('kader', 'jawaban.nik_kader', 'kader.nik')
-            ->join('users', 'jawaban.created_by', 'users.id')
-            ->join('company', 'kader.company_code', 'company.company_code')
-            ->whereNull('jawaban.nama_mentor')
-            ->where('users.type', $usertype)
-            ->groupBy('users.name', 'users.type', 'company.company_shortname');
-        $mentors = Jawaban::select('jawaban.nama_mentor as nama', 'users.type', 'company.company_shortname as bu')
-            ->where('weeks.angka_week', $angka_week)
-            ->join('weeks', 'jawaban.id_week', 'weeks.id_week')
-            ->join('users', 'jawaban.created_by', 'users.id')
-            ->join('company', 'users.company_code', 'company.company_code')
-            ->whereNotNull('jawaban.nama_mentor')
-            ->where('users.type', $usertype)
-            ->groupBy('jawaban.nama_mentor', 'users.type', 'company.company_shortname');
-
-        $users = $kaders->unionAll($mentors)->get();
-        $week = $angka_week;
-        $userType = $usertype;
-        return view('pages.jawaban.feedback_user', compact('users', 'week', 'userType'));
+        return redirect()->route('feedbackadmin.index');
     }
     public function feedback_store(Request $request)
     {
@@ -241,38 +207,7 @@ class JawabanController extends Controller
 
     public function detail($param)
     {
-        $split = explode('-', $param);
-        $angka_week = $split[0];
-        $user_name = str_replace('_', ' ', $split[1]);
-
-        $jawabans = Jawaban::select('jawaban.*', 'kader.nama as nama_kader', 'weeks.angka_week', 'pertanyaan.nama_pertanyaan', 'weeks.angka_week')
-            ->join('pertanyaan', 'pertanyaan.id_pertanyaan', 'jawaban.id_pertanyaan')
-            ->join('weeks', 'weeks.id_week', 'jawaban.id_week')
-            ->join('users', 'jawaban.created_by', 'users.id')
-            ->join('kader', 'jawaban.nik_kader', 'kader.nik')
-            ->where(function ($query) use ($user_name) {
-                $query->where('jawaban.nama_mentor', $user_name)
-                    ->orWhere('users.name', $user_name);
-            })
-            ->where('weeks.angka_week', $angka_week)
-            ->get();
-
-
-        $title = Jawaban::select('jawaban.*', 'kader.nama as nama_kader', 'users.name as nama_mentor', 'users.type')
-            ->join('weeks', 'weeks.id_week', 'jawaban.id_week')
-            ->join('kader', 'jawaban.nik_kader', 'kader.nik')
-            ->join('users', 'jawaban.created_by', 'users.id')
-            ->where('weeks.angka_week', $angka_week)
-            ->where(function ($query) use ($user_name) {
-                $query->where('jawaban.nama_mentor', $user_name)
-                    ->orWhere('users.name', $user_name);
-            })
-            ->first();
-
-
-        $week = $angka_week;
-
-        return view('pages.jawaban.detail', compact('jawabans', 'week', 'title'));
+        return redirect()->route('feedbackadmin.index');
     }
 
     public function fetchWeek(Request $request)

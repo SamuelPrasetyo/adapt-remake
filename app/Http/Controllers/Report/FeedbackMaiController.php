@@ -13,6 +13,7 @@ use App\Models\WeekKader;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
 use RealRashid\SweetAlert\Facades\Alert;
 use Illuminate\Support\Str;
 
@@ -45,7 +46,10 @@ class FeedbackMaiController extends Controller
             ->orderBy('weeks_kader.angka_week','desc')
             ->get();
 
-        return view('pages.feedbackmai.fm_kader', compact('feedbacks','kaders'));
+        return Inertia::render('FeedbackMai/FmKader', [
+            'kaders'    => $kaders,
+            'feedbacks' => $feedbacks,
+        ]);
     }
 
     public function fm_kader_export($id_week,$nik_kader)
@@ -86,7 +90,9 @@ class FeedbackMaiController extends Controller
             ->get();
 
 
-        return view('pages.feedbackmai.fm_mentor', compact('feedbacks'));
+        return Inertia::render('FeedbackMai/FmMentor', [
+            'feedbacks' => $feedbacks,
+        ]);
     }
 
     public function fm_mentor_export($id_week, $nik_kader)

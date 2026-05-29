@@ -41,7 +41,7 @@ use Inertia\Inertia;
 */
 
 Route::get('/', function () {
-    return view('app');
+    return redirect('/login');
 });
 
 Route::middleware(['can:isAll'])->group(function () {

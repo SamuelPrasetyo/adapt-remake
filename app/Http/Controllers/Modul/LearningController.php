@@ -140,18 +140,7 @@ class LearningController extends Controller
 
     public function test($id, $type)
     {
-        $modul = Modul::findOrFail($id);
-
-        $soals = SoalModul::with('jawabans')
-            ->where('modul_id', $id)
-            ->where('tipe', $type)
-            ->get();
-
-        return view('pages.learning.test', compact(
-            'modul',
-            'soals',
-            'type'
-        ));
+        return redirect()->route('learning.detail', $id);
     }
 
     public function submitTest(Request $request)

@@ -556,65 +556,7 @@ class ReportController extends Controller
 
     public function report_feedback_back($ojt)
     {
-        $datas = Kader::select('kader.nama', 'kader.jenis_kelamin', 'kader.iq', 'kader.ipk', 'company.company_name', 'divisis.nama as divisi', 'departemens.nama as departement', 'batch.nama_batch', 'batch.tahun_batch', 'kader.nik', 'jawaban.nik_kader')
-            ->leftJoin('company', 'kader.company_code', 'company.company_code')
-            ->leftJoin('divisis', 'kader.id_divisi', 'divisis.id')
-            ->leftJoin('departemens', 'kader.id_departemen', 'departemens.id')
-            ->leftJoin('batch', 'kader.id_batch', 'batch.id_batch')
-            ->leftJoin('jawaban', 'kader.nik', 'jawaban.nik_kader')
-            ->groupBy('kader.nama', 'kader.jenis_kelamin', 'kader.iq', 'kader.ipk', 'company.company_name', 'divisis.nama', 'departemens.nama', 'jawaban.nik_kader', 'kader.nik', 'batch.nama_batch', 'batch.tahun_batch')
-            ->get();
-        $mentor[] = [];
-
-        switch ($ojt) {
-            case '1':
-                $arr_week = ['2', '4', '6', '8', '10', '12'];
-                break;
-            case '2':
-                $arr_week = ['14', '16', '18', '20', '22', '24'];
-                break;
-            case '3':
-                $arr_week = ['26', '28', '30', '32', '34', '36'];
-                break;
-            case '4':
-                $arr_week = ['38', '40', '42', '44', '46', '48'];
-                break;
-            default:
-                $arr_week = [];
-                break;
-        }
-        $weeks = Week::whereIn('angka_week', $arr_week)->get();
-
-        foreach ($datas as $value) {
-            $data_mentor = Jawaban::select('jawaban.nama_mentor', 'jawaban.nik_kader')
-                ->where('jawaban.nik_kader', $value->nik)
-                ->groupBy('jawaban.nama_mentor', 'jawaban.nik_kader')
-                ->get();
-
-            foreach ($data_mentor as $dt) {
-                if (!isset($mentor[$dt->nik_kader])) {
-                    $mentor[$dt->nik_kader] = [];
-                }
-                array_push($mentor[$dt->nik_kader], $dt->nama_mentor);
-            }
-
-            $data_jawaban = Jawaban::select('jawaban.*', 'pertanyaan.nama_pertanyaan', 'pertanyaan.type')
-                ->where('nik_kader', $value->nik)
-                ->join('pertanyaan', 'jawaban.id_pertanyaan', 'pertanyaan.id_pertanyaan')
-                ->get();
-
-            foreach ($data_jawaban as $key => $jwb) {
-                $jawaban[$jwb->id_pertanyaan][$jwb->id_week][$value->nik] = $jwb->jawaban;
-                $revisi[$jwb->id_pertanyaan][$jwb->id_week][$value->nik] = $jwb->essay_revisi;
-            }
-        }
-        $pertanyaans = Pertanyaan::get();
-        $performance_sums = PerformanceSum::where('ojt', $ojt)->get();
-
-        $ojt = $ojt;
-
-
-        return view('pages.report.feedback', compact('datas', 'mentor', 'jawaban', 'pertanyaans', 'weeks', 'revisi', 'performance_sums', 'ojt'));
+        return redirect()->route('reportfeedback.index');
     }
 
     public function perform_sum_add(Request $request)
