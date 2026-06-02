@@ -290,6 +290,15 @@ class LearningController extends Controller
             return back()->withErrors(['file' => $msg]);
         }
 
+        // Re-upload setelah ditolak — hapus dokumen lama (file + row) agar tidak menumpuk file sampah.
+        if ($lastDoc && $lastDoc->status === 'rejected') {
+            $oldPath = public_path($lastDoc->path_file);
+            if ($lastDoc->path_file && file_exists($oldPath)) {
+                @unlink($oldPath);
+            }
+            $lastDoc->delete();
+        }
+
         $folder = public_path('uploads/post_activity');
         if (!file_exists($folder)) {
             mkdir($folder, 0755, true);

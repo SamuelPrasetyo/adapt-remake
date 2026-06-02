@@ -275,7 +275,7 @@ function KaderTable({ kaders, mentorFilter, mentors, onMentorFilter, batches, ba
     }, [totalPages, safePage]);
 
     return (
-        <div className="bg-white rounded-2xl shadow-[var(--shadow-card)] overflow-hidden mb-6">
+        <div className="bg-white rounded-2xl shadow-[var(--shadow-card)] mb-6">
             {/* Header */}
             <div className="px-4 lg:px-6 py-4 border-b border-slate-100">
                 <div className="flex items-start gap-3">
@@ -319,7 +319,7 @@ function KaderTable({ kaders, mentorFilter, mentors, onMentorFilter, batches, ba
                 </div>
             ) : (
                 <>
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto rounded-b-2xl">
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="text-left text-[11px] uppercase tracking-wider text-slate-500 bg-slate-50">

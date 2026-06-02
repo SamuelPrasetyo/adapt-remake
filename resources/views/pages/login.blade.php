@@ -98,7 +98,8 @@
                                     id="nik"
                                     name="nik"
                                     placeholder="Enter your username"
-                                    autofocus />
+                                    autofocus
+                                    required />
                             </div>
                             <div class="mb-3 form-password-toggle">
                                 <div class="d-flex justify-content-between">
@@ -111,7 +112,8 @@
                                         class="form-control"
                                         name="password"
                                         placeholder="Enter your password"
-                                        aria-describedby="password" />
+                                        aria-describedby="password"
+                                        required />
                                     <span class="input-group-text cursor-pointer"><i class="bx bx-hide"></i></span>
                                 </div>
                             </div>
@@ -147,6 +149,20 @@
 
     <!-- Place this tag in your head or just before your close body tag. -->
     <script async defer src="https://buttons.github.io/buttons.js"></script>
+    <script>
+        document.getElementById('nik').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('password').focus();
+            }
+        });
+        document.getElementById('password').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('formAuthentication').submit();
+            }
+        });
+    </script>
 </body>
 
 </html>

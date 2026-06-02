@@ -34,6 +34,15 @@ export const ADMIN_NAV = [
         match: "/approval",
         requires: "admin021",
     },
+    {
+        type: "item",
+        label: "Approval IDP",
+        icon: "check",
+        href: "/approval/idp",
+        match: "/approval/idp",
+        requires: "mentor_only",
+        preserveMentor: true,
+    },
     { type: "section", label: "Program & Modul" },
     {
         type: "item",
@@ -158,6 +167,12 @@ export const ADMIN_NAV = [
                 match: "/dokumen",
                 requires: "admin",
             },
+            {
+                label: "Template IDP",
+                href: "/form-idp/admin",
+                match: "/form-idp/admin",
+                requires: "admin021",
+            },
         ],
     },
     { type: "section", label: "Report" },
@@ -202,5 +217,13 @@ export const KADER_NAV = [
         children: [
             { label: "My Modul", href: "/my-learning", match: "/my-learning" },
         ],
+    },
+    { type: "section", label: "Dokumen" },
+    {
+        type: "item",
+        label: "Upload File IDP",
+        icon: "file",
+        href: "/form-idp",
+        match: "/form-idp",
     },
 ];
