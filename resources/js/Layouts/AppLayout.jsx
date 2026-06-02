@@ -274,6 +274,21 @@ export default function AppLayout({
                     <div className="flex items-center gap-4">
                         {headerActions}
 
+                        {/* Batch berjalan + minggu ke-N (dihitung dari tanggal batch) */}
+                        {props?.currentBatchInfo && (
+                            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50 ring-1 ring-slate-200">
+                                <span className="text-xs font-medium text-slate-700">{props.currentBatchInfo.nama_batch}</span>
+                                {props.currentBatchInfo.currentWeek != null && (
+                                    <>
+                                        <span className="text-slate-300">|</span>
+                                        <span className="text-xs font-semibold text-blue-600">
+                                            Minggu {props.currentBatchInfo.currentWeek}/{props.currentBatchInfo.totalWeeks}
+                                        </span>
+                                    </>
+                                )}
+                            </div>
+                        )}
+
                         {/* Inbox Bell — Kader, Mentor & Admin021 */}
                         <InboxBell inbox={inbox} user={user} />
 

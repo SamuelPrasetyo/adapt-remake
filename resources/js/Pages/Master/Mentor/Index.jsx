@@ -126,10 +126,6 @@ export default function MentorIndex({ mentors, companys, kaders = [], assignment
 
     const submitAssign = (e) => {
         e.preventDefault();
-        if (assignKaderIds.length === 0) {
-            alert('Pilih minimal satu kader.');
-            return;
-        }
         setAssignProcessing(true);
         router.post('/mentor/assign-kader', {
             mentor_id: assignMentor.id,

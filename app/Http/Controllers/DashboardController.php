@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Master\Mentor\KaderPerMentorController;
+use App\Models\Batch;
 use App\Models\Jawaban;
 use App\Models\Kader;
 use App\Models\Mentor;
@@ -45,6 +46,8 @@ class DashboardController extends Controller
         $buName         = null;
         $buShort        = null;
         $mentorFilter   = 'all';
+        $batches        = collect();
+        $batchFilter    = null;
 
         if ($showMentorPanel) {
             // Mentor user limited to BU sendiri; Admin 021 lihat semua
@@ -87,10 +90,16 @@ class DashboardController extends Controller
             $mentorFilter = $request->query('mentor_id', 'all');
             $perMentor    = app(KaderPerMentorController::class);
 
+            // Filter batch: default ke batch yang sedang berjalan; 'all' = semua batch.
+            $batches      = Batch::orderByDesc('tanggal_mulai')->orderByDesc('id_batch')->get();
+            $defaultBatch = optional(Batch::current())->id_batch;
+            $batchFilter  = $request->query('batch_id', $defaultBatch);
+            $idBatch      = ($batchFilter === 'all') ? null : $batchFilter;
+
             if ($mentorFilter && $mentorFilter !== 'all') {
                 $selectedMentor = $mentors->firstWhere('id', $mentorFilter);
                 if ($selectedMentor) {
-                    $kaders = $perMentor->listByMentorQuery($mentorFilter);
+                    $kaders = $perMentor->listByMentorQuery($mentorFilter, $idBatch);
                 } else {
                     // mentor_id tidak ditemukan -> fallback ke all
                     $mentorFilter = 'all';
@@ -98,7 +107,7 @@ class DashboardController extends Controller
             }
 
             if ($mentorFilter === 'all') {
-                $kaders = $perMentor->listAllKadersInBU($targetCompanyCode);
+                $kaders = $perMentor->listAllKadersInBU($targetCompanyCode, $idBatch);
             }
         }
 
@@ -111,6 +120,8 @@ class DashboardController extends Controller
             'mentors'            => $mentors,
             'selectedMentor'     => $selectedMentor,
             'mentorFilter'       => $mentorFilter,
+            'batches'            => $batches,
+            'batchFilter'        => $batchFilter !== null ? (string) $batchFilter : 'all',
             'kaders'             => $kaders,
             'buName'             => $buName,
             'buShort'            => $buShort,

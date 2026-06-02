@@ -212,12 +212,10 @@ class PenilaianOjtController extends Controller
     private function sheetFromCode(string $code): ?string
     {
         $prefix = explode('.', $code, 2)[0] ?? '';
-        return match ($prefix) {
-            'ojt'   => 'ojt',
-            'value' => 'value',
-            'pres'  => 'presentation',
-            default => null,
-        };
+        if ($prefix === 'ojt')   return 'ojt';
+        if ($prefix === 'value') return 'value';
+        if ($prefix === 'pres')  return 'presentation';
+        return null;
     }
 
     /**
@@ -264,19 +262,19 @@ class PenilaianOjtController extends Controller
             $penilaianList[] = [
                 'fmc'                  => $fmc,
                 'exists'               => (bool) $rec,
-                'ojt_score'            => $rec?->ojt_score          !== null ? (float) $rec->ojt_score          : null,
-                'value_score'          => $rec?->value_score        !== null ? (float) $rec->value_score        : null,
-                'presentation_score'   => $rec?->presentation_score !== null ? (float) $rec->presentation_score : null,
-                'final_score'          => $rec?->final_score        !== null ? (float) $rec->final_score        : null,
-                'overview'             => $rec?->overview,
-                'strengths'            => $rec?->strengths,
-                'weakness'             => $rec?->weakness,
-                'mentor_comments'      => $rec?->mentor_comments,
-                'final_recommendation' => $rec?->final_recommendation,
-                'approval_status'      => $rec?->approval_status ?? 'pending',
-                'approved_at'          => $rec?->approved_at?->toIso8601String(),
-                'rejection_reason'     => $rec?->rejection_reason,
-                'updated_at'           => $rec?->updated_at?->toIso8601String(),
+                'ojt_score'            => ($rec && $rec->ojt_score !== null)          ? (float) $rec->ojt_score          : null,
+                'value_score'          => ($rec && $rec->value_score !== null)        ? (float) $rec->value_score        : null,
+                'presentation_score'   => ($rec && $rec->presentation_score !== null) ? (float) $rec->presentation_score : null,
+                'final_score'          => ($rec && $rec->final_score !== null)        ? (float) $rec->final_score        : null,
+                'overview'             => $rec ? $rec->overview : null,
+                'strengths'            => $rec ? $rec->strengths : null,
+                'weakness'             => $rec ? $rec->weakness : null,
+                'mentor_comments'      => $rec ? $rec->mentor_comments : null,
+                'final_recommendation' => $rec ? $rec->final_recommendation : null,
+                'approval_status'      => $rec ? ($rec->approval_status ?? 'pending') : 'pending',
+                'approved_at'          => ($rec && $rec->approved_at) ? $rec->approved_at->toIso8601String() : null,
+                'rejection_reason'     => $rec ? $rec->rejection_reason : null,
+                'updated_at'           => ($rec && $rec->updated_at) ? $rec->updated_at->toIso8601String() : null,
             ];
 
             if ($rec) {

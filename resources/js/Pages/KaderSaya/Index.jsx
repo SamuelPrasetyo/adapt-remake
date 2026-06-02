@@ -131,6 +131,81 @@ function MentorDropdown({ mentors, value, onChange }) {
     );
 }
 
+function BatchDropdown({ batches, value, onChange }) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef(null);
+
+    useEffect(() => {
+        const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+        document.addEventListener('mousedown', h);
+        return () => document.removeEventListener('mousedown', h);
+    }, []);
+
+    const list  = batches || [];
+    const today = new Date().toISOString().slice(0, 10);
+    const isActiveBatch = (b) => {
+        const m = b.tanggal_mulai ? String(b.tanggal_mulai).slice(0, 10) : null;
+        const s = b.tanggal_selesai ? String(b.tanggal_selesai).slice(0, 10) : null;
+        return !!m && !!s && m <= today && today <= s;
+    };
+    const batchLabel = (b) => `${b.nama_batch}${b.tahun_batch ? ` (${b.tahun_batch})` : ''}`;
+    const current = value === 'all' ? null : list.find(b => String(b.id_batch) === String(value));
+    const label = value === 'all' ? 'Semua Batch' : (current ? batchLabel(current) : 'Pilih Batch');
+
+    return (
+        <div className="relative" ref={ref}>
+            <button
+                type="button"
+                onClick={() => setOpen(!open)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ring-1 transition ${
+                    current ? 'bg-violet-50 text-violet-700 ring-violet-200' : 'bg-white text-slate-700 ring-slate-200 hover:bg-slate-50'
+                }`}
+            >
+                <svg className="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span className="truncate max-w-40">{label}</span>
+                <svg className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 9l6 6 6-6" />
+                </svg>
+            </button>
+
+            {open && (
+                <div className="absolute right-0 top-[calc(100%+6px)] w-64 z-30 bg-white rounded-xl shadow-xl ring-1 ring-slate-200 overflow-hidden">
+                    <div className="max-h-64 overflow-y-auto py-1">
+                        {list.length === 0 ? (
+                            <div className="px-3 py-4 text-center text-xs text-slate-500">Belum ada batch.</div>
+                        ) : list.map((b) => {
+                            const sel = String(value) === String(b.id_batch);
+                            return (
+                                <button
+                                    key={b.id_batch}
+                                    type="button"
+                                    onClick={() => { onChange(String(b.id_batch)); setOpen(false); }}
+                                    className={`w-full text-left px-3 py-2 flex items-center gap-2 text-sm transition ${sel ? 'bg-violet-50 text-violet-700' : 'hover:bg-slate-50 text-slate-700'}`}
+                                >
+                                    <span className="flex-1 min-w-0 font-medium truncate">{batchLabel(b)}</span>
+                                    {isActiveBatch(b) && (
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 shrink-0">Aktif</span>
+                                    )}
+                                </button>
+                            );
+                        })}
+                        <div className="border-t border-slate-100 my-1" />
+                        <button
+                            type="button"
+                            onClick={() => { onChange('all'); setOpen(false); }}
+                            className={`w-full text-left px-3 py-2 text-sm font-medium transition ${value === 'all' ? 'bg-violet-50 text-violet-700' : 'text-slate-700 hover:bg-slate-50'}`}
+                        >
+                            Semua Batch
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 function KaderCard({ kader }) {
     const initials = (kader.nama_kader || '?').split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() || '').join('');
     const pct      = Number(kader.progress_overall || 0);
@@ -201,13 +276,20 @@ function KaderCard({ kader }) {
     );
 }
 
-export default function KaderSayaIndex({ kaders = [], mentors = [], selectedMentor, mentorFilter = 'all' }) {
+export default function KaderSayaIndex({ kaders = [], mentors = [], selectedMentor, mentorFilter = 'all', batches = [], batchFilter = 'all' }) {
     const [search, setSearch] = useState('');
 
-    const handleMentorFilter = (value) => {
-        const params = value && value !== 'all' ? { mentor_id: value } : {};
+    // Navigasi dengan mempertahankan filter mentor & batch sekaligus.
+    const navigateFilter = (next) => {
+        const mf = next.mentor_id !== undefined ? next.mentor_id : mentorFilter;
+        const bf = next.batch_id  !== undefined ? next.batch_id  : batchFilter;
+        const params = {};
+        if (mf && mf !== 'all') params.mentor_id = mf;
+        if (bf && bf !== 'all') params.batch_id  = bf;
         router.visit('/kader-saya', { data: params, preserveScroll: true });
     };
+    const handleMentorFilter = (value) => navigateFilter({ mentor_id: value });
+    const handleBatchFilter  = (value) => navigateFilter({ batch_id: value });
 
     const filtered = useMemo(() => {
         if (!search.trim()) return kaders;
@@ -238,6 +320,9 @@ export default function KaderSayaIndex({ kaders = [], mentors = [], selectedMent
                         onChange={(e) => setSearch(e.target.value)}
                         className="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 bg-white flex-1 min-w-0"
                     />
+                    {batches.length > 0 && (
+                        <BatchDropdown batches={batches} value={batchFilter} onChange={handleBatchFilter} />
+                    )}
                     {mentors.length > 0 && (
                         <MentorDropdown mentors={mentors} value={mentorFilter} onChange={handleMentorFilter} />
                     )}

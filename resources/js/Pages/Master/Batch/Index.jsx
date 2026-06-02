@@ -4,17 +4,33 @@ import AppLayout from '@/Layouts/AppLayout';
 import DataTable from '@/Components/DataTable';
 import Modal from '@/Components/Modal';
 
+const dateOnly = (v) => (v ? String(v).slice(0, 10) : '');
+const fmtDate  = (v) => { const d = dateOnly(v); return d ? d.split('-').reverse().join('/') : '-'; };
+const isActive = (row) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const m = dateOnly(row.tanggal_mulai);
+    const s = dateOnly(row.tanggal_selesai);
+    return !!m && !!s && m <= today && today <= s;
+};
+
 const COLS = [
     { key: '_no',        label: 'No',         width: '60px', render: (_, __, i) => i + 1 },
     { key: 'nama_batch', label: 'Nama Batch',  sortable: true },
     { key: 'tahun_batch',label: 'Tahun Batch', sortable: true },
+    { key: 'tanggal_mulai',   label: 'Mulai',   render: (v) => fmtDate(v) },
+    { key: 'tanggal_selesai', label: 'Selesai', render: (v) => fmtDate(v) },
+    { key: '_status', label: 'Status', render: (_, row) => (
+        isActive(row)
+            ? <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700">Aktif</span>
+            : <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-slate-100 text-slate-500">Nonaktif</span>
+    ) },
 ];
 
-function TextField({ label, value, onChange, error, type = 'text' }) {
+function TextField({ label, value, onChange, error, type = 'text', required = true }) {
     return (
         <div className="mb-4">
             <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
-            <input type={type} value={value} onChange={onChange} required
+            <input type={type} value={value} onChange={onChange} required={required}
                 className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500" />
             {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
         </div>
@@ -34,8 +50,8 @@ export default function BatchIndex({ batchs }) {
     const [editOpen, setEditOpen]     = useState(false);
     const [editRow, setEditRow]       = useState(null);
 
-    const addForm  = useForm({ nama_batch: '', tahun_batch: '' });
-    const editForm = useForm({ nama_batch: '', tahun_batch: '' });
+    const addForm  = useForm({ nama_batch: '', tahun_batch: '', tanggal_mulai: '', tanggal_selesai: '' });
+    const editForm = useForm({ nama_batch: '', tahun_batch: '', tanggal_mulai: '', tanggal_selesai: '' });
 
     const submitAdd = (e) => {
         e.preventDefault();
@@ -46,7 +62,12 @@ export default function BatchIndex({ batchs }) {
 
     const openEdit = (row) => {
         setEditRow(row);
-        editForm.setData({ nama_batch: row.nama_batch, tahun_batch: row.tahun_batch });
+        editForm.setData({
+            nama_batch: row.nama_batch,
+            tahun_batch: row.tahun_batch,
+            tanggal_mulai: dateOnly(row.tanggal_mulai),
+            tanggal_selesai: dateOnly(row.tanggal_selesai),
+        });
         setEditOpen(true);
     };
 
@@ -108,6 +129,10 @@ export default function BatchIndex({ batchs }) {
                         onChange={(e) => addForm.setData('nama_batch', e.target.value)} error={addForm.errors.nama_batch} />
                     <TextField label="Tahun Batch" type="number" value={addForm.data.tahun_batch}
                         onChange={(e) => addForm.setData('tahun_batch', e.target.value)} error={addForm.errors.tahun_batch} />
+                    <TextField label="Tanggal Mulai" type="date" required={false} value={addForm.data.tanggal_mulai}
+                        onChange={(e) => addForm.setData('tanggal_mulai', e.target.value)} error={addForm.errors.tanggal_mulai} />
+                    <TextField label="Tanggal Selesai" type="date" required={false} value={addForm.data.tanggal_selesai}
+                        onChange={(e) => addForm.setData('tanggal_selesai', e.target.value)} error={addForm.errors.tanggal_selesai} />
                 </form>
             </Modal>
 
@@ -126,6 +151,10 @@ export default function BatchIndex({ batchs }) {
                         onChange={(e) => editForm.setData('nama_batch', e.target.value)} error={editForm.errors.nama_batch} />
                     <TextField label="Tahun Batch" type="number" value={editForm.data.tahun_batch}
                         onChange={(e) => editForm.setData('tahun_batch', e.target.value)} error={editForm.errors.tahun_batch} />
+                    <TextField label="Tanggal Mulai" type="date" required={false} value={editForm.data.tanggal_mulai}
+                        onChange={(e) => editForm.setData('tanggal_mulai', e.target.value)} error={editForm.errors.tanggal_mulai} />
+                    <TextField label="Tanggal Selesai" type="date" required={false} value={editForm.data.tanggal_selesai}
+                        onChange={(e) => editForm.setData('tanggal_selesai', e.target.value)} error={editForm.errors.tanggal_selesai} />
                 </form>
             </Modal>
         </AppLayout>

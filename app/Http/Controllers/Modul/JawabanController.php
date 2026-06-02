@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Modul;
 
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
+use App\Models\Batch;
 use App\Models\Company;
 use App\Models\Jawaban;
 use App\Models\Kader;
@@ -67,46 +68,61 @@ class JawabanController extends Controller
         $company = Company::where('company_code', $this->user->company_code)->first();
         $kaders = Kader::where('company_code', $company->company_code)
             ->orderBy('nama', 'asc')
-            ->get();
+            ->get(['nik', 'nama']);
+
         $pertanyaans = Pertanyaan::where('type', $this->user->type)->where('status', 'Aktif')->orderBy('id_pertanyaan', 'asc')->get();
+        $pertanyaan    = [];
+        $id_pertanyaan = [];
         $no = 1;
         foreach ($pertanyaans as $val) {
-            $pertanyaan[$no] = $val->nama_pertanyaan;
+            $pertanyaan[$no]    = strip_tags($val->nama_pertanyaan);
             $id_pertanyaan[$no] = $val->id_pertanyaan;
             $no++;
         }
-        $counts = count($pertanyaans);
 
-        $nilai = Nilai::orderBy('id_nilai', 'asc')->get();
+        $nilai = Nilai::orderBy('id_nilai', 'asc')->get(['nama_nilai']);
 
         if ($this->user->type == 'Mentor') {
-            $last_week = Jawaban::select('weeks.angka_week')
+            // Mentor mengisi utk kader di batch yang sedang berjalan.
+            $idBatch = optional(Batch::current())->id_batch;
+            $done = Jawaban::select('weeks.angka_week')
                 ->join('weeks', 'jawaban.id_week', 'weeks.id_week')
-                ->where('jawaban.created_by', Auth::user()->id)
+                ->where('jawaban.created_by', $this->user->id)
                 ->groupBy('weeks.angka_week')
-                ->get()
+                ->pluck('weeks.angka_week')
                 ->toArray();
 
-            $weeks = Week::orderBy('angka_week', 'asc')
-                ->whereNotIn('angka_week', $last_week)
-                ->get();
-
-            return view('pages.jawaban.feedback', compact('subject', 'weeks', 'kaders', 'counts', 'pertanyaan', 'id_pertanyaan', 'nilai'));
-        } elseif ($this->user->type == 'Kader') {
-            $last_week = Jawaban::select('weeks_kader.angka_week')
+            $weeks = Week::available()
+                ->when($idBatch, fn($q) => $q->forBatch($idBatch))
+                ->orderBy('angka_week', 'asc')
+                ->whereNotIn('angka_week', $done)
+                ->get(['id_week', 'angka_week']);
+        } else {
+            // Kader mengisi refleksi utk batch-nya sendiri.
+            $idBatch = Kader::where('nik', $this->user->nik)->value('id_batch');
+            $done = Jawaban::select('weeks_kader.angka_week')
                 ->join('weeks_kader', 'jawaban.id_week', 'weeks_kader.id_week')
-                ->where('jawaban.created_by', Auth::user()->id)
+                ->where('jawaban.created_by', $this->user->id)
                 ->groupBy('weeks_kader.angka_week')
-                ->get()
+                ->pluck('weeks_kader.angka_week')
                 ->toArray();
 
-
-            $weeks = WeekKader::orderBy('angka_week', 'asc')
-                ->whereNotIn('angka_week', $last_week)
-                ->get();
-
-            return view('pages.jawaban.feedback_kader', compact('subject', 'weeks', 'kaders', 'counts', 'pertanyaan', 'id_pertanyaan'));
+            $weeks = WeekKader::available()
+                ->when($idBatch, fn($q) => $q->forBatch($idBatch))
+                ->orderBy('angka_week', 'asc')
+                ->whereNotIn('angka_week', $done)
+                ->get(['id_week', 'angka_week']);
         }
+
+        return Inertia::render('FeedbackSurvey/Index', [
+            'subject'      => $subject ? strip_tags($subject->nama_pertanyaan) : null,
+            'weeks'        => $weeks,
+            'kaders'       => $kaders,
+            'pertanyaan'   => $pertanyaan,
+            'idPertanyaan' => $id_pertanyaan,
+            'nilai'        => $nilai,
+            'userType'     => $this->user->type,
+        ]);
     }
     public function feedback_user($angka_week, $usertype)
     {
@@ -136,6 +152,18 @@ class JawabanController extends Controller
     }
     public function feedback_store(Request $request)
     {
+        // Anti-fraud: week milik batch kader, sudah berjalan, & belum terisi.
+        $idBatch = Kader::where('nik', $request->nik_kader)->value('id_batch');
+        $valid = Week::available()->where('id_week', $request->id_week)
+            ->when($idBatch, fn($q) => $q->forBatch($idBatch))->exists();
+        $dup = Jawaban::where('nik_kader', $request->nik_kader)
+            ->where('id_week', $request->id_week)
+            ->whereNotNull('nama_mentor')->exists();
+        if (!$valid || $dup) {
+            Alert::warning('Failed', 'Week tidak valid, belum berjalan, atau sudah terisi.');
+            return redirect()->route('feedback.index');
+        }
+
         try {
             $jawaban_mentor['1'] = $request->pertanyaan1_mentor;
 
@@ -198,6 +226,19 @@ class JawabanController extends Controller
 
     public function feedback_kader_store(Request $request)
     {
+        // Anti-fraud: week milik batch kader, sudah berjalan, & belum terisi.
+        $nikKader = $request->nik_kader ?? $this->user->nik;
+        $idBatch  = Kader::where('nik', $nikKader)->value('id_batch');
+        $valid = WeekKader::available()->where('id_week', $request->id_week)
+            ->when($idBatch, fn($q) => $q->forBatch($idBatch))->exists();
+        $dup = Jawaban::where('nik_kader', $nikKader)
+            ->where('id_week', $request->id_week)
+            ->whereNull('nama_mentor')->exists();
+        if (!$valid || $dup) {
+            Alert::warning('Failed', 'Week tidak valid, belum berjalan, atau sudah terisi.');
+            return redirect()->route('feedback.index');
+        }
+
         try {
             $bu = Company::where('company_code', $this->user->company_code)->first();
             $week = WeekKader::where('id_week', $request->id_week)->first();

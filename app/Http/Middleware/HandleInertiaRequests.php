@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Batch;
+use App\Models\Kader;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Middleware;
@@ -44,6 +46,27 @@ class HandleInertiaRequests extends Middleware
                     'company_code' => $request->user()->company_code,
                 ] : null,
             ],
+            'currentBatchInfo' => function () use ($request) {
+                $user = $request->user();
+                if (!$user) return null;
+
+                // Kader -> batch-nya sendiri; selain itu -> batch yang sedang berjalan.
+                $batch = null;
+                if ($user->type === 'Kader') {
+                    $idBatch = Kader::where('nik', $user->nik)->value('id_batch');
+                    $batch   = $idBatch ? Batch::find($idBatch) : null;
+                }
+                $batch = $batch ?? Batch::current();
+                if (!$batch) return null;
+
+                $p = $batch->weekProgress();
+                return [
+                    'nama_batch'  => $batch->nama_batch,
+                    'tahun_batch' => $batch->tahun_batch,
+                    'currentWeek' => $p['current'],
+                    'totalWeeks'  => $p['total'],
+                ];
+            },
             'inbox' => function () use ($request) {
                 $user = $request->user();
                 if (!$user) return ['items' => [], 'total' => 0, 'is_admin' => false, 'pending_count' => 0];

@@ -109,12 +109,12 @@ class MentorModulController extends Controller
                 ->avg('score') ?? 0, 1)
             : 0;
 
-        $company = Company::where('company_code', ($mentorMaster?->company_code ?? $authUser->company_code))->first();
+        $company = Company::where('company_code', ($mentorMaster ? $mentorMaster->company_code : $authUser->company_code))->first();
 
         $profile = [
-            'nama'    => $selectedMentor ? ($mentorMaster?->nama ?? $authUser->name) : $authUser->name,
-            'jabatan' => $selectedMentor ? $mentorMaster?->jabatan : null,
-            'company' => $company?->company_name,
+            'nama'    => $selectedMentor ? ($mentorMaster ? $mentorMaster->nama : $authUser->name) : $authUser->name,
+            'jabatan' => $selectedMentor ? ($mentorMaster ? $mentorMaster->jabatan : null) : null,
+            'company' => $company ? $company->company_name : null,
         ];
 
         $stats = [

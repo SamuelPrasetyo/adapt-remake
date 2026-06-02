@@ -364,7 +364,7 @@ class ModulController extends Controller
      * $userIds: single string atau Collection of users.id
      * $filterModulIds: optional — hanya cek modul tertentu
      */
-    private function fetchLockedByProgress(string|\Illuminate\Support\Collection $userIds, array $filterModulIds = []): \Illuminate\Support\Collection
+    private function fetchLockedByProgress($userIds, array $filterModulIds = []): \Illuminate\Support\Collection
     {
         $single = is_string($userIds);
         $test = DB::table('modul_test_results');

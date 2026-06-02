@@ -46,10 +46,12 @@ class BatchController extends Controller
     public function store(Request $request)
     {
         $data = [
-            'nama_batch'    => $request->nama_batch,
-            'tahun_batch'   => $request->tahun_batch,
-            'created_at'    => now(),
-            'updated_by'    => Auth::user()->id
+            'nama_batch'      => $request->nama_batch,
+            'tahun_batch'     => $request->tahun_batch,
+            'tanggal_mulai'   => $request->tanggal_mulai ?: null,
+            'tanggal_selesai' => $request->tanggal_selesai ?: null,
+            'created_at'      => now(),
+            'updated_by'      => Auth::user()->id
         ];
 
         Batch::insert($data);
@@ -91,10 +93,12 @@ class BatchController extends Controller
     {
         $batch = Batch::where('id_batch', $id)->first();
         $data = [
-            'nama_batch'    => $request->nama_batch ?? $batch->nama_batch,
-            'tahun_batch'   => $request->tahun_batch ?? $batch->tahun_batch,
-            'updated_at'    => now(),
-            'updated_by'    => Auth::user()->id
+            'nama_batch'      => $request->nama_batch ?? $batch->nama_batch,
+            'tahun_batch'     => $request->tahun_batch ?? $batch->tahun_batch,
+            'tanggal_mulai'   => $request->tanggal_mulai ?: null,
+            'tanggal_selesai' => $request->tanggal_selesai ?: null,
+            'updated_at'      => now(),
+            'updated_by'      => Auth::user()->id
         ];
         Batch::where('id_batch', $id)
             ->update($data);

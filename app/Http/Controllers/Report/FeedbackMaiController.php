@@ -8,6 +8,7 @@ use App\Models\cr;
 use App\Models\FeedbackMai;
 use App\Models\FmDetail;
 use App\Models\Jawaban;
+use App\Models\Kader;
 use App\Models\Week;
 use App\Models\WeekKader;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -111,6 +112,17 @@ class FeedbackMaiController extends Controller
 
     public function feedbackmai(Request $request)
     {
+        // Anti-fraud: week harus milik batch kader, sudah berjalan, & belum terisi.
+        $idBatch = Kader::where('nik', $request->nik_kader)->value('id_batch');
+        $valid = WeekKader::available()->where('id_week', $request->id_week)
+            ->when($idBatch, fn($q) => $q->forBatch($idBatch))->exists();
+        $dup = FeedbackMai::where('user_type', 'kader')
+            ->where('nik_kader', $request->nik_kader)
+            ->where('id_week', $request->id_week)->exists();
+        if (!$valid || $dup) {
+            Alert::warning('Failed', 'Week tidak valid, belum berjalan, atau sudah terisi.');
+            return redirect()->route('reportfeedback.index');
+        }
 
         $feedbackmai = [
             'id_feedbackmai'    => Str::uuid(),
@@ -157,6 +169,18 @@ class FeedbackMaiController extends Controller
 
     public function feedbackmaiM(Request $request)
     {
+        // Anti-fraud: week harus milik batch kader, sudah berjalan, & belum terisi.
+        $idBatch = Kader::where('nik', $request->nik_kader)->value('id_batch');
+        $valid = Week::available()->where('id_week', $request->id_week_add)
+            ->when($idBatch, fn($q) => $q->forBatch($idBatch))->exists();
+        $dup = FeedbackMai::where('user_type', 'mentor')
+            ->where('nik_kader', $request->nik_kader)
+            ->where('id_week', $request->id_week_add)->exists();
+        if (!$valid || $dup) {
+            Alert::warning('Failed', 'Week tidak valid, belum berjalan, atau sudah terisi.');
+            return redirect()->route('reportfeedback.index');
+        }
+
         $feedbackmaiM = [
             'id_feedbackmai'    => Str::uuid(),
             'id_week'           => $request->id_week_add,
@@ -347,13 +371,16 @@ class FeedbackMaiController extends Controller
         }
 
         $nik_kader = $request->nik_kader;
+        $idBatch   = Kader::where('nik', $nik_kader)->value('id_batch');
 
         $week_fm = FeedbackMai::where('user_type', 'kader')
             ->where('nik_kader', $nik_kader)
             ->pluck('id_week')
             ->toArray();
 
-        $weeks = WeekKader::whereIn('angka_week', $arr_week)
+        $weeks = WeekKader::available()
+            ->when($idBatch, fn($q) => $q->forBatch($idBatch))
+            ->whereIn('angka_week', $arr_week)
             ->whereNotIn('id_week', $week_fm)
             ->orderBy('angka_week', 'asc')
             ->pluck('angka_week', 'id_week');
@@ -381,13 +408,15 @@ class FeedbackMaiController extends Controller
         }
 
         $nik_kader = $request->nik_kader;
+        $idBatch   = Kader::where('nik', $nik_kader)->value('id_batch');
 
         $week_fm = FeedbackMai::where('user_type', 'mentor')
             ->where('nik_kader', $nik_kader)
             ->pluck('id_week')
             ->toArray();
 
-        $weeks = Week::whereIn('id_week', $week_fm)
+        $weeks = Week::when($idBatch, fn($q) => $q->forBatch($idBatch))
+            ->whereIn('id_week', $week_fm)
             ->whereIn('angka_week',$arr_week)
             ->orderBy('angka_week', 'asc')
             ->pluck('angka_week', 'id_week');
@@ -415,13 +444,15 @@ class FeedbackMaiController extends Controller
         }
 
         $nik_kader = $request->nik_kader;
+        $idBatch   = Kader::where('nik', $nik_kader)->value('id_batch');
 
         $week_fm = FeedbackMai::where('user_type', 'kader')
             ->where('nik_kader', $nik_kader)
             ->pluck('id_week')
             ->toArray();
 
-        $weeks = WeekKader::whereIn('angka_week',$arr_week)
+        $weeks = WeekKader::when($idBatch, fn($q) => $q->forBatch($idBatch))
+                    ->whereIn('angka_week',$arr_week)
                     ->whereIn('id_week', $week_fm)
                     ->orderBy('angka_week', 'asc')
                     ->pluck('angka_week', 'id_week');
@@ -449,13 +480,17 @@ class FeedbackMaiController extends Controller
         }
 
         $nik_kader = $request->nik_kader;
+        $idBatch   = Kader::where('nik', $nik_kader)->value('id_batch');
 
         $week_fm = FeedbackMai::where('user_type', 'mentor')
             ->where('nik_kader', $nik_kader)
             ->pluck('id_week')
             ->toArray();
 
-        $weeks = Week::whereIn('angka_week', $arr_week)->whereNotIn('id_week', $week_fm)
+        $weeks = Week::available()
+            ->when($idBatch, fn($q) => $q->forBatch($idBatch))
+            ->whereIn('angka_week', $arr_week)
+            ->whereNotIn('id_week', $week_fm)
             ->orderBy('angka_week', 'asc')
             ->pluck('angka_week', 'id_week');
         return response()->json($weeks);
