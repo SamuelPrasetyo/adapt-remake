@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', function () {
-    return view('app');
+    return redirect()->route('login.index');
 });
 
 require __DIR__ . '/web/auth.php';
