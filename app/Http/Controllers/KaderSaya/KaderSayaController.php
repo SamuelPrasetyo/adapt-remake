@@ -271,7 +271,9 @@ class KaderSayaController extends Controller
             ? Week::forBatch($kader->id_batch)->count()
             : Week::count();
 
-        // Dropdown feedback: hanya minggu batch ini, sudah berjalan, & belum terisi (anti-fraud).
+        // Dropdown feedback: tampilkan SEMUA minggu batch ini; opsi di-disable di UI
+        // bila belum berjalan (is_available) atau sudah terisi (is_filled).
+        // Validasi anti-fraud tetap ketat di storeFeedback().
         $filledWeeks = Jawaban::where('nik_kader', $kader->nik)
             ->whereNotNull('nama_mentor')
             ->whereIn('id_pertanyaan', [1, 2, 3, 4, 5, 6])
@@ -279,19 +281,29 @@ class KaderSayaController extends Controller
             ->pluck('id_week')
             ->all();
 
-        $weeksQuery = Week::available()->whereNotIn('id_week', $filledWeeks);
+        $weeksQuery = Week::query();
         if ($kader->id_batch) {
             $weeksQuery->forBatch($kader->id_batch);
         }
+        $today = now()->toDateString();
         $weeks = $weeksQuery->orderBy('angka_week')
-            ->get(['id_week', 'angka_week', 'bulan', 'tahun', 'tanggal_mulai']);
+            ->get(['id_week', 'angka_week', 'bulan', 'tahun', 'tanggal_mulai'])
+            ->map(fn ($w) => [
+                'id_week'      => $w->id_week,
+                'angka_week'   => $w->angka_week,
+                'bulan'        => $w->bulan,
+                'tahun'        => $w->tahun,
+                'is_available' => $w->tanggal_mulai && $w->tanggal_mulai->toDateString() <= $today,
+                'is_filled'    => in_array($w->id_week, $filledWeeks),
+            ]);
 
+        // Refleksi kader diisi terhadap jadwal weeks_kader (48 minggu), bukan weeks (jadwal feedback mentor).
         $refleksiQuery = Jawaban::whereIn('jawaban.id_pertanyaan', [7, 8, 9])
             ->where('jawaban.nik_kader', $kader->nik)
             ->whereNull('jawaban.nama_mentor')
-            ->join('weeks', 'jawaban.id_week', '=', 'weeks.id_week')
+            ->join('weeks_kader', 'jawaban.id_week', '=', 'weeks_kader.id_week')
             ->select('jawaban.id_week', 'jawaban.id_pertanyaan', 'jawaban.jawaban',
-                     'jawaban.id_jawaban', 'weeks.angka_week', 'weeks.bulan', 'weeks.tahun')
+                     'jawaban.id_jawaban', 'weeks_kader.angka_week', 'weeks_kader.bulan', 'weeks_kader.tahun')
             ->orderBy('jawaban.id_week', 'desc')
             ->orderBy('jawaban.id_jawaban', 'desc');
 

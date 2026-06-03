@@ -204,16 +204,34 @@ function KirimFeedbackForm({ kader, weeks, mentorName, kaderId }) {
                         Week <span className="text-rose-500">*</span>
                     </label>
                     <select required value={form.id_week} onChange={e => handleChange('id_week', e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 bg-white">
-                        <option value="">--Pilih Week--</option>
+                        disabled={weekGroups.length === 0}
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 bg-white disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed">
+                        <option value="">
+                            {weekGroups.length === 0 ? '--Belum ada jadwal minggu--' : '--Pilih Week--'}
+                        </option>
                         {weekGroups.map(g => (
                             <optgroup key={g.label} label={g.label}>
-                                {g.items.map(w => (
-                                    <option key={w.id_week} value={w.id_week}>{BULAN_ID[w.bulan]} W{w.angka_week}</option>
-                                ))}
+                                {g.items.map(w => {
+                                    const disabled = !w.is_available || w.is_filled;
+                                    const suffix = w.is_filled ? ' — sudah diisi'
+                                        : (!w.is_available ? ' — belum waktunya' : '');
+                                    return (
+                                        <option key={w.id_week} value={w.id_week} disabled={disabled}>
+                                            {BULAN_ID[w.bulan]} W{w.angka_week}{suffix}
+                                        </option>
+                                    );
+                                })}
                             </optgroup>
                         ))}
                     </select>
+                    {weekGroups.length === 0 && (
+                        <p className="text-xs text-amber-600 mt-1.5 flex items-start gap-1">
+                            <svg className="w-3.5 h-3.5 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                            Belum ada jadwal minggu untuk batch ini. Atur tanggal mulai &amp; selesai batch, lalu simpan untuk men-generate jadwal.
+                        </p>
+                    )}
                 </div>
 
                 <div>

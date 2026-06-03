@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Master;
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\Batch;
+use App\Services\WeekGenerator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use RealRashid\SweetAlert\Facades\Alert;
@@ -45,17 +46,18 @@ class BatchController extends Controller
      */
     public function store(Request $request)
     {
-        $data = [
+        $batch = Batch::create([
             'nama_batch'      => $request->nama_batch,
             'tahun_batch'     => $request->tahun_batch,
             'tanggal_mulai'   => $request->tanggal_mulai ?: null,
             'tanggal_selesai' => $request->tanggal_selesai ?: null,
-            'created_at'      => now(),
-            'updated_by'      => Auth::user()->id
-        ];
+            'created_by'      => Auth::user()->id,
+        ]);
 
-        Batch::insert($data);
-        ActivityLog::activity_log('Mengubah data Batch');
+        // Generate jadwal weeks + weeks_kader bila tanggal batch lengkap.
+        WeekGenerator::syncForBatch($batch);
+
+        ActivityLog::activity_log('Menambah data Batch');
         Alert::success('Success', 'Data berhasil ditambahkan!');
         return redirect()->route('batch.index');
     }
@@ -102,6 +104,12 @@ class BatchController extends Controller
         ];
         Batch::where('id_batch', $id)
             ->update($data);
+
+        // Sinkronkan jadwal week (update tanggal di tempat, aman utk data lama).
+        $updated = Batch::find($id);
+        if ($updated) {
+            WeekGenerator::syncForBatch($updated);
+        }
 
         ActivityLog::activity_log('Mengedit data Batch');
         Alert::success('Success', 'Data berhasil diupdate!');
