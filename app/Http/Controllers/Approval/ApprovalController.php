@@ -63,23 +63,26 @@ class ApprovalController extends Controller
             ->leftJoin('batch as b', 'd.id_batch', '=', 'b.id_batch')
             ->where('d.jenis', 'FORM_IDP');
 
+        // Admin MAI melihat IDP yang masih menunggu Mentor (pending) maupun yang sudah
+        // di-approve Mentor (mentor_approved). Yang siap di-approve Admin tampil lebih dulu.
         $idpPending = (clone $idpBase)
-            ->where('d.status', 'pending')
+            ->whereIn('d.status', ['pending', 'mentor_approved'])
+            ->orderByRaw("FIELD(d.status, 'mentor_approved', 'pending')")
             ->orderBy('d.created_at', 'desc')
-            ->get(['d.id','d.nama_file','d.path_file','d.created_at','b.nama_batch','ku.name as kader_nama']);
+            ->get(['d.id','d.nama_file','d.path_file','d.status','d.mentor_approved_at','d.created_at','ku.name as kader_nama','b.nama_batch']);
 
         $idpApproved = (clone $idpBase)
             ->where('d.status', 'approved')
             ->orderBy('d.approved_at', 'desc')
             ->limit(50)
-            ->get(['d.id','d.nama_file','d.path_file','d.created_at','d.approved_at','b.nama_batch','ku.name as kader_nama']);
+            ->get(['d.id','d.nama_file','d.path_file','d.created_at','d.approved_at','ku.name as kader_nama','b.nama_batch']);
 
         return Inertia::render('Approval/Index', [
             'ojtPending'  => $ojtPending,
             'paPending'   => $paPending,
-            'idpPending'  => $idpPending,
             'ojtApproved' => $ojtApproved,
             'paApproved'  => $paApproved,
+            'idpPending'  => $idpPending,
             'idpApproved' => $idpApproved,
         ]);
     }
@@ -154,6 +157,11 @@ class ApprovalController extends Controller
 
     public function approveIdp(Dokumen $dokumen)
     {
+        // Approval bertingkat: Admin MAI hanya boleh approve setelah Mentor approve.
+        if ($dokumen->status !== 'mentor_approved') {
+            return back()->with('error', 'Form IDP belum di-approve oleh Mentor.');
+        }
+
         $dokumen->update([
             'status'           => 'approved',
             'approved_by'      => Auth::id(),
@@ -161,9 +169,9 @@ class ApprovalController extends Controller
             'rejection_reason' => null,
         ]);
 
-        ActivityLog::activity_log("Approve File IDP (Dokumen ID {$dokumen->id})");
+        ActivityLog::activity_log("Approve Form IDP (Dokumen ID {$dokumen->id})");
 
-        return back()->with('approvalSuccess', 'File IDP disetujui.');
+        return back()->with('approvalSuccess', 'Form IDP disetujui.');
     }
 
     public function rejectIdp(Request $request, Dokumen $dokumen)
@@ -173,15 +181,138 @@ class ApprovalController extends Controller
         ]);
 
         $dokumen->update([
-            'status'           => 'rejected',
-            'rejection_reason' => $validated['rejection_reason'] ?? null,
-            'approved_by'      => null,
-            'approved_at'      => null,
+            'status'             => 'rejected',
+            'rejection_reason'   => $validated['rejection_reason'] ?? null,
+            'rejected_by_role'   => 'admin',
+            'approved_by'        => null,
+            'approved_at'        => null,
+            'mentor_approved_by' => null,
+            'mentor_approved_at' => null,
         ]);
 
-        ActivityLog::activity_log("Tolak File IDP (Dokumen ID {$dokumen->id})");
+        ActivityLog::activity_log("Tolak Form IDP (Dokumen ID {$dokumen->id})");
 
-        return back()->with('approvalSuccess', 'File IDP ditolak.');
+        return back()->with('approvalSuccess', 'Form IDP ditolak.');
+    }
+
+    /* ──────────────── Mentor: approval tingkat pertama Form IDP ──────────────── */
+
+    /**
+     * Halaman approval Form IDP untuk Mentor. Menampilkan IDP milik Kader dari BU
+     * yang sama dengan Mentor (konsisten dengan akses Perjanjian Kerja).
+     */
+    public function mentorIdp()
+    {
+        $user = Auth::user();
+        $niks = $this->mentorKaderNiks($user);
+
+        $base = DB::table('dokumen as d')
+            ->leftJoin('users as ku', DB::raw('CONVERT(d.kader_id USING utf8mb4) COLLATE utf8mb4_unicode_ci'), '=', 'ku.id')
+            ->leftJoin('batch as b', 'd.id_batch', '=', 'b.id_batch')
+            ->where('d.jenis', 'FORM_IDP')
+            ->whereIn('ku.nik', $niks->all());
+
+        $pending = (clone $base)
+            ->where('d.status', 'pending')
+            ->orderBy('d.created_at', 'desc')
+            ->get(['d.id','d.nama_file','d.path_file','d.created_at','ku.name as kader_nama','b.nama_batch']);
+
+        $processed = (clone $base)
+            ->whereIn('d.status', ['mentor_approved', 'approved', 'rejected'])
+            ->orderBy('d.updated_at', 'desc')
+            ->limit(50)
+            ->get(['d.id','d.nama_file','d.path_file','d.status','d.rejection_reason',
+                   'd.mentor_approved_at','d.created_at','ku.name as kader_nama','b.nama_batch']);
+
+        return Inertia::render('Approval/MentorIdp', [
+            'idpPending'   => $pending,
+            'idpProcessed' => $processed,
+        ]);
+    }
+
+    public function mentorApproveIdp(Dokumen $dokumen)
+    {
+        $this->authorizeMentorIdp($dokumen);
+
+        if ($dokumen->status !== 'pending') {
+            return back()->with('error', 'Form IDP ini sudah diproses.');
+        }
+
+        $dokumen->update([
+            'status'             => 'mentor_approved',
+            'mentor_approved_by' => Auth::id(),
+            'mentor_approved_at' => now(),
+            'rejection_reason'   => null,
+        ]);
+
+        ActivityLog::activity_log("Mentor approve Form IDP (Dokumen ID {$dokumen->id})");
+
+        return back()->with('success', 'Form IDP disetujui & diteruskan ke Admin MAI.');
+    }
+
+    public function mentorRejectIdp(Request $request, Dokumen $dokumen)
+    {
+        $this->authorizeMentorIdp($dokumen);
+
+        if ($dokumen->status !== 'pending') {
+            return back()->with('error', 'Form IDP ini sudah diproses.');
+        }
+
+        $validated = $request->validate([
+            'rejection_reason' => 'nullable|string',
+        ]);
+
+        $dokumen->update([
+            'status'             => 'rejected',
+            'rejection_reason'   => $validated['rejection_reason'] ?? null,
+            'rejected_by_role'   => 'mentor',
+            'mentor_approved_by' => null,
+            'mentor_approved_at' => null,
+        ]);
+
+        ActivityLog::activity_log("Mentor tolak Form IDP (Dokumen ID {$dokumen->id})");
+
+        return back()->with('success', 'Form IDP ditolak.');
+    }
+
+    /** Mentor hanya boleh memproses IDP milik Kader yang ada di daftar kader BU-nya. */
+    private function authorizeMentorIdp(Dokumen $dokumen): void
+    {
+        $user     = Auth::user();
+        $niks     = $this->mentorKaderNiks($user);
+        $kaderNik = DB::table('users')->where('id', $dokumen->kader_id)->value('nik');
+
+        if (!$kaderNik || !$niks->contains($kaderNik)) {
+            abort(403, 'Form IDP ini bukan milik Kader dari daftar Anda.');
+        }
+    }
+
+    /**
+     * Daftar NIK Kader yang menjadi tanggung jawab Mentor (cakupan per-mentor) —
+     * dipetakan langsung ke Mentor yang login: users.id -> mentor.user_id -> mentor.id
+     * -> list_kader_per_mentor.mentor_id -> kader.id -> kader.nik.
+     * dokumen.kader_id menyimpan users.id, sedangkan pemetaan memakai kader.id,
+     * sehingga relasi dijembatani lewat NIK (users.nik = kader.nik).
+     */
+    private function mentorKaderNiks($user)
+    {
+        $mentorIds = DB::table('mentor')
+            ->whereNull('deleted_at')
+            ->where('user_id', $user->id)
+            ->pluck('id');
+        if ($mentorIds->isEmpty()) {
+            return collect();
+        }
+
+        $kaderIds = DB::table('list_kader_per_mentor')
+            ->whereNull('deleted_at')
+            ->whereIn('mentor_id', $mentorIds->all())
+            ->pluck('kader_id');
+        if ($kaderIds->isEmpty()) {
+            return collect();
+        }
+
+        return DB::table('kader')->whereIn('id', $kaderIds->all())->pluck('nik');
     }
 
     private function findOjt($kader_id, $fmc): PenilaianOjt

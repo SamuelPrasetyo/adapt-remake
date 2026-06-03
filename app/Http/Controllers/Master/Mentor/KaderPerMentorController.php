@@ -31,7 +31,7 @@ class KaderPerMentorController extends Controller
     {
         $request->validate([
             'mentor_id'   => 'required|string',
-            'kader_ids'   => 'required|array|min:1',
+            'kader_ids'   => 'nullable|array',
             'kader_ids.*' => 'string',
         ]);
 
@@ -44,37 +44,50 @@ class KaderPerMentorController extends Controller
             return back();
         }
 
-        $kaders = Kader::whereIn('id', $request->kader_ids)
+        $selectedIds = collect($request->kader_ids ?? []);
+
+        // Unassign kader yang tidak dipilih lagi
+        $unassigned = ListKaderPerMentor::where('mentor_id', $mentor->id)
+            ->whereNull('deleted_at')
+            ->when($selectedIds->isNotEmpty(), fn($q) => $q->whereNotIn('kader_id', $selectedIds->all()))
+            ->update(['deleted_at' => now()]);
+
+        // Assign kader baru yang belum ada
+        $kaders = Kader::whereIn('id', $selectedIds->all())
             ->where('company_code', $mentor->company_code)
             ->get();
 
         $inserted = 0;
         foreach ($kaders as $kader) {
-            $exists = ListKaderPerMentor::where('kader_id', $kader->id)
+            $existing = ListKaderPerMentor::where('kader_id', $kader->id)
                 ->where('mentor_id', $mentor->id)
-                ->whereNull('deleted_at')
-                ->exists();
+                ->first();
 
-            if ($exists) {
+            if ($existing && is_null($existing->deleted_at)) {
                 continue;
             }
 
-            ListKaderPerMentor::insert([
-                'id'             => Str::uuid(),
-                'kader_id'       => $kader->id,
-                'mentor_id'      => $mentor->id,
-                'company_code'   => $kader->company_code,
-                'id_batch'       => $kader->id_batch,
-                'id_divisi'      => $kader->id_divisi,
-                'id_department'  => $kader->id_departemen,
-                'created_by'     => Auth::user()->id,
-                'created_at'     => now(),
-            ]);
+            if ($existing) {
+                // Restore soft-deleted record
+                $existing->update(['deleted_at' => null]);
+            } else {
+                ListKaderPerMentor::insert([
+                    'id'            => Str::uuid(),
+                    'kader_id'      => $kader->id,
+                    'mentor_id'     => $mentor->id,
+                    'company_code'  => $kader->company_code,
+                    'id_batch'      => $kader->id_batch,
+                    'id_divisi'     => $kader->id_divisi,
+                    'id_department' => $kader->id_departemen,
+                    'created_by'    => Auth::user()->id,
+                    'created_at'    => now(),
+                ]);
+            }
             $inserted++;
         }
 
-        ActivityLog::activity_log("Assign {$inserted} kader ke Mentor {$mentor->nama}");
-        Alert::success('Success', "{$inserted} kader berhasil di-assign.");
+        ActivityLog::activity_log("Sync assign Mentor {$mentor->nama}: +{$inserted} kader, -{$unassigned} unassign.");
+        Alert::success('Success', "Assign berhasil diperbarui.");
         return back();
     }
 
@@ -104,7 +117,7 @@ class KaderPerMentorController extends Controller
         ]);
     }
 
-    public function listByMentorQuery($mentor_id)
+    public function listByMentorQuery($mentor_id, $idBatch = null)
     {
         $rows = ListKaderPerMentor::select(
                 'list_kader_per_mentor.id',
@@ -129,6 +142,7 @@ class KaderPerMentorController extends Controller
             ->leftJoin('company', 'list_kader_per_mentor.company_code', '=', 'company.company_code')
             ->where('list_kader_per_mentor.mentor_id', $mentor_id)
             ->whereNull('list_kader_per_mentor.deleted_at')
+            ->when($idBatch, fn($q) => $q->where('list_kader_per_mentor.id_batch', $idBatch))
             ->orderBy('kader.nama', 'asc')
             ->get();
 
@@ -139,7 +153,7 @@ class KaderPerMentorController extends Controller
      * Daftar semua kader dalam satu BU (atau seluruh BU jika $companyCode = null),
      * lengkap dengan mentor (jika ada) dan stats progress modul.
      */
-    public function listAllKadersInBU($companyCode = null)
+    public function listAllKadersInBU($companyCode = null, $idBatch = null)
     {
         $kadersQuery = Kader::select(
                 'kader.id as k_id',
@@ -168,6 +182,10 @@ class KaderPerMentorController extends Controller
 
         if ($companyCode) {
             $kadersQuery->where('kader.company_code', $companyCode);
+        }
+
+        if ($idBatch) {
+            $kadersQuery->where('kader.id_batch', $idBatch);
         }
 
         $rows = $kadersQuery->get();

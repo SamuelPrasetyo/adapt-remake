@@ -88,17 +88,17 @@ class LearningController extends Controller
 
         $progress = [
             'pretest'               => (bool) $pretestResult,
-            'pretest_score'         => $pretestResult?->score,
+            'pretest_score'         => $pretestResult ? $pretestResult->score : null,
             'materi'                => $readingProgress >= 100,
             'materi_progress'       => $readingProgress,
             'posttest'              => (bool) $posttestResult,
-            'posttest_score'        => $posttestResult?->score,
+            'posttest_score'        => $posttestResult ? $posttestResult->score : null,
             'post_activity'             => (bool) $postActivityDoc,
-            'post_activity_file'        => $postActivityDoc?->nama_file,
-            'post_activity_status'      => $postActivityDoc?->status,
-            'post_activity_rejection_reason' => $postActivityDoc?->rejection_reason,
+            'post_activity_file'        => $postActivityDoc ? $postActivityDoc->nama_file : null,
+            'post_activity_status'      => $postActivityDoc ? $postActivityDoc->status : null,
+            'post_activity_rejection_reason' => $postActivityDoc ? $postActivityDoc->rejection_reason : null,
             'post_activity_can_reupload'     => !$postActivityDoc || $postActivityDoc->status === 'rejected',
-            'final_score'           => $posttestResult?->score ?? null,
+            'final_score'           => $posttestResult ? $posttestResult->score : null,
         ];
 
         $pretest  = SoalModul::with('jawabans')
@@ -277,6 +277,15 @@ class LearningController extends Controller
                 ? 'Post Activity sudah disetujui Admin MAI dan tidak dapat diubah.'
                 : 'Post Activity masih menunggu review Admin MAI.';
             return back()->withErrors(['file' => $msg]);
+        }
+
+        // Re-upload setelah ditolak — hapus dokumen lama (file + row) agar tidak menumpuk file sampah.
+        if ($lastDoc && $lastDoc->status === 'rejected') {
+            $oldPath = public_path($lastDoc->path_file);
+            if ($lastDoc->path_file && file_exists($oldPath)) {
+                @unlink($oldPath);
+            }
+            $lastDoc->delete();
         }
 
         $folder = public_path('uploads/post_activity');

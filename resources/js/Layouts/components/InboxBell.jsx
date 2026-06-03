@@ -29,6 +29,7 @@ function saveDismissed(userId, data) {
 function itemKey(item) {
     if (item.type === "ojt") return `ojt_fmc${item.fmc_number}_${item.updated_at ?? ""}${item.kader_nama ?? ""}`;
     if (item.type === "idp") return `idp_${item.nama_file ?? ""}_${item.updated_at ?? ""}`;
+    if (item.type === "idp_review") return `idprev_${item.nama_file ?? ""}_${item.kader_nama ?? ""}_${item.updated_at ?? ""}`;
     return `pa_${item.nama_file ?? ""}_${item.updated_at ?? ""}`;
 }
 
@@ -193,24 +194,33 @@ function UserBell({ inbox, userId }) {
                                 Tidak ada notifikasi baru.
                             </div>
                         ) : visible.map((item, i) => {
+                            const isReview = item.type === "idp_review";
                             const approved = item.approval_status === "approved";
+                            const actorLabel = item.actor === "mentor" ? "Mentor" : "Admin MAI";
+                            const dotColor = isReview ? "bg-amber-500" : approved ? "bg-emerald-500" : "bg-red-500";
                             return (
-                                <div key={i} className="px-4 py-3 hover:bg-slate-50 transition group relative">
+                                <div key={i}
+                                    onClick={isReview ? () => { setOpen(false); router.visit("/approval/idp"); } : undefined}
+                                    className={`px-4 py-3 hover:bg-slate-50 transition group relative ${isReview ? "cursor-pointer" : ""}`}>
                                     <div className="flex items-start gap-2.5 pr-6">
-                                        <span className={`mt-1 shrink-0 w-2 h-2 rounded-full ${approved ? "bg-emerald-500" : "bg-red-500"}`} />
+                                        <span className={`mt-1 shrink-0 w-2 h-2 rounded-full ${dotColor}`} />
                                         <div className="flex-1 min-w-0">
                                             <p className="text-xs font-semibold text-slate-700 line-clamp-2">
                                                 {item.type === "ojt"
                                                     ? `OJT FMC-${item.fmc_number}${item.kader_nama ? ` · ${item.kader_nama}` : ""}`
-                                                    : item.type === "idp"
-                                                    ? `File IDP${item.nama_file ? ` (${item.nama_file})` : ""}`
+                                                    : item.type === "idp" || isReview
+                                                    ? `Form IDP${item.kader_nama ? ` · ${item.kader_nama}` : ""}${item.nama_file ? ` (${item.nama_file})` : ""}`
                                                     : `Post Activity${item.modul_nama ? ` · ${item.modul_nama}` : ""}${item.nama_file ? ` (${item.nama_file})` : ""}`
                                                 }
                                             </p>
-                                            <p className={`text-xs mt-0.5 font-medium ${approved ? "text-emerald-600" : "text-red-600"}`}>
-                                                {approved ? "✓ Disetujui Admin MAI" : "✗ Ditolak Admin MAI"}
-                                            </p>
-                                            {!approved && item.rejection_reason && (
+                                            {isReview ? (
+                                                <p className="text-xs mt-0.5 font-medium text-amber-600">⌛ Menunggu review Anda</p>
+                                            ) : (
+                                                <p className={`text-xs mt-0.5 font-medium ${approved ? "text-emerald-600" : "text-red-600"}`}>
+                                                    {approved ? `✓ Disetujui ${actorLabel}` : `✗ Ditolak ${actorLabel}`}
+                                                </p>
+                                            )}
+                                            {!isReview && !approved && item.rejection_reason && (
                                                 <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-3">"{item.rejection_reason}"</p>
                                             )}
                                             {item.final_score != null && (
@@ -223,7 +233,7 @@ function UserBell({ inbox, userId }) {
                                     </div>
                                     {/* Dismiss button */}
                                     <button
-                                        onClick={() => dismiss(item)}
+                                        onClick={(e) => { e.stopPropagation(); dismiss(item); }}
                                         className="absolute top-3 right-3 text-slate-300 hover:text-slate-500 transition opacity-0 group-hover:opacity-100"
                                         title="Tutup notifikasi ini"
                                     >

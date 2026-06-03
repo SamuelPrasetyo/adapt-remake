@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { getFaseLabel, getFaseNum } from "@/constants/fase";
 import {
     Chart,
     LineController,
@@ -37,8 +38,8 @@ export function scoreColor(score) {
     return "text-rose-600";
 }
 
-const faseNum = (f) => String(f).replace(/^Fase\s+/i, '');
-const faseLabel = (f) => `Fase ${faseNum(f)}`;
+const faseNum = getFaseNum;
+const faseLabel = getFaseLabel;
 
 export default function LearningGrowthTab({ faseGroups, weeklyData, cohortMap, allFases = [] }) {
     const displayFases = allFases.length > 0 ? allFases : faseGroups.map((fg) => fg.fase);

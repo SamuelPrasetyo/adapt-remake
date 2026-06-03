@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "@inertiajs/react";
 import AppLayout from "@/Layouts/AppLayout";
+import { getFaseLabel, getFaseNum } from "@/constants/fase";
 import LearningGrowthTab from "./tabs/LearningGrowthTab";
 import FeedbackTab from "./tabs/FeedbackTab";
 import PenilaianOjtTab from "./tabs/PenilaianOjtTab";
@@ -140,14 +141,10 @@ export default function KaderSayaDetail({
 
                 {/* Stats row */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-5 pt-5 border-t border-slate-100">
-                    <div className="text-center">
-                        <div className="text-2xl font-bold text-blue-600">{overallProgress}%</div>
-                        <div className="text-xs text-slate-500 mt-0.5">Overall Progress</div>
-                    </div>
                     {allFases.map((fase, idx) => {
-                        const faseNum = String(fase).replace(/^Fase\s+/i, '');
-                        const faseLabel = `Fase ${faseNum}`;
-                        const fg = faseGroups.find((g) => String(g.fase).replace(/^Fase\s+/i, '') === faseNum);
+                        const faseKey = getFaseNum(fase);
+                        const label = getFaseLabel(fase);
+                        const fg = faseGroups.find((g) => getFaseNum(g.fase) === faseKey);
                         const colors = ["text-purple-600","text-blue-600","text-amber-600","text-teal-600"];
                         const notAssigned = !fg;
                         return (
@@ -160,7 +157,7 @@ export default function KaderSayaDetail({
                                                 <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                                             </svg>
                                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10 w-44 bg-slate-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg pointer-events-none">
-                                                Modul {faseLabel} belum di-assign ke kader ini
+                                                Modul {label} belum di-assign ke kader ini
                                                 <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
                                             </div>
                                         </div>
@@ -170,10 +167,16 @@ export default function KaderSayaDetail({
                                         {fg.avg_score != null ? fg.avg_score : "—"}
                                     </div>
                                 )}
-                                <div className="text-xs text-slate-500 mt-0.5">Avg {faseLabel}</div>
+                                <div className="text-xs text-slate-500 mt-0.5">Avg {label}</div>
                             </div>
                         );
                     })}
+                    <div className="text-center">
+                        <div className="text-2xl font-bold text-blue-600">
+                            {avgScore != null ? avgScore : "—"}
+                        </div>
+                        <div className="text-xs text-slate-500 mt-0.5">FMC</div>
+                    </div>
                 </div>
             </div>
 

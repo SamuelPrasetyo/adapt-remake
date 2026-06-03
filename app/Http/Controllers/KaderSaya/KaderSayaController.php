@@ -6,6 +6,7 @@ use App\Constants\PenilaianOjtStructure;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\KaderSaya\PenilaianOjtController;
 use App\Http\Controllers\Master\Mentor\KaderPerMentorController;
+use App\Models\Batch;
 use App\Models\Company;
 use App\Models\Dokumen;
 use App\Models\Jawaban;
@@ -60,14 +61,20 @@ class KaderSayaController extends Controller
         $selectedMentor = null;
         $perMentor      = app(KaderPerMentorController::class);
 
+        // Filter batch: default ke batch yang sedang berjalan; 'all' = semua batch.
+        $batches      = Batch::orderByDesc('tanggal_mulai')->orderByDesc('id_batch')->get();
+        $defaultBatch = optional(Batch::current())->id_batch;
+        $batchFilter  = $request->query('batch_id', $defaultBatch);
+        $idBatch      = ($batchFilter === 'all') ? null : $batchFilter;
+
         if ($mentorFilter && $mentorFilter !== 'all') {
             $selectedMentor = $mentors->firstWhere('id', $mentorFilter);
             if (!$selectedMentor) $mentorFilter = 'all';
         }
 
         $kaders = $mentorFilter !== 'all' && $selectedMentor
-            ? $perMentor->listByMentorQuery($mentorFilter)
-            : $perMentor->listAllKadersInBU($isMentor ? $user->company_code : null);
+            ? $perMentor->listByMentorQuery($mentorFilter, $idBatch)
+            : $perMentor->listAllKadersInBU($isMentor ? $user->company_code : null, $idBatch);
 
         $niks    = $kaders->pluck('nik_kader')->unique()->filter()->values()->all();
         $userMap = User::whereIn('nik', $niks)->pluck('id', 'nik');
@@ -99,6 +106,8 @@ class KaderSayaController extends Controller
             'mentors'        => $mentors,
             'selectedMentor' => $selectedMentor,
             'mentorFilter'   => $mentorFilter,
+            'batches'        => $batches,
+            'batchFilter'    => $batchFilter !== null ? (string) $batchFilter : 'all',
         ]);
     }
 
@@ -142,7 +151,7 @@ class KaderSayaController extends Controller
         }
 
         $kaderUser = User::where('nik', $kader->nik)->first();
-        $userId    = $kaderUser?->id;
+        $userId    = $kaderUser ? $kaderUser->id : null;
 
         $companyId = Company::where('company_code', $kader->company_code)->value('company_id');
 
@@ -258,15 +267,43 @@ class KaderSayaController extends Controller
         }
 
         $currentWeek = count($weeklyData);
-        $totalWeeks  = Week::count();
-        $weeks       = Week::orderBy('id_week')->get(['id_week', 'angka_week', 'bulan', 'tahun']);
+        $totalWeeks  = $kader->id_batch
+            ? Week::forBatch($kader->id_batch)->count()
+            : Week::count();
 
+        // Dropdown feedback: tampilkan SEMUA minggu batch ini; opsi di-disable di UI
+        // bila belum berjalan (is_available) atau sudah terisi (is_filled).
+        // Validasi anti-fraud tetap ketat di storeFeedback().
+        $filledWeeks = Jawaban::where('nik_kader', $kader->nik)
+            ->whereNotNull('nama_mentor')
+            ->whereIn('id_pertanyaan', [1, 2, 3, 4, 5, 6])
+            ->distinct()
+            ->pluck('id_week')
+            ->all();
+
+        $weeksQuery = Week::query();
+        if ($kader->id_batch) {
+            $weeksQuery->forBatch($kader->id_batch);
+        }
+        $today = now()->toDateString();
+        $weeks = $weeksQuery->orderBy('angka_week')
+            ->get(['id_week', 'angka_week', 'bulan', 'tahun', 'tanggal_mulai'])
+            ->map(fn ($w) => [
+                'id_week'      => $w->id_week,
+                'angka_week'   => $w->angka_week,
+                'bulan'        => $w->bulan,
+                'tahun'        => $w->tahun,
+                'is_available' => $w->tanggal_mulai && $w->tanggal_mulai->toDateString() <= $today,
+                'is_filled'    => in_array($w->id_week, $filledWeeks),
+            ]);
+
+        // Refleksi kader diisi terhadap jadwal weeks_kader (48 minggu), bukan weeks (jadwal feedback mentor).
         $refleksiQuery = Jawaban::whereIn('jawaban.id_pertanyaan', [7, 8, 9])
             ->where('jawaban.nik_kader', $kader->nik)
             ->whereNull('jawaban.nama_mentor')
-            ->join('weeks', 'jawaban.id_week', '=', 'weeks.id_week')
+            ->join('weeks_kader', 'jawaban.id_week', '=', 'weeks_kader.id_week')
             ->select('jawaban.id_week', 'jawaban.id_pertanyaan', 'jawaban.jawaban',
-                     'jawaban.id_jawaban', 'weeks.angka_week', 'weeks.bulan', 'weeks.tahun')
+                     'jawaban.id_jawaban', 'weeks_kader.angka_week', 'weeks_kader.bulan', 'weeks_kader.tahun')
             ->orderBy('jawaban.id_week', 'desc')
             ->orderBy('jawaban.id_jawaban', 'desc');
 
@@ -293,12 +330,11 @@ class KaderSayaController extends Controller
                     'rencana'    => null,
                 ];
             }
-            $key = match ((int) $r->id_pertanyaan) {
-                7 => 'dipelajari',
-                8 => 'tantangan',
-                9 => 'rencana',
-                default => null,
-            };
+            $idP = (int) $r->id_pertanyaan;
+            if ($idP === 7)      $key = 'dipelajari';
+            elseif ($idP === 8)  $key = 'tantangan';
+            elseif ($idP === 9)  $key = 'rencana';
+            else                 $key = null;
             if ($key && $refleksiByWeek[$wk][$key] === null) {
                 $refleksiByWeek[$wk][$key] = strip_tags($r->jawaban);
             }
@@ -335,15 +371,13 @@ class KaderSayaController extends Controller
                 ];
             }
             $val = strip_tags($r->jawaban ?? '');
-            match ((int) $r->id_pertanyaan) {
-                1 => $feedbackByWeek[$wk]['routine_job']   = $val,
-                2 => $feedbackByWeek[$wk]['assignment']    = $val,
-                3 => $feedbackByWeek[$wk]['pemahaman_sop'] = $val,
-                4 => $feedbackByWeek[$wk]['project']       = $val,
-                5 => $feedbackByWeek[$wk]['motivasi']      = $motivasiLabel[(int)$val] ?? $val,
-                6 => $feedbackByWeek[$wk]['area']          = $val,
-                default => null,
-            };
+            $idP2 = (int) $r->id_pertanyaan;
+            if ($idP2 === 1)      $feedbackByWeek[$wk]['routine_job']   = $val;
+            elseif ($idP2 === 2)  $feedbackByWeek[$wk]['assignment']    = $val;
+            elseif ($idP2 === 3)  $feedbackByWeek[$wk]['pemahaman_sop'] = $val;
+            elseif ($idP2 === 4)  $feedbackByWeek[$wk]['project']       = $val;
+            elseif ($idP2 === 5)  $feedbackByWeek[$wk]['motivasi']      = $motivasiLabel[(int)$val] ?? $val;
+            elseif ($idP2 === 6)  $feedbackByWeek[$wk]['area']          = $val;
         }
         $mentorFeedbackList = array_values($feedbackByWeek);
 
@@ -354,7 +388,7 @@ class KaderSayaController extends Controller
 
         if ($perjanjianKerja) {
             $uploader = User::find($perjanjianKerja->mentor_id);
-            $perjanjianKerja->uploaded_by_name = $uploader?->name ?? '—';
+            $perjanjianKerja->uploaded_by_name = $uploader ? $uploader->name : '—';
         }
 
         $penilaianData = PenilaianOjtController::getDataForKader($kader->id);
@@ -398,6 +432,17 @@ class KaderSayaController extends Controller
         $user  = Auth::user();
         $kader = Kader::where('id', $kader_id)->first();
         if (!$kader) abort(404);
+
+        // Anti-fraud: week harus milik batch kader, sudah berjalan, & belum terisi.
+        $weekValid = Week::available()
+            ->where('id_week', $request->id_week)
+            ->when($kader->id_batch, fn($q) => $q->forBatch($kader->id_batch))
+            ->exists();
+        $weekFilled = Jawaban::where('nik_kader', $kader->nik)
+            ->where('id_week', $request->id_week)
+            ->whereNotNull('nama_mentor')
+            ->exists();
+        abort_if(!$weekValid || $weekFilled, 422, 'Week tidak valid, belum berjalan, atau sudah terisi.');
 
         Log::info('[KaderSaya::storeFeedback] incoming request', [
             'kader_id'  => $kader_id,

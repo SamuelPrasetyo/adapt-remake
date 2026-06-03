@@ -1,126 +1,187 @@
-import { useState, useRef } from "react";
-import { router } from "@inertiajs/react";
-import AppLayout from "@/Layouts/AppLayout";
+import { useForm } from '@inertiajs/react';
+import AppLayout from '@/Layouts/AppLayout';
 
-const STATUS = {
-    pending:  { label: "Menunggu review Admin MAI", cls: "bg-amber-50 text-amber-700 border-amber-200" },
-    approved: { label: "Disetujui Admin MAI",        cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-    rejected: { label: "Ditolak Admin MAI",          cls: "bg-red-50 text-red-700 border-red-200" },
+const STATUS_CONFIG = {
+    pending:         { label: 'Menunggu Review Mentor', cls: 'bg-yellow-100 text-yellow-700' },
+    mentor_approved: { label: 'Menunggu Review Admin MAI', cls: 'bg-blue-100 text-blue-700'  },
+    approved:        { label: 'Disetujui',              cls: 'bg-green-100 text-green-700'  },
+    rejected:        { label: 'Ditolak',                cls: 'bg-red-100 text-red-700'      },
 };
 
-function fmtDate(s) {
-    if (!s) return "—";
-    return new Date(s).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" });
+function StatusBadge({ status }) {
+    const cfg = STATUS_CONFIG[status] ?? { label: status, cls: 'bg-slate-100 text-slate-600' };
+    return (
+        <span className={`inline-flex items-center w-fit px-2.5 py-0.5 rounded-full text-xs font-semibold ${cfg.cls}`}>
+            {cfg.label}
+        </span>
+    );
 }
 
-export default function FormIdpIndex({ idp = null, hasBatch = true }) {
-    const [file, setFile] = useState(null);
-    const [error, setError] = useState(null);
-    const [uploading, setUploading] = useState(false);
-    const fileRef = useRef(null);
+const REJECTED_BY_LABEL = {
+    mentor: 'Ditolak oleh Mentor',
+    admin:  'Ditolak oleh Admin MAI',
+};
 
-    const ALLOWED = ["pdf", "docx", "xlsx"];
-    const MAX_BYTES = 2 * 1024 * 1024;
+export default function FormIdpIndex({ idp, hasBatch, hasTemplate, template }) {
+    const { data, setData, post, processing, errors, reset } = useForm({ file: null });
 
-    const canUpload = hasBatch && (!idp || idp.can_reupload);
+    const canUpload = hasBatch && hasTemplate && (!idp || idp.can_reupload);
 
-    const handleChange = (e) => {
-        const f = e.target.files[0];
-        if (!f) return;
-        const ext = f.name.split(".").pop().toLowerCase();
-        if (!ALLOWED.includes(ext)) {
-            setError("Format tidak diizinkan. Gunakan PDF, DOCX, atau XLSX.");
-            setFile(null);
-            return;
-        }
-        if (f.size > MAX_BYTES) {
-            setError("Ukuran file melebihi batas 2 MB.");
-            setFile(null);
-            return;
-        }
-        setError(null);
-        setFile(f);
-    };
-
-    const handleUpload = () => {
-        if (!file) return;
-        setUploading(true);
-        const fd = new FormData();
-        fd.append("file", file);
-        router.post("/form-idp/upload", fd, {
+    const submit = (e) => {
+        e.preventDefault();
+        post('/form-idp/upload', {
             forceFormData: true,
-            preserveScroll: true,
-            onSuccess: () => { setUploading(false); setFile(null); if (fileRef.current) fileRef.current.value = ""; },
-            onError: (errs) => { setUploading(false); setError(errs.file ?? "Upload gagal. Coba lagi."); },
+            onSuccess: () => reset(),
         });
     };
 
     return (
-        <AppLayout title="UPLOAD FILE IDP" breadcrumb="Modul / Upload File IDP">
-            <div className="max-w-2xl">
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-                    <h2 className="text-lg font-semibold text-slate-800">Form IDP</h2>
-                    <p className="text-sm text-slate-500 mt-1">
-                        Unggah dokumen IDP Anda. File hanya dapat diunggah <span className="font-medium">satu kali per batch</span> dan
-                        memerlukan persetujuan Admin MAI.
-                    </p>
+        <AppLayout title="UPLOAD FILE IDP" breadcrumb="Dokumen / Upload File IDP">
+            <div className="max-w-2xl mx-auto space-y-6">
 
-                    {!hasBatch && (
-                        <div className="mt-4 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
-                            Batch Anda belum ditentukan. Hubungi Admin sebelum mengunggah File IDP.
+                {/* Download Template */}
+                {template ? (
+                    <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                        <div>
+                            <p className="text-sm font-semibold text-blue-800">Template File IDP Tersedia</p>
+                            <p className="text-xs text-blue-600 mt-0.5">
+                                Unduh template, isi, lalu upload kembali di bawah.
+                            </p>
                         </div>
-                    )}
+                        <a
+                            href={`/${template.path_file}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition shrink-0"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            Unduh Template
+                        </a>
+                    </div>
+                ) : (
+                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
+                        Template belum tersedia. Hubungi Admin MAI untuk mendapatkan template IDP.
+                    </div>
+                )}
 
-                    {idp && (
-                        <div className="mt-5 rounded-xl border border-slate-200 p-4">
-                            <div className="flex items-center justify-between gap-3 flex-wrap">
-                                <div>
-                                    <p className="text-xs text-slate-400 uppercase tracking-wide">File terunggah</p>
-                                    {idp.path_file ? (
-                                        <a href={`/${idp.path_file}`} target="_blank" rel="noreferrer"
-                                            className="text-sm text-blue-600 hover:underline break-all">{idp.nama_file}</a>
-                                    ) : <span className="text-sm text-slate-600">{idp.nama_file}</span>}
-                                    <p className="text-xs text-slate-400 mt-0.5">Diunggah {fmtDate(idp.created_at)}</p>
-                                </div>
-                                <span className={`text-xs font-medium px-2.5 py-1 rounded-lg border ${STATUS[idp.status]?.cls ?? "bg-slate-50 text-slate-600 border-slate-200"}`}>
-                                    {STATUS[idp.status]?.label ?? idp.status}
-                                </span>
-                            </div>
-                            {idp.status === "rejected" && (
-                                <div className="mt-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600">
-                                    Ditolak{idp.rejection_reason ? `: "${idp.rejection_reason}"` : ""}. Silakan unggah ulang.
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {canUpload ? (
-                        <div className="mt-5 space-y-2">
-                            <input ref={fileRef} type="file" className="hidden" accept=".pdf,.docx,.xlsx" onChange={handleChange} />
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <button type="button" onClick={() => fileRef.current?.click()}
-                                    className="text-sm px-3 py-1.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 transition">
-                                    Pilih File
-                                </button>
-                                {file && (
-                                    <button type="button" onClick={handleUpload} disabled={uploading}
-                                        className="text-sm px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition">
-                                        {uploading ? "Mengupload..." : "Upload"}
-                                    </button>
+                {/* Info Card */}
+                {idp ? (
+                    <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-3">
+                        <h2 className="text-sm font-semibold text-slate-700">File IDP Terakhir</h2>
+                        <div className="grid grid-cols-2 gap-y-2 text-sm">
+                            <span className="text-slate-500">Nama File</span>
+                            <span className="font-medium text-slate-800 break-all">{idp.nama_file}</span>
+                            <span className="text-slate-500">Status</span>
+                            <div className="space-y-1">
+                                <StatusBadge status={idp.status} />
+                                {idp.status === 'rejected' && idp.rejected_by_role && (
+                                    <p className="text-xs text-red-600 font-medium">
+                                        {REJECTED_BY_LABEL[idp.rejected_by_role] ?? 'Ditolak'}
+                                    </p>
                                 )}
                             </div>
-                            {file && <p className="text-xs text-slate-600 truncate max-w-xs">{file.name}</p>}
-                            {error && <p className="text-xs text-red-500">{error}</p>}
-                            <p className="text-xs text-slate-400">Format: PDF, DOCX, XLSX · Maks. 2 MB</p>
+                            <span className="text-slate-500">Diunggah</span>
+                            <span className="text-slate-600">
+                                {new Date(idp.created_at).toLocaleDateString('id-ID', {
+                                    day: '2-digit', month: 'long', year: 'numeric',
+                                })}
+                            </span>
                         </div>
-                    ) : idp && hasBatch ? (
-                        <p className="mt-5 text-sm text-slate-500">
-                            {idp.status === "approved"
-                                ? "File IDP sudah disetujui dan tidak dapat diubah."
-                                : "File IDP sedang menunggu review Admin MAI."}
-                        </p>
-                    ) : null}
-                </div>
+
+                        {idp.status === 'rejected' && (
+                            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                                <p className="text-xs font-semibold text-red-700 mb-0.5">
+                                    {REJECTED_BY_LABEL[idp.rejected_by_role] ?? 'Ditolak'}
+                                </p>
+                                {idp.rejection_reason ? (
+                                    <p className="text-sm text-red-600">{idp.rejection_reason}</p>
+                                ) : (
+                                    <p className="text-sm text-red-400 italic">Tidak ada alasan penolakan.</p>
+                                )}
+                            </div>
+                        )}
+
+                        <a
+                            href={`/${idp.path_file}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:underline"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            Unduh File
+                        </a>
+                    </div>
+                ) : (
+                    <div className="bg-white border border-slate-200 rounded-xl p-5 text-sm text-slate-500">
+                        Belum ada file IDP yang diunggah.
+                    </div>
+                )}
+
+                {/* Upload Form */}
+                {!hasBatch ? (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700">
+                        Batch Kader belum ditentukan. Hubungi Admin untuk mengatur batch Anda sebelum dapat mengunggah file IDP.
+                    </div>
+                ) : !hasTemplate ? (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700">
+                        Template IDP belum tersedia. Hubungi Admin MAI untuk mengupload template terlebih dahulu.
+                    </div>
+                ) : idp && !idp.can_reupload ? (
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-500">
+                        {idp.status === 'approved'
+                            ? 'File IDP sudah disetujui Admin MAI dan tidak dapat diubah.'
+                            : idp.status === 'mentor_approved'
+                            ? 'File IDP sudah disetujui Mentor dan sedang menunggu review Admin MAI.'
+                            : 'File IDP masih menunggu review Mentor.'}
+                    </div>
+                ) : (
+                    <div className="bg-white border border-slate-200 rounded-xl p-5">
+                        <h2 className="text-sm font-semibold text-slate-700 mb-4">
+                            {idp?.can_reupload ? 'Upload Ulang File IDP' : 'Upload File IDP'}
+                        </h2>
+                        <form onSubmit={submit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">
+                                    File <span className="text-slate-400 font-normal">(PDF, DOCX, XLSX — maks 2MB)</span>
+                                </label>
+                                <input
+                                    type="file"
+                                    accept=".pdf,.docx,.xlsx"
+                                    onChange={(e) => setData('file', e.target.files[0])}
+                                    required
+                                    className="w-full text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                />
+                                {errors.file && (
+                                    <p className="mt-1 text-xs text-red-600">{errors.file}</p>
+                                )}
+                            </div>
+                            <button
+                                type="submit"
+                                disabled={processing || !data.file}
+                                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50 transition"
+                            >
+                                {processing ? (
+                                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                    </svg>
+                                ) : (
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                    </svg>
+                                )}
+                                {processing ? 'Mengunggah...' : 'Upload File'}
+                            </button>
+                        </form>
+                    </div>
+                )}
             </div>
         </AppLayout>
     );
