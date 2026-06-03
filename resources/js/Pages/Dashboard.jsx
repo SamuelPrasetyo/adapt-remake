@@ -356,7 +356,7 @@ function KaderTable({ kaders, mentorFilter, mentors, onMentorFilter, batches, ba
                                             <td className="px-4 py-3 whitespace-nowrap">
                                                 {k.fase_aktif ? (
                                                     <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-amber-50 text-amber-700 ring-1 ring-amber-200">
-                                                        {k.fase_aktif}
+                                                        {({1:'Foundation',2:'Sub Function Rotation',3:'Monthly Training (Leadership)'})[k.fase_aktif] ?? `Fase ${k.fase_aktif}`}
                                                     </span>
                                                 ) : (
                                                     <span className="text-slate-400 text-xs">—</span>
