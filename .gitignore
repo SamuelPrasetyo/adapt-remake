@@ -13,3 +13,4 @@ npm-debug.log
 yarn-error.log
 public/uploads/*
 database/sql/*
+app/Console/Commands/ServeCommand.php
