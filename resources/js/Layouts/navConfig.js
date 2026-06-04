@@ -211,13 +211,11 @@ export const KADER_NAV = [
     },
     { type: "section", label: "Modul" },
     {
-        type: "group",
-        label: "Modul",
+        type: "item",
+        label: "My Modul",
         icon: "layers",
-        children: [
-            { label: "My Modul", href: "/my-learning", match: "/my-learning" },
-            { label: "Upload File IDP", href: "/form-idp", match: "/form-idp" },
-        ],
+        href: "/my-learning",
+        match: "/my-learning",
     },
     { type: "section", label: "Dokumen" },
     {
