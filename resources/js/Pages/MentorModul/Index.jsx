@@ -8,7 +8,7 @@ const TABS = [
     { id: 'all',    label: 'Semua' },
     { id: 'mentor', label: 'Modul Mentor' },
     { id: '1',      label: 'Foundation' },
-    { id: '2',      label: 'Sub Function Rotation' },
+    { id: '2',      label: 'Self Learning' },
     { id: '3',      label: 'Monthly Training (Leadership)' },
     { id: '4',      label: 'Administrasi' },
 ];

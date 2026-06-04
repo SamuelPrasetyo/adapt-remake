@@ -1,6 +1,6 @@
 export const FASE_LABELS = {
     '1': 'Foundation',
-    '2': 'Sub Function Rotation',
+    '2': 'Self Learning',
     '3': 'Monthly Training (Leadership)',
     '4': 'Administrasi',
 };
