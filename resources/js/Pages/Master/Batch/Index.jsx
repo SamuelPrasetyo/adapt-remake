@@ -15,7 +15,7 @@ const isActive = (row) => {
 
 const COLS = [
     { key: '_no',        label: 'No',         width: '60px', render: (_, __, i) => i + 1 },
-    { key: 'nama_batch', label: 'Nama Batch',  sortable: true },
+    { key: 'nama_batch', label: 'Nama Batch',  sortable: true, render: (v) => `Batch ${v}` },
     { key: 'tahun_batch',label: 'Tahun Batch', sortable: true },
     { key: 'tanggal_mulai',   label: 'Mulai',   render: (v) => fmtDate(v) },
     { key: 'tanggal_selesai', label: 'Selesai', render: (v) => fmtDate(v) },
@@ -26,12 +26,20 @@ const COLS = [
     ) },
 ];
 
-function TextField({ label, value, onChange, error, type = 'text', required = true }) {
+function TextField({ label, value, onChange, error, type = 'text', required = true, digitsOnly = false, placeholder, helperText }) {
+    const handleChange = (e) => {
+        if (digitsOnly) e = { ...e, target: { ...e.target, value: e.target.value.replace(/\D/g, '') } };
+        onChange(e);
+    };
     return (
         <div className="mb-4">
             <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
-            <input type={type} value={value} onChange={onChange} required={required}
+            <input type={type} value={value} onChange={handleChange} required={required}
+                placeholder={placeholder}
+                inputMode={digitsOnly ? 'numeric' : undefined}
+                pattern={digitsOnly ? '[0-9]*' : undefined}
                 className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500" />
+            {helperText && !error && <p className="text-xs text-slate-400 mt-1">{helperText}</p>}
             {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
         </div>
     );
@@ -84,7 +92,7 @@ export default function BatchIndex({ batchs }) {
     };
 
     return (
-        <AppLayout title="MASTER BATCH" breadcrumb="Master / Batch">
+        <AppLayout title="MASTER BATCH" badge="Batch" breadcrumb="Master / Batch">
             <DataTable
                 columns={COLS}
                 data={batchs}
@@ -125,7 +133,8 @@ export default function BatchIndex({ batchs }) {
                 }
             >
                 <form id="add-form" onSubmit={submitAdd}>
-                    <TextField label="Nama Batch" value={addForm.data.nama_batch}
+                    <TextField label="Nama Batch" value={addForm.data.nama_batch} digitsOnly
+                        placeholder="Contoh: 6" helperText="Hanya angka yang diperbolehkan"
                         onChange={(e) => addForm.setData('nama_batch', e.target.value)} error={addForm.errors.nama_batch} />
                     <TextField label="Tahun Batch" type="number" value={addForm.data.tahun_batch}
                         onChange={(e) => addForm.setData('tahun_batch', e.target.value)} error={addForm.errors.tahun_batch} />
@@ -147,7 +156,8 @@ export default function BatchIndex({ batchs }) {
                 }
             >
                 <form id="edit-form" onSubmit={submitEdit}>
-                    <TextField label="Nama Batch" value={editForm.data.nama_batch}
+                    <TextField label="Nama Batch" value={editForm.data.nama_batch} digitsOnly
+                        placeholder="Contoh: 6" helperText="Hanya angka yang diperbolehkan"
                         onChange={(e) => editForm.setData('nama_batch', e.target.value)} error={editForm.errors.nama_batch} />
                     <TextField label="Tahun Batch" type="number" value={editForm.data.tahun_batch}
                         onChange={(e) => editForm.setData('tahun_batch', e.target.value)} error={editForm.errors.tahun_batch} />
