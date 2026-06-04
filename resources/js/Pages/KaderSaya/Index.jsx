@@ -148,7 +148,7 @@ function BatchDropdown({ batches, value, onChange }) {
         const s = b.tanggal_selesai ? String(b.tanggal_selesai).slice(0, 10) : null;
         return !!m && !!s && m <= today && today <= s;
     };
-    const batchLabel = (b) => `${b.nama_batch}${b.tahun_batch ? ` (${b.tahun_batch})` : ''}`;
+    const batchLabel = (b) => `Batch ${b.nama_batch}${b.tahun_batch ? ` (${b.tahun_batch})` : ''}`;
     const current = value === 'all' ? null : list.find(b => String(b.id_batch) === String(value));
     const label = value === 'all' ? 'Semua Batch' : (current ? batchLabel(current) : 'Pilih Batch');
 

@@ -383,7 +383,8 @@ export default function ModulDetail({ modul, progress = {}, pretest = [], postte
         setToast(prev => ({ open: true, type, message, key: prev.key + 1 }));
 
     const hasPre     = modul?.fase != 3;
-    const finalScore = progress.final_score ?? '—';
+    // Skor Akhir hanya muncul bila post-test & Post Activity sama-sama sudah dinilai.
+    const finalScore = progress.final_score;
 
     const materiLocked = hasPre && !progress.pretest;
     const postLocked   = (progress.materi_progress ?? 0) < 100;
@@ -417,10 +418,12 @@ export default function ModulDetail({ modul, progress = {}, pretest = [], postte
                             <p className="text-sm text-slate-500 mt-1">{modul.tag_kompetensi}</p>
                         )}
                     </div>
-                    <div className="text-right shrink-0">
-                        <p className="text-4xl font-bold text-emerald-600">{finalScore}</p>
-                        <p className="text-xs text-slate-500 mt-0.5">Skor Akhir</p>
-                    </div>
+                    {finalScore != null && (
+                        <div className="text-right shrink-0">
+                            <p className="text-4xl font-bold text-emerald-600">{Number(finalScore).toFixed(2)}</p>
+                            <p className="text-xs text-slate-500 mt-0.5">Skor Akhir</p>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -494,6 +497,11 @@ export default function ModulDetail({ modul, progress = {}, pretest = [], postte
                                     {progress.post_activity_status && (
                                         <span className={`text-xs font-medium ${STATUS_COLOR[progress.post_activity_status] ?? 'text-slate-500'}`}>
                                             · {STATUS_LABEL[progress.post_activity_status] ?? progress.post_activity_status}
+                                        </span>
+                                    )}
+                                    {progress.post_activity_nilai != null && (
+                                        <span className="text-xs font-semibold text-emerald-700">
+                                            · Nilai: {Number(progress.post_activity_nilai).toFixed(2)}
                                         </span>
                                     )}
                                 </div>

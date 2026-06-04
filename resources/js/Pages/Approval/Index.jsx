@@ -22,10 +22,29 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
     const [reason, setReason] = useState("");
     const [busy, setBusy] = useState(false);
 
+    // Approve Post Activity butuh input nilai (0-100) dari Admin MAI.
+    const [approvePa, setApprovePa] = useState(null); // { id }
+    const [paNilai, setPaNilai] = useState("");
+    const [paCatatan, setPaCatatan] = useState("");
+
     const doApprove = (url) => {
         setBusy(true);
         router.post(url, {}, {
             preserveScroll: true,
+            onFinish: () => setBusy(false),
+        });
+    };
+
+    const openApprovePa = (id) => { setApprovePa({ id }); setPaNilai(""); setPaCatatan(""); };
+
+    const submitApprovePa = () => {
+        if (!approvePa) return;
+        const n = Number(paNilai);
+        if (paNilai === "" || Number.isNaN(n) || n < 0 || n > 100) return;
+        setBusy(true);
+        router.post(`/approval/post-activity/${approvePa.id}/approve`, { nilai: n, catatan: paCatatan || null }, {
+            preserveScroll: true,
+            onSuccess: () => setApprovePa(null),
             onFinish: () => setBusy(false),
         });
     };
@@ -136,8 +155,8 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
                                     <td className="px-4 py-3 text-slate-500">{fmtDate(r.created_at)}</td>
                                     <td className="px-4 py-3">
                                         <div className="flex items-center justify-end gap-2">
-                                            <button disabled={busy} onClick={() => doApprove(`/approval/post-activity/${r.id}/approve`)}
-                                                className="text-xs px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">Approve</button>
+                                            <button disabled={busy} onClick={() => openApprovePa(r.id)}
+                                                className="text-xs px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">Setujui & Nilai</button>
                                             <button disabled={busy} onClick={() => openReject("pa", `/approval/post-activity/${r.id}/reject`)}
                                                 className="text-xs px-2.5 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">Reject</button>
                                         </div>
@@ -292,13 +311,14 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
                                         <th className="text-left px-4 py-3">Tipe</th>
                                         <th className="text-left px-4 py-3">Modul</th>
                                         <th className="text-left px-4 py-3">File</th>
+                                        <th className="text-center px-4 py-3">Nilai</th>
                                         <th className="text-left px-4 py-3">Disetujui</th>
                                         <th className="text-right px-4 py-3">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {paApproved.length === 0 && (
-                                        <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-400">Belum ada Post Activity yang disetujui.</td></tr>
+                                        <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">Belum ada Post Activity yang disetujui.</td></tr>
                                     )}
                                     {paApproved.map((r) => (
                                         <tr key={r.id} className="hover:bg-slate-50">
@@ -310,6 +330,7 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
                                                     <a href={`/${r.path_file}`} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline text-xs">{r.nama_file ?? "Unduh"}</a>
                                                 ) : <span className="text-slate-400 text-xs">{r.nama_file ?? "—"}</span>}
                                             </td>
+                                            <td className="px-4 py-3 text-center font-semibold text-emerald-600">{r.nilai != null ? Number(r.nilai).toFixed(2) : "—"}</td>
                                             <td className="px-4 py-3 text-slate-500">{fmtDate(r.approved_at)}</td>
                                             <td className="px-4 py-3 text-right">
                                                 <button disabled={busy} onClick={() => openReject("pa", `/approval/post-activity/${r.id}/reject`, true)}
@@ -319,6 +340,30 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
                                     ))}
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {approvePa && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => !busy && setApprovePa(null)}>
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-base font-semibold text-slate-800">Setujui & Nilai Post Activity</h3>
+                        <p className="text-xs text-slate-500 mt-1">Masukkan nilai Post Activity (0–100). Nilai ini digabung ke Skor Akhir modul.</p>
+                        <label className="block mt-3 text-xs font-medium text-slate-600">Nilai <span className="text-red-500">*</span></label>
+                        <input type="number" min={0} max={100} step="0.01" value={paNilai}
+                            onChange={(e) => setPaNilai(e.target.value)}
+                            placeholder="0 - 100"
+                            className="mt-1 w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500" />
+                        <label className="block mt-3 text-xs font-medium text-slate-600">Catatan (opsional)</label>
+                        <textarea value={paCatatan} onChange={(e) => setPaCatatan(e.target.value)} rows={3}
+                            placeholder="Catatan penilaian (opsional)..."
+                            className="mt-1 w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500" />
+                        <div className="flex justify-end gap-2 mt-4">
+                            <button onClick={() => setApprovePa(null)} disabled={busy}
+                                className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50">Batal</button>
+                            <button onClick={submitApprovePa} disabled={busy || paNilai === ""}
+                                className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50">{busy ? "Memproses..." : "Setujui & Nilai"}</button>
                         </div>
                     </div>
                 </div>

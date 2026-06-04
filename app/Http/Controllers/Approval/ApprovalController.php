@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\Dokumen;
 use App\Models\PenilaianOjt;
+use App\Models\PenilaianPostActivity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -43,6 +44,7 @@ class ApprovalController extends Controller
             ->leftJoin('users as ku', DB::raw('CONVERT(d.kader_id USING utf8mb4) COLLATE utf8mb4_unicode_ci'), '=', 'ku.id')
             ->leftJoin('users as mu', DB::raw('CONVERT(d.mentor_id USING utf8mb4) COLLATE utf8mb4_unicode_ci'), '=', 'mu.id')
             ->leftJoin('modul as m', 'd.modul_id', '=', 'm.id')
+            ->leftJoin('penilaian_post_activity as pa', 'pa.dokumen_id', '=', 'd.id')
             ->where('d.jenis', 'POST_ACTIVITY');
 
         $paPending = (clone $paBase)
@@ -55,7 +57,7 @@ class ApprovalController extends Controller
             ->where('d.status', 'approved')
             ->orderBy('d.approved_at', 'desc')
             ->limit(50)
-            ->get(['d.id','d.nama_file','d.path_file','d.tipe','d.created_at','d.approved_at','m.nama_modul',
+            ->get(['d.id','d.nama_file','d.path_file','d.tipe','d.created_at','d.approved_at','m.nama_modul','pa.nilai',
                    DB::raw('COALESCE(ku.name, mu.name) as uploader_nama')]);
 
         $idpBase = DB::table('dokumen as d')
@@ -123,8 +125,13 @@ class ApprovalController extends Controller
         return back()->with('approvalSuccess', "Penilaian OJT FMC-{$fmc} ditolak.");
     }
 
-    public function approvePostActivity(Dokumen $dokumen)
+    public function approvePostActivity(Request $request, Dokumen $dokumen)
     {
+        $validated = $request->validate([
+            'nilai'   => 'required|numeric|min:0|max:100',
+            'catatan' => 'nullable|string',
+        ]);
+
         $dokumen->update([
             'status'           => 'approved',
             'approved_by'      => Auth::id(),
@@ -132,9 +139,20 @@ class ApprovalController extends Controller
             'rejection_reason' => null,
         ]);
 
-        ActivityLog::activity_log("Approve Post Activity (Dokumen ID {$dokumen->id})");
+        // Skor disimpan di tabel khusus penilaian_post_activity (1:1 ke dokumen).
+        PenilaianPostActivity::updateOrCreate(
+            ['dokumen_id' => $dokumen->id],
+            [
+                'nilai'      => $validated['nilai'],
+                'catatan'    => $validated['catatan'] ?? null,
+                'dinilai_by' => Auth::id(),
+                'dinilai_at' => now(),
+            ]
+        );
 
-        return back()->with('approvalSuccess', 'Post Activity disetujui.');
+        ActivityLog::activity_log("Approve & nilai Post Activity (Dokumen ID {$dokumen->id}, nilai {$validated['nilai']})");
+
+        return back()->with('approvalSuccess', 'Post Activity disetujui & dinilai.');
     }
 
     public function rejectPostActivity(Request $request, Dokumen $dokumen)

@@ -79,12 +79,20 @@ class LearningController extends Controller
             ->value('progress') ?? 0;
 
         $userType = strtolower($user->type ?? '');
-        $postActivityDoc = Dokumen::where('modul_id', $modul->id)
+        $postActivityDoc = Dokumen::with('penilaian')
+            ->where('modul_id', $modul->id)
             ->where('jenis', 'POST_ACTIVITY')
             ->when($userType === 'kader',  fn($q) => $q->where('kader_id', $user->id))
             ->when($userType !== 'kader', fn($q) => $q->where('mentor_id', $user->id))
             ->latest()
             ->first();
+
+        // Skor Akhir = rata-rata 50/50 post-test & nilai Post Activity, hanya bila KEDUANYA ada.
+        $paNilai       = $postActivityDoc ? optional($postActivityDoc->penilaian)->nilai : null;
+        $posttestScore = $posttestResult ? $posttestResult->score : null;
+        $finalScore    = ($posttestScore !== null && $paNilai !== null)
+            ? round(($posttestScore + $paNilai) / 2, 2)
+            : null;
 
         $progress = [
             'pretest'               => (bool) $pretestResult,
@@ -96,9 +104,10 @@ class LearningController extends Controller
             'post_activity'             => (bool) $postActivityDoc,
             'post_activity_file'        => $postActivityDoc ? $postActivityDoc->nama_file : null,
             'post_activity_status'      => $postActivityDoc ? $postActivityDoc->status : null,
+            'post_activity_nilai'       => $paNilai,
             'post_activity_rejection_reason' => $postActivityDoc ? $postActivityDoc->rejection_reason : null,
             'post_activity_can_reupload'     => !$postActivityDoc || $postActivityDoc->status === 'rejected',
-            'final_score'           => $posttestResult ? $posttestResult->score : null,
+            'final_score'           => $finalScore,
         ];
 
         $pretest  = SoalModul::with('jawabans')
