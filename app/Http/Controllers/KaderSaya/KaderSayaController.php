@@ -116,6 +116,9 @@ class KaderSayaController extends Controller
         $user       = Auth::user();
         $isAdmin021 = $user->type === 'Admin' && $user->company_code === '021';
         $isMentor   = $user->type === 'Mentor';
+        // Kader yang melihat dashboard dirinya sendiri (via DashboardController::dashboard_kader)
+        // mendapat tampilan read-only: tanpa tombol kembali & tanpa form/aksi khusus mentor.
+        $isKader    = $user->type === 'Kader';
 
         $kader = Kader::select(
                 'kader.*',
@@ -424,6 +427,7 @@ class KaderSayaController extends Controller
             'penilaianStructure' => PenilaianOjtStructure::all(),
             'canEditPenilaian'   => $isMentor,
             'allFases'           => $allFases,
+            'kaderView'          => $isKader,
         ]);
     }
 

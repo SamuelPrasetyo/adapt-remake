@@ -288,10 +288,12 @@ function KirimFeedbackForm({ kader, weeks, mentorName, kaderId }) {
     );
 }
 
-export default function FeedbackTab({ kader, weeks, refleksi, mentorFeedbackList = [], mentorName, kaderId }) {
+export default function FeedbackTab({ kader, weeks, refleksi, mentorFeedbackList = [], mentorName, kaderId, showFeedbackForm = true }) {
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
-            <KirimFeedbackForm kader={kader} weeks={weeks} mentorName={mentorName} kaderId={kaderId} />
+        <div className={`grid grid-cols-1 gap-5 items-start ${showFeedbackForm ? "lg:grid-cols-2" : ""}`}>
+            {showFeedbackForm && (
+                <KirimFeedbackForm kader={kader} weeks={weeks} mentorName={mentorName} kaderId={kaderId} />
+            )}
 
             <div className="space-y-3">
                 <AccordionSection

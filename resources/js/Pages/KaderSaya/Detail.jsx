@@ -81,6 +81,7 @@ export default function KaderSayaDetail({
     penilaianStructure = null,
     canEditPenilaian = false,
     allFases = [],
+    kaderView = false,
 }) {
     const hashTab = typeof window !== "undefined" ? window.location.hash.replace("#", "") : "";
     const [tab, setTab] = useState(VALID_TABS.includes(hashTab) ? hashTab : "learning");
@@ -96,17 +97,22 @@ export default function KaderSayaDetail({
     const kaderId  = kader?.id;
 
     return (
-        <AppLayout title="KADER SAYA" breadcrumb="Kader Saya / Detail">
-            {/* Back button */}
-            <div className="mb-5">
-                <Link href="/kader-saya"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                    </svg>
-                    Kembali ke Daftar Kader
-                </Link>
-            </div>
+        <AppLayout
+            title={kaderView ? "DASHBOARD" : "KADER SAYA"}
+            breadcrumb={kaderView ? "Dashboard Kader" : "Kader Saya / Detail"}
+        >
+            {/* Back button — hanya untuk Admin/Mentor (Kader tidak punya daftar kader) */}
+            {!kaderView && (
+                <div className="mb-5">
+                    <Link href="/kader-saya"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                        </svg>
+                        Kembali ke Daftar Kader
+                    </Link>
+                </div>
+            )}
 
             {/* Kader header card */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-6">
@@ -209,6 +215,7 @@ export default function KaderSayaDetail({
                     mentorFeedbackList={mentorFeedbackList}
                     mentorName={mentorName}
                     kaderId={kaderId}
+                    showFeedbackForm={!kaderView}
                 />
             )}
             {tab === "penilaian" && (

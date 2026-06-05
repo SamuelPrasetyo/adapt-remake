@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\KaderSaya\KaderSayaController;
 use App\Http\Controllers\Master\Mentor\KaderPerMentorController;
 use App\Models\Batch;
 use App\Models\Jawaban;
@@ -143,6 +144,25 @@ class DashboardController extends Controller
 
     public function dashboard_kader()
     {
+        // Dashboard Kader disamakan dengan tampilan "Kader Saya / Detail" yang
+        // dilihat Admin & Mentor. Kader login melihat detail dirinya sendiri
+        // dalam mode read-only (lihat KaderSayaController::show() — properti
+        // kaderView, canUpload, canEditPenilaian otomatis false untuk Kader).
+        $user  = Auth::user();
+        $kader = Kader::where('nik', $user->nik)->first();
+
+        if (!$kader) {
+            abort(404, 'Data kader tidak ditemukan.');
+        }
+
+        return app(KaderSayaController::class)->show($kader->id);
+
+        /*
+        |----------------------------------------------------------------------
+        | Implementasi lama (grafik Learning Growth sederhana) — di-comment,
+        | jangan dihapus. Pasangannya di resources/js/Pages/DashboardKader.jsx
+        | (juga di-comment). Hapus blok ini bila sudah dipastikan tidak dipakai.
+        |----------------------------------------------------------------------
         $user_kader = Auth::user();
         $reports = Jawaban::selectRaw("SUM(jawaban) / 4 as avg,nik_kader,weeks.angka_week as week")
             ->join('weeks', 'jawaban.id_week', 'weeks.id_week')
@@ -199,6 +219,7 @@ class DashboardController extends Controller
             'kkm'       => $kkm,
             'kaderInfo' => $kaderInfo,
         ]);
+        */
     }
 
     /**

@@ -1,3 +1,18 @@
+/*
+ * ============================================================================
+ * [DEPRECATED / TIDAK DIPAKAI LAGI]
+ * ----------------------------------------------------------------------------
+ * Halaman Dashboard Kader sekarang disamakan dengan "Kader Saya / Detail"
+ * (resources/js/Pages/KaderSaya/Detail.jsx) yang dilihat Admin & Mentor.
+ *
+ * Controller DashboardController::dashboard_kader() TIDAK lagi me-render
+ * page 'DashboardKader' ini — ia memanggil KaderSayaController::show().
+ * Sehingga seluruh kode di bawah sudah non-aktif (dead code).
+ *
+ * Sengaja TIDAK dihapus agar bisa dipakai kembali bila diperlukan.
+ * Hapus file ini bila sudah dipastikan tidak dibutuhkan.
+ * ============================================================================
+ */
 import { useState } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
 
