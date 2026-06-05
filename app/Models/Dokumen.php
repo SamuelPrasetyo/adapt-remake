@@ -16,9 +16,4 @@ class Dokumen extends Model
     {
         return $this->hasOne(PenilaianPostActivity::class, 'dokumen_id');
     }
-
-    public function files()
-    {
-        return $this->hasMany(DokumenFile::class, 'dokumen_id');
-    }
 }

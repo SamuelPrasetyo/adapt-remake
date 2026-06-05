@@ -9,7 +9,7 @@ function fmtDate(s) {
     return new Date(s).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" });
 }
 
-// Satu Post Activity bisa berisi banyak file (maks 10). Tampilkan semuanya sebagai daftar unduhan.
+// Satu dokumen Post Activity = 1 file (per sesi). Tetap dukung bentuk daftar bila ada.
 function PaFiles({ row }) {
     const files = row.files?.length
         ? row.files
@@ -27,12 +27,17 @@ function PaFiles({ row }) {
 
 export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtApproved = [], paApproved = [], idpPending = [], idpApproved = [] }) {
     const [tab, setTab] = useState(() => {
+        // Prioritaskan hash URL (bisa dibagikan), lalu localStorage (tahan refresh walau Inertia
+        // menghapus hash setelah aksi approve/reject), terakhir default "ojt".
         const hash = window.location.hash.replace("#", "");
-        return VALID_TABS.includes(hash) ? hash : "ojt";
+        if (VALID_TABS.includes(hash)) return hash;
+        const saved = typeof window !== "undefined" ? window.localStorage.getItem("approvalTab") : null;
+        return VALID_TABS.includes(saved) ? saved : "ojt";
     });
 
     useEffect(() => {
         window.location.hash = tab;
+        window.localStorage.setItem("approvalTab", tab);
     }, [tab]);
     const [reject, setReject] = useState(null); // { type, url, isHistory }
     const [reason, setReason] = useState("");
@@ -100,7 +105,7 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
 
             {tab === "ojt" && (
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
-                    <table className="w-full text-sm min-w-[720px]">
+                    <table className="w-full text-sm min-w-180">
                         <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
                             <tr>
                                 <th className="text-left px-4 py-3 whitespace-nowrap">Kader</th>
@@ -143,13 +148,14 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
 
             {tab === "pa" && (
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
-                    <table className="w-full text-sm min-w-[720px]">
+                    <table className="w-full text-sm min-w-180">
                         <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
                             <tr>
                                 <th className="text-left px-4 py-3 whitespace-nowrap">Uploader</th>
                                 <th className="text-left px-4 py-3 whitespace-nowrap">BU</th>
                                 <th className="text-left px-4 py-3 whitespace-nowrap">Tipe</th>
                                 <th className="text-left px-4 py-3 whitespace-nowrap">Modul</th>
+                                <th className="text-center px-4 py-3 whitespace-nowrap">Sesi</th>
                                 <th className="text-left px-4 py-3 whitespace-nowrap">File</th>
                                 <th className="text-left px-4 py-3 whitespace-nowrap">Diupload</th>
                                 <th className="text-right px-4 py-3 whitespace-nowrap">Aksi</th>
@@ -157,7 +163,7 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {paPending.length === 0 && (
-                                <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">Tidak ada Post Activity yang menunggu approval.</td></tr>
+                                <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400">Tidak ada Post Activity yang menunggu approval.</td></tr>
                             )}
                             {paPending.map((r) => (
                                 <tr key={r.id} className="hover:bg-slate-50">
@@ -165,12 +171,24 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
                                     <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.uploader_bu ?? "—"}</td>
                                     <td className="px-4 py-3 text-slate-500 whitespace-nowrap capitalize">{r.tipe ?? "—"}</td>
                                     <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.nama_modul ?? "—"}</td>
+                                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                                        {r.required_sessions > 1 ? (
+                                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${r.is_scoring ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
+                                                {r.session_no}/{r.required_sessions}
+                                            </span>
+                                        ) : <span className="text-slate-400 text-xs">—</span>}
+                                    </td>
                                     <td className="px-4 py-3"><PaFiles row={r} /></td>
                                     <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{fmtDate(r.created_at)}</td>
                                     <td className="px-4 py-3">
                                         <div className="flex items-center justify-end gap-2">
-                                            <button disabled={busy} onClick={() => openApprovePa(r.id)}
-                                                className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">Setujui & Nilai</button>
+                                            {r.is_scoring ? (
+                                                <button disabled={busy} onClick={() => openApprovePa(r.id)}
+                                                    className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">Setujui & Nilai</button>
+                                            ) : (
+                                                <button disabled={busy} onClick={() => doApprove(`/approval/post-activity/${r.id}/approve`)}
+                                                    className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">Approve</button>
+                                            )}
                                             <button disabled={busy} onClick={() => openReject("pa", `/approval/post-activity/${r.id}/reject`)}
                                                 className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">Reject</button>
                                         </div>
@@ -184,7 +202,7 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
 
             {tab === "idp" && (
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
-                    <table className="w-full text-sm min-w-[720px]">
+                    <table className="w-full text-sm min-w-180">
                         <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
                             <tr>
                                 <th className="text-left px-4 py-3 whitespace-nowrap">Kader</th>
@@ -240,7 +258,7 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
                     <div>
                         <h3 className="text-sm font-semibold text-slate-600 mb-2">Penilaian OJT — Sudah Disetujui</h3>
                         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
-                            <table className="w-full text-sm min-w-[720px]">
+                            <table className="w-full text-sm min-w-180">
                                 <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
                                     <tr>
                                         <th className="text-left px-4 py-3 whitespace-nowrap">Kader</th>
@@ -279,7 +297,7 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
                     <div>
                         <h3 className="text-sm font-semibold text-slate-600 mb-2">Form IDP — Sudah Disetujui</h3>
                         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
-                            <table className="w-full text-sm min-w-[720px]">
+                            <table className="w-full text-sm min-w-180">
                                 <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
                                     <tr>
                                         <th className="text-left px-4 py-3 whitespace-nowrap">Kader</th>
@@ -318,7 +336,7 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
                     <div>
                         <h3 className="text-sm font-semibold text-slate-600 mb-2">Post Activity — Sudah Disetujui</h3>
                         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
-                            <table className="w-full text-sm min-w-[720px]">
+                            <table className="w-full text-sm min-w-180">
                                 <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
                                     <tr>
                                         <th className="text-left px-4 py-3 whitespace-nowrap">Uploader</th>

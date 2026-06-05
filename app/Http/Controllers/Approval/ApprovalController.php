@@ -56,6 +56,7 @@ class ApprovalController extends Controller
             ->where('d.status', 'pending')
             ->orderBy('d.created_at', 'desc')
             ->get(['d.id','d.nama_file','d.path_file','d.tipe','d.created_at','m.nama_modul','co.company_shortname as uploader_bu',
+                   'd.modul_id','d.mentor_id','d.mentor_master_id','d.kader_id',
                    DB::raw('COALESCE(ku.name, mt.nama, mu.name) as uploader_nama')]);
 
         $paApproved = (clone $paBase)
@@ -65,24 +66,13 @@ class ApprovalController extends Controller
             ->get(['d.id','d.nama_file','d.path_file','d.tipe','d.created_at','d.approved_at','m.nama_modul','pa.nilai','co.company_shortname as uploader_bu',
                    DB::raw('COALESCE(ku.name, mt.nama, mu.name) as uploader_nama')]);
 
-        // Satu Post Activity bisa berisi banyak file (dokumen_files). Lampirkan daftar file per dokumen,
-        // fallback ke kolom dokumen lama untuk data sebelum fitur multi-file.
-        $paIds = $paPending->pluck('id')->merge($paApproved->pluck('id'))->filter()->unique()->all();
-        $filesByDoc = DB::table('dokumen_files')
-            ->whereIn('dokumen_id', $paIds)
-            ->get(['dokumen_id', 'nama_file', 'path_file'])
-            ->groupBy('dokumen_id');
-        $attachFiles = function ($rows) use ($filesByDoc) {
-            return $rows->map(function ($r) use ($filesByDoc) {
-                $fs = $filesByDoc->get($r->id);
-                $r->files = $fs
-                    ? $fs->map(fn($f) => ['nama_file' => $f->nama_file, 'path_file' => $f->path_file])->values()
-                    : collect([['nama_file' => $r->nama_file, 'path_file' => $r->path_file]])->values();
-                return $r;
-            });
-        };
-        $paPending  = $attachFiles($paPending);
-        $paApproved = $attachFiles($paApproved);
+        // Post Activity Mentor = 10 sesi berurutan; sesi 1-9 cukup di-approve, sesi ke-10 (sesi terakhir)
+        // baru diberi nilai. Hitung nomor sesi tiap dokumen pending agar UI tahu tombol mana yang dipakai.
+        foreach ($paPending as $r) {
+            $r->required_sessions = $this->paRequiredSessions($r->tipe);
+            $r->session_no = $this->paApprovedCount($r) + 1;
+            $r->is_scoring = $r->session_no >= $r->required_sessions;
+        }
 
         $idpBase = DB::table('dokumen as d')
             ->leftJoin('users as ku', DB::raw('CONVERT(d.kader_id USING utf8mb4) COLLATE utf8mb4_unicode_ci'), '=', 'ku.id')
@@ -151,10 +141,17 @@ class ApprovalController extends Controller
 
     public function approvePostActivity(Request $request, Dokumen $dokumen)
     {
-        $validated = $request->validate([
-            'nilai'   => 'required|numeric|min:0|max:100',
-            'catatan' => 'nullable|string',
-        ]);
+        // Nilai hanya diberikan pada sesi terakhir (ke-10 untuk Mentor / ke-1 untuk Kader).
+        // Sesi sebelumnya cukup di-approve tanpa nilai.
+        $required = $this->paRequiredSessions($dokumen->tipe);
+        $sessionNo = $this->paApprovedCount($dokumen, $dokumen->id) + 1;
+        $isScoring = $sessionNo >= $required;
+
+        $rules = ['catatan' => 'nullable|string'];
+        if ($isScoring) {
+            $rules['nilai'] = 'required|numeric|min:0|max:100';
+        }
+        $validated = $request->validate($rules);
 
         $dokumen->update([
             'status'           => 'approved',
@@ -163,20 +160,55 @@ class ApprovalController extends Controller
             'rejection_reason' => null,
         ]);
 
-        // Skor disimpan di tabel khusus penilaian_post_activity (1:1 ke dokumen).
-        PenilaianPostActivity::updateOrCreate(
-            ['dokumen_id' => $dokumen->id],
-            [
-                'nilai'      => $validated['nilai'],
-                'catatan'    => $validated['catatan'] ?? null,
-                'dinilai_by' => Auth::id(),
-                'dinilai_at' => now(),
-            ]
-        );
+        if ($isScoring) {
+            // Skor disimpan di tabel khusus penilaian_post_activity (1:1 ke dokumen).
+            PenilaianPostActivity::updateOrCreate(
+                ['dokumen_id' => $dokumen->id],
+                [
+                    'nilai'      => $validated['nilai'],
+                    'catatan'    => $validated['catatan'] ?? null,
+                    'dinilai_by' => Auth::id(),
+                    'dinilai_at' => now(),
+                ]
+            );
 
-        ActivityLog::activity_log("Approve & nilai Post Activity (Dokumen ID {$dokumen->id}, nilai {$validated['nilai']})");
+            ActivityLog::activity_log("Approve & nilai Post Activity sesi terakhir (Dokumen ID {$dokumen->id}, nilai {$validated['nilai']})");
 
-        return back()->with('approvalSuccess', 'Post Activity disetujui & dinilai.');
+            return back()->with('approvalSuccess', 'Post Activity sesi terakhir disetujui & dinilai.');
+        }
+
+        ActivityLog::activity_log("Approve Post Activity sesi {$sessionNo} (Dokumen ID {$dokumen->id})");
+
+        return back()->with('approvalSuccess', "Post Activity sesi {$sessionNo} disetujui.");
+    }
+
+    /** Jumlah sesi Post Activity yang diwajibkan: Mentor 10 sesi coaching, Kader cukup 1. */
+    private function paRequiredSessions(?string $tipe): int
+    {
+        return $tipe === 'mentor' ? 10 : 1;
+    }
+
+    /**
+     * Jumlah sesi Post Activity yang sudah disetujui untuk scope uploader yang sama
+     * (modul + record mentor, atau modul + kader). `$exceptId` mengecualikan dokumen tertentu.
+     * Menerima Dokumen (Eloquent) atau row hasil query builder.
+     */
+    private function paApprovedCount($doc, $exceptId = null): int
+    {
+        $isMentor = $doc->tipe === 'mentor';
+
+        return Dokumen::where('jenis', 'POST_ACTIVITY')
+            ->where('modul_id', $doc->modul_id)
+            ->where('status', 'approved')
+            ->when($exceptId, fn($q) => $q->where('id', '!=', $exceptId))
+            ->when($isMentor, function ($q) use ($doc) {
+                $q->where('mentor_id', $doc->mentor_id);
+                $doc->mentor_master_id
+                    ? $q->where('mentor_master_id', $doc->mentor_master_id)
+                    : $q->whereNull('mentor_master_id');
+            })
+            ->when(!$isMentor, fn($q) => $q->where('kader_id', $doc->kader_id))
+            ->count();
     }
 
     public function rejectPostActivity(Request $request, Dokumen $dokumen)

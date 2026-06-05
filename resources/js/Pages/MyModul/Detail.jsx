@@ -242,11 +242,9 @@ function ReviewModal({ open, onClose, modulId, tipe, title, mentorId }) {
     );
 }
 
-/* ── Post Activity upload ─────────────────────────────────── */
-const PA_MAX_FILES = 10;
-
+/* ── Post Activity upload (1 file per sesi) ───────────────── */
 function PostActivityUpload({ modulId, mentorId }) {
-    const [files, setFiles]         = useState([]);
+    const [file, setFile]           = useState(null);
     const [error, setError]         = useState(null);
     const [uploading, setUploading] = useState(false);
     const fileRef = useRef(null);
@@ -255,81 +253,56 @@ function PostActivityUpload({ modulId, mentorId }) {
     const MAX_BYTES = 2 * 1024 * 1024;
 
     const handleChange = (e) => {
-        const picked = Array.from(e.target.files ?? []);
-        if (fileRef.current) fileRef.current.value = ''; // izinkan pilih file yang sama lagi
-        if (picked.length === 0) return;
-
+        const f = e.target.files?.[0];
+        if (!f) return;
+        const ext = f.name.split('.').pop().toLowerCase();
+        if (!ALLOWED.includes(ext)) { setError('Format tidak diizinkan. Gunakan PDF, DOCX, atau XLSX.'); setFile(null); return; }
+        if (f.size > MAX_BYTES) { setError('Ukuran file melebihi batas 2 MB.'); setFile(null); return; }
         setError(null);
-        setFiles((prev) => {
-            const next = [...prev];
-            for (const f of picked) {
-                if (next.length >= PA_MAX_FILES) { setError(`Maksimal ${PA_MAX_FILES} file.`); break; }
-                const ext = f.name.split('.').pop().toLowerCase();
-                if (!ALLOWED.includes(ext)) { setError('Format tidak diizinkan. Gunakan PDF, DOCX, atau XLSX.'); continue; }
-                if (f.size > MAX_BYTES) { setError(`"${f.name}" melebihi batas 2 MB.`); continue; }
-                if (next.some((x) => x.name === f.name && x.size === f.size)) continue; // hindari duplikat
-                next.push(f);
-            }
-            return next;
-        });
+        setFile(f);
     };
 
-    const removeFile = (idx) => setFiles((prev) => prev.filter((_, i) => i !== idx));
-
     const handleUpload = () => {
-        if (files.length === 0) return;
+        if (!file) return;
         setUploading(true);
         const fd = new FormData();
-        files.forEach((f) => fd.append('files[]', f));
+        fd.append('file', file);
         fd.append('modul_id', modulId);
         if (mentorId) fd.append('mentor_id', mentorId);
         router.post('/learning/post-activity/upload', fd, {
             forceFormData: true,
             preserveState: true,
             preserveScroll: true,
-            onSuccess: () => { setUploading(false); setFiles([]); },
-            onError: (errs) => {
-                setUploading(false);
-                const first = Object.keys(errs).find((k) => k === 'files' || k.startsWith('files.'));
-                setError((first && errs[first]) || 'Upload gagal. Coba lagi.');
-            },
+            onSuccess: () => { setUploading(false); setFile(null); if (fileRef.current) fileRef.current.value = ''; },
+            onError: (errs) => { setUploading(false); setError(errs.file ?? 'Upload gagal. Coba lagi.'); },
         });
     };
 
     return (
         <div className="space-y-2 mt-1">
-            <input ref={fileRef} type="file" multiple className="hidden"
+            <input ref={fileRef} type="file" className="hidden"
                 accept=".pdf,.docx,.xlsx" onChange={handleChange} />
 
             <div className="flex items-center gap-2 flex-wrap">
                 <button type="button" onClick={() => fileRef.current?.click()}
-                    disabled={files.length >= PA_MAX_FILES}
-                    className="text-sm px-3 py-1.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition">
+                    className="text-sm px-3 py-1.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 transition">
                     Pilih File
                 </button>
-                {files.length > 0 && (
+                {file && (
                     <button type="button" onClick={handleUpload} disabled={uploading}
                         className="text-sm px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition">
-                        {uploading ? 'Mengupload...' : `Upload ${files.length} File`}
+                        {uploading ? 'Mengupload...' : 'Upload'}
                     </button>
                 )}
             </div>
 
-            {files.length > 0 && (
-                <ul className="space-y-1">
-                    {files.map((f, i) => (
-                        <li key={`${f.name}-${f.size}-${i}`} className="flex items-center gap-2 text-xs text-slate-600">
-                            <span className="truncate max-w-xs">{f.name}</span>
-                            <button type="button" onClick={() => removeFile(i)} disabled={uploading}
-                                className="text-red-500 hover:text-red-600 disabled:opacity-50 shrink-0">Hapus</button>
-                        </li>
-                    ))}
-                </ul>
+            {file && (
+                <p className="text-xs text-slate-600 truncate max-w-xs">{file.name}</p>
             )}
             {error && (
                 <p className="text-xs text-red-500">{error}</p>
             )}
-            <p className="text-xs text-slate-400">Format: PDF, DOCX, XLSX · Maks. 2 MB/file · Maks. {PA_MAX_FILES} file</p>
+            <p className="text-xs text-slate-400">Format: PDF, DOCX, XLSX · Maks. 2 MB · 1 file per sesi</p>
         </div>
     );
 }
@@ -578,56 +551,57 @@ export default function ModulDetail({ modul, progress = {}, pretest = [], postte
                             )}
                         </CheckItem>
 
-                        <CheckItem done={progress.post_activity && progress.post_activity_status !== 'rejected'}
+                        <CheckItem done={progress.post_activity}
                             title="Post Activity"
-                            sub={progress.post_activity
-                                ? `${progress.post_activity_files?.length ?? 1} file diupload`
-                                : 'Belum diupload'}
+                            sub={progress.post_activity_required > 1
+                                ? `${progress.post_activity_approved_count ?? 0}/${progress.post_activity_required} sesi disetujui`
+                                : (progress.post_activity ? 'Sudah diupload' : 'Belum diupload')}
                             subColor={progress.post_activity ? 'text-emerald-600' : 'text-slate-500'}
                             last={modul?.fase != 3}>
-                            {progress.post_activity && progress.post_activity_status !== 'rejected' ? (
-                                <div className="space-y-2">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                        <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">
-                                            ✓ Uploaded
-                                        </span>
-                                        {progress.post_activity_status && (
-                                            <span className={`text-xs font-medium ${STATUS_COLOR[progress.post_activity_status] ?? 'text-slate-500'}`}>
-                                                · {STATUS_LABEL[progress.post_activity_status] ?? progress.post_activity_status}
+                            {/* Riwayat sesi Post Activity */}
+                            {progress.post_activity_sessions?.length > 0 && (
+                                <ul className="space-y-1.5 mb-3">
+                                    {progress.post_activity_sessions.map((s, i) => (
+                                        <li key={i} className="flex items-center gap-2 flex-wrap text-xs">
+                                            <span className="text-slate-400 w-14 shrink-0">Sesi {i + 1}</span>
+                                            <a href={`/${s.path_file}`} target="_blank" rel="noreferrer"
+                                                className="text-blue-600 hover:underline truncate max-w-xs">{s.nama_file}</a>
+                                            <span className={`font-medium ${STATUS_COLOR[s.status] ?? 'text-slate-500'}`}>
+                                                {STATUS_LABEL[s.status] ?? s.status}
                                             </span>
-                                        )}
-                                        {progress.post_activity_nilai != null && (
-                                            <span className="text-xs font-semibold text-emerald-700">
-                                                · Nilai: {Number(progress.post_activity_nilai).toFixed(2)}
-                                            </span>
-                                        )}
-                                    </div>
-                                    {progress.post_activity_files?.length > 0 && (
-                                        <ul className="space-y-1">
-                                            {progress.post_activity_files.map((f, i) => (
-                                                <li key={i}>
-                                                    <a href={`/${f.path_file}`} target="_blank" rel="noreferrer"
-                                                        className="text-xs text-blue-600 hover:underline truncate inline-block max-w-xs">
-                                                        {f.nama_file}
-                                                    </a>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
-                                </div>
-                            ) : progress.post_activity_status === 'rejected' ? (
-                                <div className="space-y-2">
-                                    <div className="text-xs text-red-600 font-medium">
-                                        ❌ Ditolak Admin MAI{progress.post_activity_rejection_reason ? `: "${progress.post_activity_rejection_reason}"` : ''}. Silakan upload ulang.
-                                    </div>
-                                    {paLocked
-                                        ? <LockedBtn label="Upload Post Activity" message="Selesaikan Post-Test terlebih dahulu" />
-                                        : <PostActivityUpload modulId={modul?.id} mentorId={mentorId} />}
-                                </div>
-                            ) : paLocked ? (
+                                            {s.nilai != null && (
+                                                <span className="font-semibold text-emerald-700">· Nilai: {Number(s.nilai).toFixed(2)}</span>
+                                            )}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+
+                            {/* Aksi sesuai state */}
+                            {paLocked ? (
                                 <LockedBtn label="Upload Post Activity" message="Selesaikan Post-Test terlebih dahulu" />
+                            ) : progress.post_activity ? (
+                                <div className="text-xs text-emerald-600 font-medium">
+                                    ✓ Semua sesi Post Activity selesai{progress.post_activity_nilai != null ? ` · Nilai: ${Number(progress.post_activity_nilai).toFixed(2)}` : ''}.
+                                </div>
+                            ) : progress.post_activity_pending ? (
+                                <div className="text-xs text-amber-600 font-medium">
+                                    ⏳ Menunggu review Admin MAI. Sesi berikutnya dapat diupload setelah sesi ini disetujui.
+                                </div>
                             ) : (
-                                <PostActivityUpload modulId={modul?.id} mentorId={mentorId} />
+                                <div className="space-y-2">
+                                    {progress.post_activity_rejection_reason && (
+                                        <div className="text-xs text-red-600 font-medium">
+                                            ❌ Sesi terakhir ditolak Admin MAI{progress.post_activity_rejection_reason ? `: "${progress.post_activity_rejection_reason}"` : ''}. Silakan upload ulang.
+                                        </div>
+                                    )}
+                                    {progress.post_activity_required > 1 && (
+                                        <p className="text-xs text-slate-500">
+                                            Upload Post Activity sesi {(progress.post_activity_approved_count ?? 0) + 1} dari {progress.post_activity_required}.
+                                        </p>
+                                    )}
+                                    <PostActivityUpload modulId={modul?.id} mentorId={mentorId} />
+                                </div>
                             )}
                         </CheckItem>
 

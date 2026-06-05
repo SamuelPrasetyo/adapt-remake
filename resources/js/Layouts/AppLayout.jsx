@@ -16,7 +16,9 @@ export default function AppLayout({
     children,
 }) {
     const { url, props } = usePage();
-    const currentPath = url.split('?')[0];
+    // Buang query (?...) dan fragment (#...) agar deteksi menu aktif tetap cocok
+    // walau halaman memakai hash untuk tab (mis. /approval#pa).
+    const currentPath = url.split(/[?#]/)[0];
     const user = props?.auth?.user;
     const flash = props?.flash;
     const mentors = props?.mentors;

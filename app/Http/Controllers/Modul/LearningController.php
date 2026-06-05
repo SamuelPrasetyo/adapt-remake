@@ -116,7 +116,12 @@ class LearningController extends Controller
         )->value('progress') ?? 0;
 
         $userType = strtolower($user->type ?? '');
-        $postActivityDoc = Dokumen::with('penilaian', 'files')
+        // Post Activity Mentor = 10 sesi (1 jam coaching/minggu), upload 1 file per sesi secara berurutan:
+        // tiap sesi harus di-approve Admin MAI dulu sebelum sesi berikutnya. Kader cukup 1 sesi per modul.
+        $isMentor         = $userType !== 'kader';
+        $requiredSessions = $isMentor ? 10 : 1;
+
+        $postActivityDocs = Dokumen::with('penilaian')
             ->where('modul_id', $modul->id)
             ->where('jenis', 'POST_ACTIVITY')
             ->when($userType === 'kader',  fn($q) => $q->where('kader_id', $user->id))
@@ -124,17 +129,30 @@ class LearningController extends Controller
                 $q->where('mentor_id', $user->id);
                 $mentorId ? $q->where('mentor_master_id', $mentorId) : $q->whereNull('mentor_master_id');
             })
-            ->latest()
-            ->first();
+            ->orderBy('created_at')
+            ->get();
+
+        $approvedDocs   = $postActivityDocs->where('status', 'approved')->values();
+        $approvedCount  = $approvedDocs->count();
+        $pendingDoc     = $postActivityDocs->firstWhere('status', 'pending');
+        $rejectedDoc    = $postActivityDocs->where('status', 'rejected')->last();
+        $paDone         = $approvedCount >= $requiredSessions;
+
+        // Nilai Post Activity hanya diberikan pada sesi terakhir (ke-10 untuk Mentor / ke-1 untuk Kader);
+        // ambil dari dokumen approved yang punya penilaian.
+        $scoringDoc = $approvedDocs->first(fn($d) => $d->penilaian);
+        $paNilai    = $scoringDoc ? optional($scoringDoc->penilaian)->nilai : null;
+
+        // Riwayat sesi untuk ditampilkan di checklist (urut sesi 1..n).
+        $sessions = $postActivityDocs->map(fn($d) => [
+            'nama_file'        => $d->nama_file,
+            'path_file'        => $d->path_file,
+            'status'           => $d->status,
+            'nilai'            => optional($d->penilaian)->nilai,
+            'rejection_reason' => $d->rejection_reason,
+        ])->values();
 
         // Skor Akhir = rata-rata 50/50 post-test & nilai Post Activity, hanya bila KEDUANYA ada.
-        $paNilai       = $postActivityDoc ? optional($postActivityDoc->penilaian)->nilai : null;
-        // Daftar file Post Activity; fallback ke kolom dokumen lama bila belum ada baris dokumen_files.
-        $postActivityFiles = $postActivityDoc
-            ? ($postActivityDoc->files->isNotEmpty()
-                ? $postActivityDoc->files->map(fn($f) => ['nama_file' => $f->nama_file, 'path_file' => $f->path_file])->values()
-                : collect([['nama_file' => $postActivityDoc->nama_file, 'path_file' => $postActivityDoc->path_file]]))
-            : collect();
         $posttestScore = $posttestResult ? $posttestResult->score : null;
         $finalScore    = ($posttestScore !== null && $paNilai !== null)
             ? round(($posttestScore + $paNilai) / 2, 2)
@@ -147,13 +165,15 @@ class LearningController extends Controller
             'materi_progress'       => $readingProgress,
             'posttest'              => (bool) $posttestResult,
             'posttest_score'        => $posttestResult ? $posttestResult->score : null,
-            'post_activity'             => (bool) $postActivityDoc,
-            'post_activity_file'        => $postActivityDoc ? $postActivityDoc->nama_file : null,
-            'post_activity_files'       => $postActivityFiles->values(),
-            'post_activity_status'      => $postActivityDoc ? $postActivityDoc->status : null,
-            'post_activity_nilai'       => $paNilai,
-            'post_activity_rejection_reason' => $postActivityDoc ? $postActivityDoc->rejection_reason : null,
-            'post_activity_can_reupload'     => !$postActivityDoc || $postActivityDoc->status === 'rejected',
+            'post_activity'                  => $paDone,
+            'post_activity_required'         => $requiredSessions,
+            'post_activity_approved_count'   => $approvedCount,
+            'post_activity_sessions'         => $sessions,
+            'post_activity_pending'          => (bool) $pendingDoc,
+            'post_activity_rejection_reason' => $rejectedDoc ? $rejectedDoc->rejection_reason : null,
+            // Boleh upload sesi berikutnya bila tak ada yang menunggu review & belum mencapai kuota.
+            'post_activity_can_upload'       => !$pendingDoc && $approvedCount < $requiredSessions,
+            'post_activity_nilai'            => $paNilai,
             'final_score'           => $finalScore,
         ];
 
@@ -322,47 +342,51 @@ class LearningController extends Controller
 
     public function uploadPostActivity(Request $request)
     {
-        // Satu Post Activity bisa berisi banyak file (maks 10) — di-review & dinilai sekali sebagai satu paket.
+        // Satu file per upload. Mentor mengisi Post Activity per sesi coaching (maks 10 sesi),
+        // berurutan: sesi berikutnya baru bisa diupload setelah sesi sebelumnya di-approve Admin MAI.
         $request->validate([
             'modul_id' => 'required|integer',
-            'files'    => 'required|array|min:1|max:10',
-            'files.*'  => 'required|file|mimes:pdf,docx,xlsx|max:2048',
+            'file'     => 'required|file|mimes:pdf,docx,xlsx|max:2048',
         ]);
 
         $user     = auth()->user();
         $userType = strtolower($user->type ?? '');
+        $isMentor = $userType !== 'kader';
         $mentorMasterId = optional($this->activeMentor($request))->id;
+        $maxSessions = $isMentor ? 10 : 1;
 
-        // Cegah upload ulang jika dokumen terakhir masih menunggu review / sudah disetujui.
-        $lastDoc = Dokumen::with('files')
-            ->where('modul_id', $request->modul_id)
-            ->where('jenis', 'POST_ACTIVITY')
-            ->when($userType === 'kader', fn($q) => $q->where('kader_id', $user->id))
-            ->when($userType !== 'kader', function ($q) use ($user, $mentorMasterId) {
-                $q->where('mentor_id', $user->id);
-                $mentorMasterId ? $q->where('mentor_master_id', $mentorMasterId) : $q->whereNull('mentor_master_id');
-            })
-            ->latest()
-            ->first();
+        // Query baru tiap dipanggil (builder bersifat mutable) untuk men-scope dokumen ke uploader.
+        $scopeQuery = function () use ($request, $userType, $user, $mentorMasterId) {
+            return Dokumen::where('modul_id', $request->modul_id)
+                ->where('jenis', 'POST_ACTIVITY')
+                ->when($userType === 'kader', fn($q) => $q->where('kader_id', $user->id))
+                ->when($userType !== 'kader', function ($q) use ($user, $mentorMasterId) {
+                    $q->where('mentor_id', $user->id);
+                    $mentorMasterId ? $q->where('mentor_master_id', $mentorMasterId) : $q->whereNull('mentor_master_id');
+                });
+        };
 
-        if ($lastDoc && in_array($lastDoc->status, ['pending', 'approved'], true)) {
-            $msg = $lastDoc->status === 'approved'
-                ? 'Post Activity sudah disetujui Admin MAI dan tidak dapat diubah.'
-                : 'Post Activity masih menunggu review Admin MAI.';
-            return back()->withErrors(['files' => $msg]);
+        // Masih ada sesi menunggu review → belum boleh upload sesi berikutnya.
+        if ($scopeQuery()->where('status', 'pending')->exists()) {
+            return back()->withErrors(['file' => 'Masih ada Post Activity yang menunggu review Admin MAI.']);
         }
 
-        // Re-upload setelah ditolak — hapus dokumen lama (semua file + row) agar tidak menumpuk file sampah.
-        if ($lastDoc && $lastDoc->status === 'rejected') {
-            $oldPaths = $lastDoc->files->pluck('path_file')->push($lastDoc->path_file)->filter()->unique();
-            foreach ($oldPaths as $oldPath) {
-                $full = public_path($oldPath);
-                if (file_exists($full)) {
-                    @unlink($full);
-                }
+        // Kuota sesi sudah penuh (10 untuk Mentor / 1 untuk Kader).
+        $approvedCount = $scopeQuery()->where('status', 'approved')->count();
+        if ($approvedCount >= $maxSessions) {
+            $msg = $isMentor
+                ? 'Semua 10 sesi Post Activity sudah disetujui.'
+                : 'Post Activity sudah disetujui Admin MAI dan tidak dapat diubah.';
+            return back()->withErrors(['file' => $msg]);
+        }
+
+        // Upload ulang setelah ditolak — bersihkan dokumen yang ditolak (file + row) agar tak menumpuk.
+        foreach ($scopeQuery()->where('status', 'rejected')->get() as $rejected) {
+            $full = public_path($rejected->path_file);
+            if ($rejected->path_file && file_exists($full)) {
+                @unlink($full);
             }
-            $lastDoc->files()->delete();
-            $lastDoc->delete();
+            $rejected->delete();
         }
 
         $folder = public_path('uploads/post_activity');
@@ -370,36 +394,26 @@ class LearningController extends Controller
             mkdir($folder, 0755, true);
         }
 
-        // Simpan tiap file ke disk; tampung metadata-nya untuk dibuatkan baris dokumen_files.
-        $stored = [];
-        foreach ($request->file('files') as $uploaded) {
-            $originalName = $uploaded->getClientOriginalName();
-            $fileName = time() . '_' . uniqid() . '.' . $uploaded->extension();
-            $uploaded->move($folder, $fileName);
-            $stored[] = [
-                'nama_file' => $originalName,
-                'path_file' => 'uploads/post_activity/' . $fileName,
-            ];
-        }
+        $ext      = $request->file('file')->extension();
+        $fileName = time() . '_' . uniqid() . '.' . $ext;
+        $originalName = $request->file('file')->getClientOriginalName();
+        $request->file('file')->move($folder, $fileName);
 
-        // File pertama disimpan juga di kolom dokumen.nama_file/path_file sebagai perwakilan
-        // (kompatibilitas dengan tampilan lama); daftar lengkap ada di dokumen_files.
-        $dokumen = Dokumen::create([
-            'nama_file' => $stored[0]['nama_file'],
-            'path_file' => $stored[0]['path_file'],
-            'tipe'      => $userType === 'kader' ? 'kader' : 'mentor',
+        Dokumen::create([
+            'nama_file' => $originalName,
+            'path_file' => 'uploads/post_activity/' . $fileName,
+            'tipe'      => $isMentor ? 'mentor' : 'kader',
             'status'    => 'pending',
             'jenis'     => 'POST_ACTIVITY',
             'modul_id'  => $request->modul_id,
-            'kader_id'  => $userType === 'kader'  ? $user->id : null,
-            'mentor_id' => $userType === 'mentor' ? $user->id : null,
-            'mentor_master_id' => $userType === 'mentor' ? $mentorMasterId : null,
+            'kader_id'  => $isMentor ? null : $user->id,
+            'mentor_id' => $isMentor ? $user->id : null,
+            'mentor_master_id' => $isMentor ? $mentorMasterId : null,
         ]);
 
-        $dokumen->files()->createMany($stored);
-
-        $msg = count($stored) > 1
-            ? count($stored) . ' file berhasil diupload.'
+        $sessionNo = $approvedCount + 1;
+        $msg = $isMentor
+            ? "Post Activity sesi {$sessionNo}/{$maxSessions} berhasil diupload."
             : 'File berhasil diupload.';
 
         return back()->with('success', $msg);
