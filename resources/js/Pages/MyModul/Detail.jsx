@@ -1,8 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
 import { router } from '@inertiajs/react';
+import { Document, Page, pdfjs } from 'react-pdf';
+import PdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?worker';
 import AppLayout from '@/Layouts/AppLayout';
 import Modal from '@/Components/Modal';
 import Toast from '@/Components/Toast';
+
+// pdf.js worker via Vite ?worker -> di-emit sebagai .js (MIME benar),
+// menghindari masalah .mjs yang di-serve sebagai application/octet-stream.
+pdfjs.GlobalWorkerOptions.workerPort = new PdfWorker();
 
 /* ── Locked button with tooltip ──────────────────────────── */
 function LockedBtn({ message, label }) {
@@ -42,7 +48,7 @@ function CheckItem({ done, title, sub, subColor = 'text-emerald-600', children, 
     );
 }
 /* ── Quiz modal (shared for pre & post) ───────────────────── */
-function QuizModal({ open, onClose, title, color, soals, modulId, tipe, onSuccess, onError }) {
+function QuizModal({ open, onClose, title, color, soals, modulId, tipe, mentorId, onSuccess, onError }) {
     const [page, setPage] = useState(0);
     const [answers, setAnswers] = useState({});
     const [submitting, setSubmitting] = useState(false);
@@ -63,6 +69,7 @@ function QuizModal({ open, onClose, title, color, soals, modulId, tipe, onSucces
             modul_id: modulId,
             tipe,
             answers,
+            mentor_id: mentorId ?? null,
         }, {
             preserveState: true,
             preserveScroll: true,
@@ -141,7 +148,7 @@ function QuizModal({ open, onClose, title, color, soals, modulId, tipe, onSucces
 }
 
 /* ── Review modal (lihat jawaban) ────────────────────────── */
-function ReviewModal({ open, onClose, modulId, tipe, title }) {
+function ReviewModal({ open, onClose, modulId, tipe, title, mentorId }) {
     const [page, setPage]       = useState(0);
     const [data, setData]       = useState(null);
     const [loading, setLoading] = useState(false);
@@ -151,11 +158,12 @@ function ReviewModal({ open, onClose, modulId, tipe, title }) {
         setLoading(true);
         setPage(0);
         setData(null);
-        fetch(`/learning/${modulId}/answers/${tipe}`)
+        const qs = mentorId ? `?mentor_id=${mentorId}` : '';
+        fetch(`/learning/${modulId}/answers/${tipe}${qs}`)
             .then(r => r.json())
             .then(d => { setData(d); setLoading(false); })
             .catch(() => setLoading(false));
-    }, [open, modulId, tipe]);
+    }, [open, modulId, tipe, mentorId]);
 
     const items   = data?.items ?? [];
     const total   = items.length;
@@ -235,7 +243,7 @@ function ReviewModal({ open, onClose, modulId, tipe, title }) {
 }
 
 /* ── Post Activity upload ─────────────────────────────────── */
-function PostActivityUpload({ modulId }) {
+function PostActivityUpload({ modulId, mentorId }) {
     const [file, setFile]         = useState(null);
     const [error, setError]       = useState(null);
     const [uploading, setUploading] = useState(false);
@@ -268,6 +276,7 @@ function PostActivityUpload({ modulId }) {
         const fd = new FormData();
         fd.append('file', file);
         fd.append('modul_id', modulId);
+        if (mentorId) fd.append('mentor_id', mentorId);
         router.post('/learning/post-activity/upload', fd, {
             forceFormData: true,
             preserveState: true,
@@ -307,30 +316,76 @@ function PostActivityUpload({ modulId }) {
 }
 
 /* ── Materi PDF modal ─────────────────────────────────────── */
-function MateriModal({ open, onClose, modul }) {
+function MateriModal({ open, onClose, modul, mentorId }) {
     const [progress, setProgress] = useState(0);
+    const [numPages, setNumPages] = useState(0);
+    const [width, setWidth]       = useState(0);
+    const [error, setError]       = useState(false);
+    const progressRef = useRef(0);
+    const renderedRef = useRef(0);
     const containerRef = useRef(null);
 
-    useEffect(() => { if (!open) setProgress(0); }, [open]);
+    // Reset state tiap modal dibuka/ditutup.
+    useEffect(() => {
+        if (!open) {
+            setProgress(0);
+            setNumPages(0);
+            setError(false);
+            progressRef.current = 0;
+            renderedRef.current = 0;
+        }
+    }, [open]);
 
+    // Lebar halaman mengikuti lebar container (responsif).
+    useEffect(() => {
+        if (!open) return;
+        const measure = () => {
+            if (containerRef.current) {
+                // -24px untuk padding horizontal container (px-3)
+                setWidth(Math.max(0, containerRef.current.clientWidth - 24));
+            }
+        };
+        measure();
+        window.addEventListener('resize', measure);
+        return () => window.removeEventListener('resize', measure);
+    }, [open]);
+
+    // Progress = posisi scroll terhadap total tinggi konten (hanya naik, tak turun).
     const handleScroll = () => {
         const el = containerRef.current;
         if (!el) return;
-        const pct = Math.min(100, Math.round((el.scrollTop / (el.scrollHeight - el.clientHeight)) * 100));
-        setProgress(pct);
+        const max = el.scrollHeight - el.clientHeight;
+        const pct = max <= 0 ? 100 : Math.min(100, Math.round((el.scrollTop / max) * 100));
+        if (pct > progressRef.current) {
+            progressRef.current = pct;
+            setProgress(pct);
+        }
+    };
+
+    // Setelah semua halaman selesai dirender: bila dokumen muat tanpa scroll, langsung 100%.
+    const handlePageRender = () => {
+        renderedRef.current += 1;
+        if (numPages > 0 && renderedRef.current >= numPages) {
+            const el = containerRef.current;
+            if (el && el.scrollHeight - el.clientHeight <= 4 && progressRef.current < 100) {
+                progressRef.current = 100;
+                setProgress(100);
+            }
+        }
     };
 
     const handleClose = () => {
-        if (modul?.id && progress > 0) {
+        if (modul?.id && progressRef.current > 0) {
             router.post('/learning/materi/progress',
-                { modul_id: modul.id, progress },
+                { modul_id: modul.id, progress: progressRef.current, mentor_id: mentorId ?? null },
                 { preserveState: true, preserveScroll: true }
             );
         }
         onClose();
     };
 
-    const fileUrl = modul?.file_materi ? `/${modul.file_materi}` : null;
+    // encodeURI agar nama file ber-spasi (mis. "Test Modul Mentor.pdf") bisa di-fetch pdf.js.
+    const fileUrl = modul?.file_materi ? encodeURI(`/${modul.file_materi}`) : null;
 
     return (
         <Modal open={open} onClose={handleClose} title={modul?.nama_modul ?? 'Materi'} size="3xl"
@@ -357,12 +412,31 @@ function MateriModal({ open, onClose, modul }) {
                     </div>
                 </div>
             }>
+            {/* Satu-satunya scroll: container ini. PDF dirender sebagai halaman DOM
+                sehingga scroll-nya bisa dilacak untuk reading progress. */}
             <div ref={containerRef} onScroll={handleScroll}
-                className="h-[70vh] overflow-y-auto rounded-lg border border-slate-200">
-                {fileUrl
-                    ? <iframe src={`${fileUrl}#toolbar=0&navpanes=0`} width="100%" height="1200px" title="materi" style={{ border: 'none', display: 'block' }} />
-                    : <p className="text-sm text-slate-500 text-center py-12">File materi tidak tersedia.</p>
-                }
+                className="h-[calc(70vh-2.5rem)] overflow-y-auto rounded-lg border border-slate-200 bg-slate-100 px-3 py-3 flex flex-col items-center gap-3">
+                {!fileUrl && (
+                    <p className="text-sm text-slate-500 text-center py-12">File materi tidak tersedia.</p>
+                )}
+                {fileUrl && error && (
+                    <p className="text-sm text-red-500 text-center py-12">Gagal memuat materi. File mungkin tidak ditemukan.</p>
+                )}
+                {fileUrl && !error && (
+                    <Document file={fileUrl}
+                        onLoadSuccess={({ numPages }) => { renderedRef.current = 0; setNumPages(numPages); }}
+                        onLoadError={() => setError(true)}
+                        loading={<p className="text-sm text-slate-400 text-center py-12">Memuat materi...</p>}>
+                        {Array.from({ length: numPages }, (_, i) => (
+                            <Page key={i} pageNumber={i + 1}
+                                width={width || undefined}
+                                renderTextLayer={false}
+                                renderAnnotationLayer={false}
+                                onRenderSuccess={handlePageRender}
+                                className="shadow-sm mb-3 bg-white" />
+                        ))}
+                    </Document>
+                )}
             </div>
         </Modal>
     );
@@ -372,12 +446,15 @@ function MateriModal({ open, onClose, modul }) {
 const STATUS_LABEL = { pending: 'Menunggu review', approved: 'Disetujui', rejected: 'Ditolak' };
 const STATUS_COLOR = { pending: 'text-amber-600', approved: 'text-emerald-600', rejected: 'text-red-500' };
 
-export default function ModulDetail({ modul, progress = {}, pretest = [], posttest = [] }) {
+export default function ModulDetail({ modul, progress = {}, pretest = [], posttest = [], selectedMentor = null }) {
     const [showPre, setShowPre]       = useState(false);
     const [showPost, setShowPost]     = useState(false);
     const [showMateri, setShowMateri] = useState(false);
     const [toast, setToast] = useState({ open: false, type: 'success', message: '', key: 0 });
     const [review, setReview] = useState(null); // null | { tipe, title }
+
+    // Saat Mentor mengerjakan modul atas nama record mentor terpilih, progress disimpan per mentor.
+    const mentorId = selectedMentor?.id ?? null;
 
     const showToast = (type, message) =>
         setToast(prev => ({ open: true, type, message, key: prev.key + 1 }));
@@ -512,12 +589,12 @@ export default function ModulDetail({ modul, progress = {}, pretest = [], postte
                                     </div>
                                     {paLocked
                                         ? <LockedBtn label="Upload Post Activity" message="Selesaikan Post-Test terlebih dahulu" />
-                                        : <PostActivityUpload modulId={modul?.id} />}
+                                        : <PostActivityUpload modulId={modul?.id} mentorId={mentorId} />}
                                 </div>
                             ) : paLocked ? (
                                 <LockedBtn label="Upload Post Activity" message="Selesaikan Post-Test terlebih dahulu" />
                             ) : (
-                                <PostActivityUpload modulId={modul?.id} />
+                                <PostActivityUpload modulId={modul?.id} mentorId={mentorId} />
                             )}
                         </CheckItem>
 
@@ -584,21 +661,21 @@ export default function ModulDetail({ modul, progress = {}, pretest = [], postte
             {/* ── Modals ── */}
             <QuizModal open={showPre} onClose={() => setShowPre(false)}
                 title="Pre-Test" color="blue"
-                soals={pretest} modulId={modul?.id} tipe="pre"
+                soals={pretest} modulId={modul?.id} tipe="pre" mentorId={mentorId}
                 onSuccess={() => showToast('success', 'Jawaban berhasil disimpan!')}
                 onError={() => showToast('error', 'Gagal menyimpan jawaban. Coba lagi.')} />
 
             <QuizModal open={showPost} onClose={() => setShowPost(false)}
                 title="Post-Test" color="green"
-                soals={posttest} modulId={modul?.id} tipe="post"
+                soals={posttest} modulId={modul?.id} tipe="post" mentorId={mentorId}
                 onSuccess={() => showToast('success', 'Jawaban berhasil disimpan!')}
                 onError={() => showToast('error', 'Gagal menyimpan jawaban. Coba lagi.')} />
 
-            <MateriModal open={showMateri} onClose={() => setShowMateri(false)} modul={modul} />
+            <MateriModal open={showMateri} onClose={() => setShowMateri(false)} modul={modul} mentorId={mentorId} />
 
 
             <ReviewModal open={review !== null} onClose={() => setReview(null)}
-                modulId={modul?.id} tipe={review?.tipe} title={review?.title ?? ''} />
+                modulId={modul?.id} tipe={review?.tipe} title={review?.title ?? ''} mentorId={mentorId} />
 
             <Toast
                 key={toast.key}

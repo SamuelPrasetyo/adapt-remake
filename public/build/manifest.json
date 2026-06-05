@@ -1,11 +1,15 @@
 {
+  "node_modules/pdfjs-dist/build/pdf.worker.min.mjs": {
+    "file": "assets/pdf.worker.min-qwK7q_zL.mjs",
+    "src": "node_modules/pdfjs-dist/build/pdf.worker.min.mjs"
+  },
   "resources/css/app-inertia.css": {
-    "file": "assets/app-inertia-DaDFjjwd.css",
+    "file": "assets/app-inertia-BEJRaQt2.css",
     "src": "resources/css/app-inertia.css",
     "isEntry": true
   },
   "resources/js/app.jsx": {
-    "file": "assets/app-BK801-v-.js",
+    "file": "assets/app-BaPAtIRF.js",
     "name": "app",
     "src": "resources/js/app.jsx",
     "isEntry": true

@@ -93,21 +93,24 @@ class MentorModulController extends Controller
         $modulIds  = $moduls->pluck('id');
         $total     = $moduls->count();
 
-        $completed = ($targetUser && $total > 0)
-            ? ModulTestResult::where('user_id', $targetUser->id)
-                ->whereIn('modul_id', $modulIds)
-                ->where('tipe', 'post')->where('is_completed', 1)
-                ->pluck('modul_id')->unique()->count()
-            : 0;
+        // Progress di-key per record mentor (mentor.id) bila melihat mentor tertentu;
+        // untuk "Program Saya Sendiri" pakai akun login (mentor_id NULL).
+        $resultBase = null;
+        if ($total > 0) {
+            $resultBase = ModulTestResult::whereIn('modul_id', $modulIds)
+                ->where('tipe', 'post')->where('is_completed', 1);
+            if ($mentorMaster) {
+                $resultBase->where('mentor_id', $mentorMaster->id);
+            } elseif ($targetUser) {
+                $resultBase->where('user_id', $targetUser->id)->whereNull('mentor_id');
+            } else {
+                $resultBase = null;
+            }
+        }
 
-        $progress = $total > 0 ? (int) round(($completed / $total) * 100) : 0;
-
-        $avgScore = ($targetUser && $total > 0)
-            ? (float) round(ModulTestResult::where('user_id', $targetUser->id)
-                ->whereIn('modul_id', $modulIds)
-                ->where('tipe', 'post')->where('is_completed', 1)
-                ->avg('score') ?? 0, 1)
-            : 0;
+        $completed = $resultBase ? (clone $resultBase)->pluck('modul_id')->unique()->count() : 0;
+        $progress  = $total > 0 ? (int) round(($completed / $total) * 100) : 0;
+        $avgScore  = $resultBase ? (float) round((clone $resultBase)->avg('score') ?? 0, 1) : 0;
 
         $company = Company::where('company_code', ($mentorMaster ? $mentorMaster->company_code : $authUser->company_code))->first();
 
@@ -143,13 +146,14 @@ class MentorModulController extends Controller
             ->orderBy('mentor.nama')
             ->get();
 
-        $mentorUsers = User::where('type', 'Mentor')
-            ->get()
-            ->keyBy(fn($u) => $u->company_code . '|' . $u->name);
+        $mentorUsers   = User::where('type', 'Mentor')->get();
+        $usersById     = $mentorUsers->keyBy('id');
+        $usersByName   = $mentorUsers->keyBy(fn($u) => $u->company_code . '|' . $u->name);
 
-        $list = $mentors->map(function ($m) use ($mentorUsers) {
-            $userKey    = $m->company_code . '|' . $m->nama;
-            $targetUser = $mentorUsers->get($userKey);
+        $list = $mentors->map(function ($m) use ($usersById, $usersByName) {
+            // Akun login mentor: utamakan relasi mentor.user_id, fallback ke cocok nama+BU.
+            $targetUser = ($m->user_id ? $usersById->get($m->user_id) : null)
+                ?? $usersByName->get($m->company_code . '|' . $m->nama);
 
             $modulIds = DB::table('modul_assignments')
                 ->where(function ($q) use ($m, $targetUser) {
@@ -169,8 +173,10 @@ class MentorModulController extends Controller
 
             $total = $modulIds->count();
 
-            $completed = ($targetUser && $total > 0)
-                ? ModulTestResult::where('user_id', $targetUser->id)
+            // Progress di-key per record mentor (mentor.id), bukan per akun login —
+            // satu akun bisa memegang banyak mentor dengan progress yang berbeda.
+            $completed = ($total > 0)
+                ? ModulTestResult::where('mentor_id', $m->id)
                     ->whereIn('modul_id', $modulIds)
                     ->where('tipe', 'post')->where('is_completed', 1)
                     ->pluck('modul_id')->unique()->count()
@@ -178,8 +184,8 @@ class MentorModulController extends Controller
 
             $progress = $total > 0 ? (int) round(($completed / $total) * 100) : 0;
 
-            $avgScore = ($targetUser && $total > 0)
-                ? (float) round(ModulTestResult::where('user_id', $targetUser->id)
+            $avgScore = ($total > 0)
+                ? (float) round(ModulTestResult::where('mentor_id', $m->id)
                     ->whereIn('modul_id', $modulIds)
                     ->where('tipe', 'post')->where('is_completed', 1)
                     ->avg('score') ?? 0, 1)

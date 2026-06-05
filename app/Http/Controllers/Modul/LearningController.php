@@ -18,6 +18,33 @@ use Inertia\Inertia;
 
 class LearningController extends Controller
 {
+    /**
+     * Record mentor aktif untuk konteks pengerjaan modul.
+     *
+     * Satu akun Mentor bisa memegang banyak record mentor (tabel `mentor`). Mentor yang login
+     * mengerjakan modul atas nama record mentor yang dipilih lewat ?mentor_id (lihat sidebar
+     * MentorSelectorCard) — scope-nya BU/company_code yang sama, persis seperti dropdown selector.
+     *
+     * Mengembalikan null untuk Kader, atau Mentor yang belum memilih record ("Program Saya Sendiri").
+     */
+    private function activeMentor(Request $request): ?Mentor
+    {
+        $user = auth()->user();
+        if (strtolower($user->type ?? '') !== 'mentor') {
+            return null;
+        }
+
+        $mentorId = $request->input('mentor_id');
+        if (!$mentorId) {
+            return null;
+        }
+
+        return Mentor::whereNull('deleted_at')
+            ->where('id', $mentorId)
+            ->where('company_code', $user->company_code)
+            ->first();
+    }
+
     public function index()
     {
         $user  = auth()->user();
@@ -57,33 +84,46 @@ class LearningController extends Controller
         ]);
     }
 
-    public function detail($id)
+    public function detail(Request $request, $id)
     {
         $user  = auth()->user();
         $modul = Modul::findOrFail($id);
 
-        $pretestResult  = ModulTestResult::where('user_id', $user->id)
-            ->where('modul_id', $modul->id)
-            ->where('tipe', 'pre')
-            ->where('is_completed', 1)
-            ->first();
+        // Progress di-scope per record mentor bila Mentor memilih mentor (?mentor_id),
+        // selain itu per akun login (mentor_id NULL = Kader / "Program Saya Sendiri").
+        $mentorId = optional($this->activeMentor($request))->id;
+        $scopeMentor = function ($query) use ($mentorId) {
+            return $mentorId ? $query->where('mentor_id', $mentorId) : $query->whereNull('mentor_id');
+        };
 
-        $posttestResult = ModulTestResult::where('user_id', $user->id)
-            ->where('modul_id', $modul->id)
-            ->where('tipe', 'post')
-            ->where('is_completed', 1)
-            ->first();
+        $pretestResult  = $scopeMentor(
+            ModulTestResult::where('user_id', $user->id)
+                ->where('modul_id', $modul->id)
+                ->where('tipe', 'pre')
+                ->where('is_completed', 1)
+        )->first();
 
-        $readingProgress = ModulReadingProgress::where('user_id', $user->id)
-            ->where('modul_id', $modul->id)
-            ->value('progress') ?? 0;
+        $posttestResult = $scopeMentor(
+            ModulTestResult::where('user_id', $user->id)
+                ->where('modul_id', $modul->id)
+                ->where('tipe', 'post')
+                ->where('is_completed', 1)
+        )->first();
+
+        $readingProgress = $scopeMentor(
+            ModulReadingProgress::where('user_id', $user->id)
+                ->where('modul_id', $modul->id)
+        )->value('progress') ?? 0;
 
         $userType = strtolower($user->type ?? '');
         $postActivityDoc = Dokumen::with('penilaian')
             ->where('modul_id', $modul->id)
             ->where('jenis', 'POST_ACTIVITY')
             ->when($userType === 'kader',  fn($q) => $q->where('kader_id', $user->id))
-            ->when($userType !== 'kader', fn($q) => $q->where('mentor_id', $user->id))
+            ->when($userType !== 'kader', function ($q) use ($user, $mentorId) {
+                $q->where('mentor_id', $user->id);
+                $mentorId ? $q->where('mentor_master_id', $mentorId) : $q->whereNull('mentor_master_id');
+            })
             ->latest()
             ->first();
 
@@ -160,10 +200,14 @@ class LearningController extends Controller
             'answers'  => 'required|array',
         ]);
 
+        $mentorId = optional($this->activeMentor($request))->id;
+
         $alreadyDone = ModulTestResult::where('user_id', auth()->id())
             ->where('modul_id', $request->modul_id)
             ->where('tipe', $request->tipe)
             ->where('is_completed', 1)
+            ->when($mentorId, fn($q) => $q->where('mentor_id', $mentorId))
+            ->when(!$mentorId, fn($q) => $q->whereNull('mentor_id'))
             ->exists();
 
         if ($alreadyDone) {
@@ -176,6 +220,7 @@ class LearningController extends Controller
         // create result
         $result = ModulTestResult::create([
             'user_id' => auth()->user()->id,
+            'mentor_id' => $mentorId,
             'modul_id' => $request->modul_id,
             'tipe' => $request->tipe,
         ]);
@@ -209,14 +254,17 @@ class LearningController extends Controller
         return back();
     }
 
-    public function myAnswers($id, $type)
+    public function myAnswers(Request $request, $id, $type)
     {
         $user = auth()->user();
+        $mentorId = optional($this->activeMentor($request))->id;
 
         $result = ModulTestResult::where('user_id', $user->id)
             ->where('modul_id', $id)
             ->where('tipe', $type)
             ->where('is_completed', 1)
+            ->when($mentorId, fn($q) => $q->where('mentor_id', $mentorId))
+            ->when(!$mentorId, fn($q) => $q->whereNull('mentor_id'))
             ->firstOrFail();
 
         $userAnswers = ModulUserAnswers::where('result_id', $result->id)->get();
@@ -251,8 +299,10 @@ class LearningController extends Controller
             'progress' => 'required|integer|min:0|max:100',
         ]);
 
+        $mentorId = optional($this->activeMentor($request))->id;
+
         $record = ModulReadingProgress::firstOrCreate(
-            ['user_id' => auth()->id(), 'modul_id' => $request->modul_id],
+            ['user_id' => auth()->id(), 'modul_id' => $request->modul_id, 'mentor_id' => $mentorId],
             ['progress' => $request->progress]
         );
 
@@ -272,12 +322,16 @@ class LearningController extends Controller
 
         $user     = auth()->user();
         $userType = strtolower($user->type ?? '');
+        $mentorMasterId = optional($this->activeMentor($request))->id;
 
         // Cegah upload ulang jika dokumen terakhir masih menunggu review / sudah disetujui.
         $lastDoc = Dokumen::where('modul_id', $request->modul_id)
             ->where('jenis', 'POST_ACTIVITY')
             ->when($userType === 'kader', fn($q) => $q->where('kader_id', $user->id))
-            ->when($userType !== 'kader', fn($q) => $q->where('mentor_id', $user->id))
+            ->when($userType !== 'kader', function ($q) use ($user, $mentorMasterId) {
+                $q->where('mentor_id', $user->id);
+                $mentorMasterId ? $q->where('mentor_master_id', $mentorMasterId) : $q->whereNull('mentor_master_id');
+            })
             ->latest()
             ->first();
 
@@ -315,6 +369,7 @@ class LearningController extends Controller
             'modul_id'  => $request->modul_id,
             'kader_id'  => $userType === 'kader'  ? $user->id : null,
             'mentor_id' => $userType === 'mentor' ? $user->id : null,
+            'mentor_master_id' => $userType === 'mentor' ? $mentorMasterId : null,
         ];
 
         Dokumen::create($data);
