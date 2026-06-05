@@ -99,17 +99,17 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
             </div>
 
             {tab === "ojt" && (
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    <table className="w-full text-sm">
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
+                    <table className="w-full text-sm min-w-[720px]">
                         <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
                             <tr>
-                                <th className="text-left px-4 py-3">Kader</th>
-                                <th className="text-left px-4 py-3">BU</th>
-                                <th className="text-center px-4 py-3">FMC</th>
-                                <th className="text-center px-4 py-3">Final Score</th>
-                                <th className="text-left px-4 py-3">Mentor</th>
-                                <th className="text-left px-4 py-3">Diperbarui</th>
-                                <th className="text-right px-4 py-3">Aksi</th>
+                                <th className="text-left px-4 py-3 whitespace-nowrap">Kader</th>
+                                <th className="text-left px-4 py-3 whitespace-nowrap">BU</th>
+                                <th className="text-center px-4 py-3 whitespace-nowrap">FMC</th>
+                                <th className="text-center px-4 py-3 whitespace-nowrap">Final Score</th>
+                                <th className="text-left px-4 py-3 whitespace-nowrap">Mentor</th>
+                                <th className="text-left px-4 py-3 whitespace-nowrap">Diperbarui</th>
+                                <th className="text-right px-4 py-3 whitespace-nowrap">Aksi</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -118,20 +118,20 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
                             )}
                             {ojtPending.map((r) => (
                                 <tr key={`${r.kader_id}-${r.fmc_number}`} className="hover:bg-slate-50">
-                                    <td className="px-4 py-3 font-medium text-slate-700">{r.kader_nama ?? "—"}</td>
-                                    <td className="px-4 py-3 text-slate-500">{r.bu ?? "—"}</td>
+                                    <td className="px-4 py-3 font-medium text-slate-700 whitespace-nowrap">{r.kader_nama ?? "—"}</td>
+                                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.bu ?? "—"}</td>
                                     <td className="px-4 py-3 text-center">FMC-{r.fmc_number}</td>
                                     <td className="px-4 py-3 text-center font-semibold text-emerald-600">{r.final_score != null ? Number(r.final_score).toFixed(1) : "—"}</td>
-                                    <td className="px-4 py-3 text-slate-500">{r.mentor_nama ?? "—"}</td>
-                                    <td className="px-4 py-3 text-slate-500">{fmtDate(r.updated_at)}</td>
+                                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.mentor_nama ?? "—"}</td>
+                                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{fmtDate(r.updated_at)}</td>
                                     <td className="px-4 py-3">
                                         <div className="flex items-center justify-end gap-2">
                                             <Link href={`/kader-saya/${r.kader_id}`}
-                                                className="text-xs px-2.5 py-1.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50">Lihat</Link>
+                                                className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap border border-slate-300 text-slate-600 hover:bg-slate-50">Lihat</Link>
                                             <button disabled={busy} onClick={() => doApprove(`/approval/ojt/${r.kader_id}/${r.fmc_number}/approve`)}
-                                                className="text-xs px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">Approve</button>
+                                                className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">Approve</button>
                                             <button disabled={busy} onClick={() => openReject("ojt", `/approval/ojt/${r.kader_id}/${r.fmc_number}/reject`)}
-                                                className="text-xs px-2.5 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">Reject</button>
+                                                className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">Reject</button>
                                         </div>
                                     </td>
                                 </tr>
@@ -142,35 +142,37 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
             )}
 
             {tab === "pa" && (
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    <table className="w-full text-sm">
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
+                    <table className="w-full text-sm min-w-[720px]">
                         <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
                             <tr>
-                                <th className="text-left px-4 py-3">Uploader</th>
-                                <th className="text-left px-4 py-3">Tipe</th>
-                                <th className="text-left px-4 py-3">Modul</th>
-                                <th className="text-left px-4 py-3">File</th>
-                                <th className="text-left px-4 py-3">Diupload</th>
-                                <th className="text-right px-4 py-3">Aksi</th>
+                                <th className="text-left px-4 py-3 whitespace-nowrap">Uploader</th>
+                                <th className="text-left px-4 py-3 whitespace-nowrap">BU</th>
+                                <th className="text-left px-4 py-3 whitespace-nowrap">Tipe</th>
+                                <th className="text-left px-4 py-3 whitespace-nowrap">Modul</th>
+                                <th className="text-left px-4 py-3 whitespace-nowrap">File</th>
+                                <th className="text-left px-4 py-3 whitespace-nowrap">Diupload</th>
+                                <th className="text-right px-4 py-3 whitespace-nowrap">Aksi</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {paPending.length === 0 && (
-                                <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-400">Tidak ada Post Activity yang menunggu approval.</td></tr>
+                                <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">Tidak ada Post Activity yang menunggu approval.</td></tr>
                             )}
                             {paPending.map((r) => (
                                 <tr key={r.id} className="hover:bg-slate-50">
-                                    <td className="px-4 py-3 font-medium text-slate-700">{r.uploader_nama ?? "—"}</td>
-                                    <td className="px-4 py-3 text-slate-500 capitalize">{r.tipe ?? "—"}</td>
-                                    <td className="px-4 py-3 text-slate-500">{r.nama_modul ?? "—"}</td>
+                                    <td className="px-4 py-3 font-medium text-slate-700 whitespace-nowrap">{r.uploader_nama ?? "—"}</td>
+                                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.uploader_bu ?? "—"}</td>
+                                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap capitalize">{r.tipe ?? "—"}</td>
+                                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.nama_modul ?? "—"}</td>
                                     <td className="px-4 py-3"><PaFiles row={r} /></td>
-                                    <td className="px-4 py-3 text-slate-500">{fmtDate(r.created_at)}</td>
+                                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{fmtDate(r.created_at)}</td>
                                     <td className="px-4 py-3">
                                         <div className="flex items-center justify-end gap-2">
                                             <button disabled={busy} onClick={() => openApprovePa(r.id)}
-                                                className="text-xs px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">Setujui & Nilai</button>
+                                                className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">Setujui & Nilai</button>
                                             <button disabled={busy} onClick={() => openReject("pa", `/approval/post-activity/${r.id}/reject`)}
-                                                className="text-xs px-2.5 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">Reject</button>
+                                                className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">Reject</button>
                                         </div>
                                     </td>
                                 </tr>
@@ -181,16 +183,16 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
             )}
 
             {tab === "idp" && (
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    <table className="w-full text-sm">
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
+                    <table className="w-full text-sm min-w-[720px]">
                         <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
                             <tr>
-                                <th className="text-left px-4 py-3">Kader</th>
-                                <th className="text-left px-4 py-3">Batch</th>
-                                <th className="text-left px-4 py-3">File</th>
-                                <th className="text-left px-4 py-3">Status</th>
-                                <th className="text-left px-4 py-3">Diupload</th>
-                                <th className="text-right px-4 py-3">Aksi</th>
+                                <th className="text-left px-4 py-3 whitespace-nowrap">Kader</th>
+                                <th className="text-left px-4 py-3 whitespace-nowrap">Batch</th>
+                                <th className="text-left px-4 py-3 whitespace-nowrap">File</th>
+                                <th className="text-left px-4 py-3 whitespace-nowrap">Status</th>
+                                <th className="text-left px-4 py-3 whitespace-nowrap">Diupload</th>
+                                <th className="text-right px-4 py-3 whitespace-nowrap">Aksi</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -201,8 +203,8 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
                                 const waitingMentor = r.status === "pending";
                                 return (
                                 <tr key={r.id} className="hover:bg-slate-50">
-                                    <td className="px-4 py-3 font-medium text-slate-700">{r.kader_nama ?? "—"}</td>
-                                    <td className="px-4 py-3 text-slate-500">{r.nama_batch ?? "—"}</td>
+                                    <td className="px-4 py-3 font-medium text-slate-700 whitespace-nowrap">{r.kader_nama ?? "—"}</td>
+                                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.nama_batch ?? "—"}</td>
                                     <td className="px-4 py-3">
                                         {r.path_file ? (
                                             <a href={`/${r.path_file}`} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline text-xs">{r.nama_file ?? "Unduh"}</a>
@@ -215,13 +217,13 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
                                             <span className="inline-flex items-center w-fit px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">Disetujui Mentor</span>
                                         )}
                                     </td>
-                                    <td className="px-4 py-3 text-slate-500">{fmtDate(r.created_at)}</td>
+                                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{fmtDate(r.created_at)}</td>
                                     <td className="px-4 py-3">
                                         <div className="flex items-center justify-end gap-2">
                                             <button disabled={busy || waitingMentor} title={waitingMentor ? "Belum di-approve Mentor" : ""} onClick={() => doApprove(`/approval/form-idp/${r.id}/approve`)}
-                                                className="text-xs px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed">Approve</button>
+                                                className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed">Approve</button>
                                             <button disabled={busy || waitingMentor} onClick={() => openReject("idp", `/approval/form-idp/${r.id}/reject`)}
-                                                className="text-xs px-2.5 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">Reject</button>
+                                                className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">Reject</button>
                                         </div>
                                     </td>
                                 </tr>
@@ -237,17 +239,17 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
                     {/* OJT Approved */}
                     <div>
                         <h3 className="text-sm font-semibold text-slate-600 mb-2">Penilaian OJT — Sudah Disetujui</h3>
-                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                            <table className="w-full text-sm">
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
+                            <table className="w-full text-sm min-w-[720px]">
                                 <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
                                     <tr>
-                                        <th className="text-left px-4 py-3">Kader</th>
-                                        <th className="text-left px-4 py-3">BU</th>
-                                        <th className="text-center px-4 py-3">FMC</th>
-                                        <th className="text-center px-4 py-3">Final Score</th>
-                                        <th className="text-left px-4 py-3">Mentor</th>
-                                        <th className="text-left px-4 py-3">Disetujui</th>
-                                        <th className="text-right px-4 py-3">Aksi</th>
+                                        <th className="text-left px-4 py-3 whitespace-nowrap">Kader</th>
+                                        <th className="text-left px-4 py-3 whitespace-nowrap">BU</th>
+                                        <th className="text-center px-4 py-3 whitespace-nowrap">FMC</th>
+                                        <th className="text-center px-4 py-3 whitespace-nowrap">Final Score</th>
+                                        <th className="text-left px-4 py-3 whitespace-nowrap">Mentor</th>
+                                        <th className="text-left px-4 py-3 whitespace-nowrap">Disetujui</th>
+                                        <th className="text-right px-4 py-3 whitespace-nowrap">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
@@ -256,15 +258,15 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
                                     )}
                                     {ojtApproved.map((r) => (
                                         <tr key={`${r.kader_id}-${r.fmc_number}`} className="hover:bg-slate-50">
-                                            <td className="px-4 py-3 font-medium text-slate-700">{r.kader_nama ?? "—"}</td>
-                                            <td className="px-4 py-3 text-slate-500">{r.bu ?? "—"}</td>
+                                            <td className="px-4 py-3 font-medium text-slate-700 whitespace-nowrap">{r.kader_nama ?? "—"}</td>
+                                            <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.bu ?? "—"}</td>
                                             <td className="px-4 py-3 text-center">FMC-{r.fmc_number}</td>
                                             <td className="px-4 py-3 text-center font-semibold text-emerald-600">{r.final_score != null ? Number(r.final_score).toFixed(1) : "—"}</td>
-                                            <td className="px-4 py-3 text-slate-500">{r.mentor_nama ?? "—"}</td>
-                                            <td className="px-4 py-3 text-slate-500">{fmtDate(r.approved_at)}</td>
+                                            <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.mentor_nama ?? "—"}</td>
+                                            <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{fmtDate(r.approved_at)}</td>
                                             <td className="px-4 py-3 text-right">
                                                 <button disabled={busy} onClick={() => openReject("ojt", `/approval/ojt/${r.kader_id}/${r.fmc_number}/reject`, true)}
-                                                    className="text-xs px-2.5 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">Reject</button>
+                                                    className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">Reject</button>
                                             </td>
                                         </tr>
                                     ))}
@@ -276,15 +278,15 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
                     {/* IDP Approved */}
                     <div>
                         <h3 className="text-sm font-semibold text-slate-600 mb-2">Form IDP — Sudah Disetujui</h3>
-                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                            <table className="w-full text-sm">
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
+                            <table className="w-full text-sm min-w-[720px]">
                                 <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
                                     <tr>
-                                        <th className="text-left px-4 py-3">Kader</th>
-                                        <th className="text-left px-4 py-3">Batch</th>
-                                        <th className="text-left px-4 py-3">File</th>
-                                        <th className="text-left px-4 py-3">Disetujui</th>
-                                        <th className="text-right px-4 py-3">Aksi</th>
+                                        <th className="text-left px-4 py-3 whitespace-nowrap">Kader</th>
+                                        <th className="text-left px-4 py-3 whitespace-nowrap">Batch</th>
+                                        <th className="text-left px-4 py-3 whitespace-nowrap">File</th>
+                                        <th className="text-left px-4 py-3 whitespace-nowrap">Disetujui</th>
+                                        <th className="text-right px-4 py-3 whitespace-nowrap">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
@@ -293,17 +295,17 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
                                     )}
                                     {idpApproved.map((r) => (
                                         <tr key={r.id} className="hover:bg-slate-50">
-                                            <td className="px-4 py-3 font-medium text-slate-700">{r.kader_nama ?? "—"}</td>
-                                            <td className="px-4 py-3 text-slate-500">{r.nama_batch ?? "—"}</td>
+                                            <td className="px-4 py-3 font-medium text-slate-700 whitespace-nowrap">{r.kader_nama ?? "—"}</td>
+                                            <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.nama_batch ?? "—"}</td>
                                             <td className="px-4 py-3">
                                                 {r.path_file ? (
                                                     <a href={`/${r.path_file}`} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline text-xs">{r.nama_file ?? "Unduh"}</a>
                                                 ) : <span className="text-slate-400 text-xs">{r.nama_file ?? "—"}</span>}
                                             </td>
-                                            <td className="px-4 py-3 text-slate-500">{fmtDate(r.approved_at)}</td>
+                                            <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{fmtDate(r.approved_at)}</td>
                                             <td className="px-4 py-3 text-right">
                                                 <button disabled={busy} onClick={() => openReject("idp", `/approval/form-idp/${r.id}/reject`, true)}
-                                                    className="text-xs px-2.5 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">Reject</button>
+                                                    className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">Reject</button>
                                             </td>
                                         </tr>
                                     ))}
@@ -315,34 +317,36 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
                     {/* PA Approved */}
                     <div>
                         <h3 className="text-sm font-semibold text-slate-600 mb-2">Post Activity — Sudah Disetujui</h3>
-                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                            <table className="w-full text-sm">
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
+                            <table className="w-full text-sm min-w-[720px]">
                                 <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
                                     <tr>
-                                        <th className="text-left px-4 py-3">Uploader</th>
-                                        <th className="text-left px-4 py-3">Tipe</th>
-                                        <th className="text-left px-4 py-3">Modul</th>
-                                        <th className="text-left px-4 py-3">File</th>
-                                        <th className="text-center px-4 py-3">Nilai</th>
-                                        <th className="text-left px-4 py-3">Disetujui</th>
-                                        <th className="text-right px-4 py-3">Aksi</th>
+                                        <th className="text-left px-4 py-3 whitespace-nowrap">Uploader</th>
+                                        <th className="text-left px-4 py-3 whitespace-nowrap">BU</th>
+                                        <th className="text-left px-4 py-3 whitespace-nowrap">Tipe</th>
+                                        <th className="text-left px-4 py-3 whitespace-nowrap">Modul</th>
+                                        <th className="text-left px-4 py-3 whitespace-nowrap">File</th>
+                                        <th className="text-center px-4 py-3 whitespace-nowrap">Nilai</th>
+                                        <th className="text-left px-4 py-3 whitespace-nowrap">Disetujui</th>
+                                        <th className="text-right px-4 py-3 whitespace-nowrap">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {paApproved.length === 0 && (
-                                        <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">Belum ada Post Activity yang disetujui.</td></tr>
+                                        <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400">Belum ada Post Activity yang disetujui.</td></tr>
                                     )}
                                     {paApproved.map((r) => (
                                         <tr key={r.id} className="hover:bg-slate-50">
-                                            <td className="px-4 py-3 font-medium text-slate-700">{r.uploader_nama ?? "—"}</td>
-                                            <td className="px-4 py-3 text-slate-500 capitalize">{r.tipe ?? "—"}</td>
-                                            <td className="px-4 py-3 text-slate-500">{r.nama_modul ?? "—"}</td>
+                                            <td className="px-4 py-3 font-medium text-slate-700 whitespace-nowrap">{r.uploader_nama ?? "—"}</td>
+                                            <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.uploader_bu ?? "—"}</td>
+                                            <td className="px-4 py-3 text-slate-500 whitespace-nowrap capitalize">{r.tipe ?? "—"}</td>
+                                            <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.nama_modul ?? "—"}</td>
                                             <td className="px-4 py-3"><PaFiles row={r} /></td>
                                             <td className="px-4 py-3 text-center font-semibold text-emerald-600">{r.nilai != null ? Number(r.nilai).toFixed(2) : "—"}</td>
-                                            <td className="px-4 py-3 text-slate-500">{fmtDate(r.approved_at)}</td>
+                                            <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{fmtDate(r.approved_at)}</td>
                                             <td className="px-4 py-3 text-right">
                                                 <button disabled={busy} onClick={() => openReject("pa", `/approval/post-activity/${r.id}/reject`, true)}
-                                                    className="text-xs px-2.5 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">Reject</button>
+                                                    className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">Reject</button>
                                             </td>
                                         </tr>
                                     ))}

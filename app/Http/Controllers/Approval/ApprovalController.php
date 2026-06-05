@@ -40,9 +40,14 @@ class ApprovalController extends Controller
             ->get(['p.kader_id','p.fmc_number','p.final_score','p.updated_at','p.approved_at',
                    'kader.nama as kader_nama','company.company_shortname as bu','creator.name as mentor_nama']);
 
+        // Akun users Mentor dipakai bersama satu Business Unit; orang yang sebenarnya upload
+        // ada di dokumen.mentor_master_id (record mentor terpilih). Ambil nama record mentor +
+        // BU-nya (company_shortname), fallback ke nama akun users bila tak ada record terpilih.
         $paBase = DB::table('dokumen as d')
             ->leftJoin('users as ku', DB::raw('CONVERT(d.kader_id USING utf8mb4) COLLATE utf8mb4_unicode_ci'), '=', 'ku.id')
             ->leftJoin('users as mu', DB::raw('CONVERT(d.mentor_id USING utf8mb4) COLLATE utf8mb4_unicode_ci'), '=', 'mu.id')
+            ->leftJoin('mentor as mt', 'd.mentor_master_id', '=', 'mt.id')
+            ->leftJoin('company as co', 'mt.company_code', '=', 'co.company_code')
             ->leftJoin('modul as m', 'd.modul_id', '=', 'm.id')
             ->leftJoin('penilaian_post_activity as pa', 'pa.dokumen_id', '=', 'd.id')
             ->where('d.jenis', 'POST_ACTIVITY');
@@ -50,15 +55,15 @@ class ApprovalController extends Controller
         $paPending = (clone $paBase)
             ->where('d.status', 'pending')
             ->orderBy('d.created_at', 'desc')
-            ->get(['d.id','d.nama_file','d.path_file','d.tipe','d.created_at','m.nama_modul',
-                   DB::raw('COALESCE(ku.name, mu.name) as uploader_nama')]);
+            ->get(['d.id','d.nama_file','d.path_file','d.tipe','d.created_at','m.nama_modul','co.company_shortname as uploader_bu',
+                   DB::raw('COALESCE(ku.name, mt.nama, mu.name) as uploader_nama')]);
 
         $paApproved = (clone $paBase)
             ->where('d.status', 'approved')
             ->orderBy('d.approved_at', 'desc')
             ->limit(50)
-            ->get(['d.id','d.nama_file','d.path_file','d.tipe','d.created_at','d.approved_at','m.nama_modul','pa.nilai',
-                   DB::raw('COALESCE(ku.name, mu.name) as uploader_nama')]);
+            ->get(['d.id','d.nama_file','d.path_file','d.tipe','d.created_at','d.approved_at','m.nama_modul','pa.nilai','co.company_shortname as uploader_bu',
+                   DB::raw('COALESCE(ku.name, mt.nama, mu.name) as uploader_nama')]);
 
         // Satu Post Activity bisa berisi banyak file (dokumen_files). Lampirkan daftar file per dokumen,
         // fallback ke kolom dokumen lama untuk data sebelum fitur multi-file.
