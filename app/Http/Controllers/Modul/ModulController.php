@@ -282,6 +282,17 @@ class ModulController extends Controller
                 ->select('kader_id as user_id', 'modul_id')->get()->groupBy('user_id')
             : collect();
 
+        // Progress mentor master di-key per mentor.id (modul_test_results.mentor_id & dokumen.mentor_master_id)
+        $mmTestByMentor = $mmIds->isNotEmpty()
+            ? DB::table('modul_test_results')->whereIn('mentor_id', $mmIds)
+                ->select('mentor_id', 'modul_id')->get()->groupBy('mentor_id')
+            : collect();
+        $mmDokByMentor = $mmIds->isNotEmpty()
+            ? DB::table('dokumen')->whereIn('mentor_master_id', $mmIds)
+                ->where('jenis', 'POST_ACTIVITY')
+                ->select('mentor_master_id', 'modul_id')->get()->groupBy('mentor_master_id')
+            : collect();
+
         $mentorUsersData = $mentorUsers->map(fn($m) => [
             'id' => $m->id, 'nama' => $m->nama, 'nik' => $m->nik, 'bu' => $m->bu,
             '_source'          => 'user',
@@ -296,7 +307,9 @@ class ModulController extends Controller
             '_source'          => 'master',
             'moduls'           => collect($mmAssignments[$m->id] ?? [])->unique('id')->values(),
             'total_modul'      => count($mmAssignments[$m->id] ?? []),
-            'locked_modul_ids' => [],
+            'locked_modul_ids' => collect($mmTestByMentor[$m->id] ?? [])->pluck('modul_id')
+                ->merge(collect($mmDokByMentor[$m->id] ?? [])->pluck('modul_id'))
+                ->unique()->values()->toArray(),
         ]);
         $mentorsData = $mentorUsersData->concat($mentorMastersData)->sortBy('nama')->values();
 
@@ -386,6 +399,24 @@ class ModulController extends Controller
         return $test->pluck('modul_id')->merge($dok->pluck('modul_id'))->unique();
     }
 
+    /**
+     * Locked modul untuk satu mentor master (mentor.id).
+     * Progress modul Mentor kini di-key per record mentor: modul_test_results.mentor_id
+     * & dokumen.mentor_master_id, bukan lagi per akun login (users.id).
+     */
+    private function fetchLockedByMentorMaster(string $mentorMasterId, array $filterModulIds = []): \Illuminate\Support\Collection
+    {
+        $test = DB::table('modul_test_results')->where('mentor_id', $mentorMasterId);
+        $dok  = DB::table('dokumen')->where('jenis', 'POST_ACTIVITY')->where('mentor_master_id', $mentorMasterId);
+
+        if (!empty($filterModulIds)) {
+            $test->whereIn('modul_id', $filterModulIds);
+            $dok->whereIn('modul_id', $filterModulIds);
+        }
+
+        return $test->pluck('modul_id')->merge($dok->pluck('modul_id'))->unique();
+    }
+
     public function getLockedModuls(Request $request)
     {
         $type = $request->type;
@@ -402,13 +433,15 @@ class ModulController extends Controller
         } elseif ($type === 'mentor') {
             // $id sudah users.id (mentor dari tabel users)
             $lockedIds = $this->fetchLockedByProgress($id);
+        } elseif ($type === 'mentor_master') {
+            // $id = mentor.id — progress mentor di-key per record mentor
+            $lockedIds = $this->fetchLockedByMentorMaster($id);
         } elseif ($type === 'company') {
             $userIds = $this->resolveUsersIdsFromCompany((int) $id);
             if ($userIds->isNotEmpty()) {
                 $lockedIds = $this->fetchLockedByProgress($userIds);
             }
         }
-        // mentor_master: tidak ada users.id → tidak ada progress
 
         return response()->json(['locked_modul_ids' => $lockedIds->values()]);
     }
@@ -443,6 +476,8 @@ class ModulController extends Controller
                 }
             } elseif ($type === 'mentor') {
                 $lockedIds = $this->fetchLockedByProgress($id, $removedIds);
+            } elseif ($type === 'mentor_master') {
+                $lockedIds = $this->fetchLockedByMentorMaster($id, $removedIds);
             } elseif ($type === 'company') {
                 $userIds = $this->resolveUsersIdsFromCompany((int) $id);
                 if ($userIds->isNotEmpty()) {
