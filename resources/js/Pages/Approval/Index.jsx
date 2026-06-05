@@ -9,6 +9,22 @@ function fmtDate(s) {
     return new Date(s).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" });
 }
 
+// Satu Post Activity bisa berisi banyak file (maks 10). Tampilkan semuanya sebagai daftar unduhan.
+function PaFiles({ row }) {
+    const files = row.files?.length
+        ? row.files
+        : (row.path_file ? [{ nama_file: row.nama_file, path_file: row.path_file }] : []);
+    if (files.length === 0) return <span className="text-slate-400 text-xs">{row.nama_file ?? "—"}</span>;
+    return (
+        <div className="flex flex-col gap-0.5">
+            {files.map((f, i) => (
+                <a key={i} href={`/${f.path_file}`} target="_blank" rel="noreferrer"
+                    className="text-blue-600 hover:underline text-xs truncate max-w-xs">{f.nama_file ?? "Unduh"}</a>
+            ))}
+        </div>
+    );
+}
+
 export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtApproved = [], paApproved = [], idpPending = [], idpApproved = [] }) {
     const [tab, setTab] = useState(() => {
         const hash = window.location.hash.replace("#", "");
@@ -147,11 +163,7 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
                                     <td className="px-4 py-3 font-medium text-slate-700">{r.uploader_nama ?? "—"}</td>
                                     <td className="px-4 py-3 text-slate-500 capitalize">{r.tipe ?? "—"}</td>
                                     <td className="px-4 py-3 text-slate-500">{r.nama_modul ?? "—"}</td>
-                                    <td className="px-4 py-3">
-                                        {r.path_file ? (
-                                            <a href={`/${r.path_file}`} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline text-xs">{r.nama_file ?? "Unduh"}</a>
-                                        ) : <span className="text-slate-400 text-xs">{r.nama_file ?? "—"}</span>}
-                                    </td>
+                                    <td className="px-4 py-3"><PaFiles row={r} /></td>
                                     <td className="px-4 py-3 text-slate-500">{fmtDate(r.created_at)}</td>
                                     <td className="px-4 py-3">
                                         <div className="flex items-center justify-end gap-2">
@@ -325,11 +337,7 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
                                             <td className="px-4 py-3 font-medium text-slate-700">{r.uploader_nama ?? "—"}</td>
                                             <td className="px-4 py-3 text-slate-500 capitalize">{r.tipe ?? "—"}</td>
                                             <td className="px-4 py-3 text-slate-500">{r.nama_modul ?? "—"}</td>
-                                            <td className="px-4 py-3">
-                                                {r.path_file ? (
-                                                    <a href={`/${r.path_file}`} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline text-xs">{r.nama_file ?? "Unduh"}</a>
-                                                ) : <span className="text-slate-400 text-xs">{r.nama_file ?? "—"}</span>}
-                                            </td>
+                                            <td className="px-4 py-3"><PaFiles row={r} /></td>
                                             <td className="px-4 py-3 text-center font-semibold text-emerald-600">{r.nilai != null ? Number(r.nilai).toFixed(2) : "—"}</td>
                                             <td className="px-4 py-3 text-slate-500">{fmtDate(r.approved_at)}</td>
                                             <td className="px-4 py-3 text-right">

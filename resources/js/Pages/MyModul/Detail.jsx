@@ -243,9 +243,11 @@ function ReviewModal({ open, onClose, modulId, tipe, title, mentorId }) {
 }
 
 /* ── Post Activity upload ─────────────────────────────────── */
+const PA_MAX_FILES = 10;
+
 function PostActivityUpload({ modulId, mentorId }) {
-    const [file, setFile]         = useState(null);
-    const [error, setError]       = useState(null);
+    const [files, setFiles]         = useState([]);
+    const [error, setError]         = useState(null);
     const [uploading, setUploading] = useState(false);
     const fileRef = useRef(null);
 
@@ -253,64 +255,81 @@ function PostActivityUpload({ modulId, mentorId }) {
     const MAX_BYTES = 2 * 1024 * 1024;
 
     const handleChange = (e) => {
-        const f = e.target.files[0];
-        if (!f) return;
-        const ext = f.name.split('.').pop().toLowerCase();
-        if (!ALLOWED.includes(ext)) {
-            setError('Format tidak diizinkan. Gunakan PDF, DOCX, atau XLSX.');
-            setFile(null);
-            return;
-        }
-        if (f.size > MAX_BYTES) {
-            setError('Ukuran file melebihi batas 2 MB.');
-            setFile(null);
-            return;
-        }
+        const picked = Array.from(e.target.files ?? []);
+        if (fileRef.current) fileRef.current.value = ''; // izinkan pilih file yang sama lagi
+        if (picked.length === 0) return;
+
         setError(null);
-        setFile(f);
+        setFiles((prev) => {
+            const next = [...prev];
+            for (const f of picked) {
+                if (next.length >= PA_MAX_FILES) { setError(`Maksimal ${PA_MAX_FILES} file.`); break; }
+                const ext = f.name.split('.').pop().toLowerCase();
+                if (!ALLOWED.includes(ext)) { setError('Format tidak diizinkan. Gunakan PDF, DOCX, atau XLSX.'); continue; }
+                if (f.size > MAX_BYTES) { setError(`"${f.name}" melebihi batas 2 MB.`); continue; }
+                if (next.some((x) => x.name === f.name && x.size === f.size)) continue; // hindari duplikat
+                next.push(f);
+            }
+            return next;
+        });
     };
 
+    const removeFile = (idx) => setFiles((prev) => prev.filter((_, i) => i !== idx));
+
     const handleUpload = () => {
-        if (!file) return;
+        if (files.length === 0) return;
         setUploading(true);
         const fd = new FormData();
-        fd.append('file', file);
+        files.forEach((f) => fd.append('files[]', f));
         fd.append('modul_id', modulId);
         if (mentorId) fd.append('mentor_id', mentorId);
         router.post('/learning/post-activity/upload', fd, {
             forceFormData: true,
             preserveState: true,
             preserveScroll: true,
-            onSuccess: () => { setUploading(false); setFile(null); if (fileRef.current) fileRef.current.value = ''; },
-            onError: (errs) => { setUploading(false); setError(errs.file ?? 'Upload gagal. Coba lagi.'); },
+            onSuccess: () => { setUploading(false); setFiles([]); },
+            onError: (errs) => {
+                setUploading(false);
+                const first = Object.keys(errs).find((k) => k === 'files' || k.startsWith('files.'));
+                setError((first && errs[first]) || 'Upload gagal. Coba lagi.');
+            },
         });
     };
 
     return (
         <div className="space-y-2 mt-1">
-            <input ref={fileRef} type="file" className="hidden"
+            <input ref={fileRef} type="file" multiple className="hidden"
                 accept=".pdf,.docx,.xlsx" onChange={handleChange} />
 
             <div className="flex items-center gap-2 flex-wrap">
                 <button type="button" onClick={() => fileRef.current?.click()}
-                    className="text-sm px-3 py-1.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 transition">
+                    disabled={files.length >= PA_MAX_FILES}
+                    className="text-sm px-3 py-1.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition">
                     Pilih File
                 </button>
-                {file && (
+                {files.length > 0 && (
                     <button type="button" onClick={handleUpload} disabled={uploading}
                         className="text-sm px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition">
-                        {uploading ? 'Mengupload...' : 'Upload'}
+                        {uploading ? 'Mengupload...' : `Upload ${files.length} File`}
                     </button>
                 )}
             </div>
 
-            {file && (
-                <p className="text-xs text-slate-600 truncate max-w-xs">{file.name}</p>
+            {files.length > 0 && (
+                <ul className="space-y-1">
+                    {files.map((f, i) => (
+                        <li key={`${f.name}-${f.size}-${i}`} className="flex items-center gap-2 text-xs text-slate-600">
+                            <span className="truncate max-w-xs">{f.name}</span>
+                            <button type="button" onClick={() => removeFile(i)} disabled={uploading}
+                                className="text-red-500 hover:text-red-600 disabled:opacity-50 shrink-0">Hapus</button>
+                        </li>
+                    ))}
+                </ul>
             )}
             {error && (
                 <p className="text-xs text-red-500">{error}</p>
             )}
-            <p className="text-xs text-slate-400">Format: PDF, DOCX, XLSX · Maks. 2 MB</p>
+            <p className="text-xs text-slate-400">Format: PDF, DOCX, XLSX · Maks. 2 MB/file · Maks. {PA_MAX_FILES} file</p>
         </div>
     );
 }
@@ -562,24 +581,38 @@ export default function ModulDetail({ modul, progress = {}, pretest = [], postte
                         <CheckItem done={progress.post_activity && progress.post_activity_status !== 'rejected'}
                             title="Post Activity"
                             sub={progress.post_activity
-                                ? `File: ${progress.post_activity_file}`
+                                ? `${progress.post_activity_files?.length ?? 1} file diupload`
                                 : 'Belum diupload'}
                             subColor={progress.post_activity ? 'text-emerald-600' : 'text-slate-500'}
                             last={modul?.fase != 3}>
                             {progress.post_activity && progress.post_activity_status !== 'rejected' ? (
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">
-                                        ✓ Uploaded
-                                    </span>
-                                    {progress.post_activity_status && (
-                                        <span className={`text-xs font-medium ${STATUS_COLOR[progress.post_activity_status] ?? 'text-slate-500'}`}>
-                                            · {STATUS_LABEL[progress.post_activity_status] ?? progress.post_activity_status}
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">
+                                            ✓ Uploaded
                                         </span>
-                                    )}
-                                    {progress.post_activity_nilai != null && (
-                                        <span className="text-xs font-semibold text-emerald-700">
-                                            · Nilai: {Number(progress.post_activity_nilai).toFixed(2)}
-                                        </span>
+                                        {progress.post_activity_status && (
+                                            <span className={`text-xs font-medium ${STATUS_COLOR[progress.post_activity_status] ?? 'text-slate-500'}`}>
+                                                · {STATUS_LABEL[progress.post_activity_status] ?? progress.post_activity_status}
+                                            </span>
+                                        )}
+                                        {progress.post_activity_nilai != null && (
+                                            <span className="text-xs font-semibold text-emerald-700">
+                                                · Nilai: {Number(progress.post_activity_nilai).toFixed(2)}
+                                            </span>
+                                        )}
+                                    </div>
+                                    {progress.post_activity_files?.length > 0 && (
+                                        <ul className="space-y-1">
+                                            {progress.post_activity_files.map((f, i) => (
+                                                <li key={i}>
+                                                    <a href={`/${f.path_file}`} target="_blank" rel="noreferrer"
+                                                        className="text-xs text-blue-600 hover:underline truncate inline-block max-w-xs">
+                                                        {f.nama_file}
+                                                    </a>
+                                                </li>
+                                            ))}
+                                        </ul>
                                     )}
                                 </div>
                             ) : progress.post_activity_status === 'rejected' ? (

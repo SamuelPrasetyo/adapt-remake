@@ -60,6 +60,25 @@ class ApprovalController extends Controller
             ->get(['d.id','d.nama_file','d.path_file','d.tipe','d.created_at','d.approved_at','m.nama_modul','pa.nilai',
                    DB::raw('COALESCE(ku.name, mu.name) as uploader_nama')]);
 
+        // Satu Post Activity bisa berisi banyak file (dokumen_files). Lampirkan daftar file per dokumen,
+        // fallback ke kolom dokumen lama untuk data sebelum fitur multi-file.
+        $paIds = $paPending->pluck('id')->merge($paApproved->pluck('id'))->filter()->unique()->all();
+        $filesByDoc = DB::table('dokumen_files')
+            ->whereIn('dokumen_id', $paIds)
+            ->get(['dokumen_id', 'nama_file', 'path_file'])
+            ->groupBy('dokumen_id');
+        $attachFiles = function ($rows) use ($filesByDoc) {
+            return $rows->map(function ($r) use ($filesByDoc) {
+                $fs = $filesByDoc->get($r->id);
+                $r->files = $fs
+                    ? $fs->map(fn($f) => ['nama_file' => $f->nama_file, 'path_file' => $f->path_file])->values()
+                    : collect([['nama_file' => $r->nama_file, 'path_file' => $r->path_file]])->values();
+                return $r;
+            });
+        };
+        $paPending  = $attachFiles($paPending);
+        $paApproved = $attachFiles($paApproved);
+
         $idpBase = DB::table('dokumen as d')
             ->leftJoin('users as ku', DB::raw('CONVERT(d.kader_id USING utf8mb4) COLLATE utf8mb4_unicode_ci'), '=', 'ku.id')
             ->leftJoin('batch as b', 'd.id_batch', '=', 'b.id_batch')

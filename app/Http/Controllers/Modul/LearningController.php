@@ -116,7 +116,7 @@ class LearningController extends Controller
         )->value('progress') ?? 0;
 
         $userType = strtolower($user->type ?? '');
-        $postActivityDoc = Dokumen::with('penilaian')
+        $postActivityDoc = Dokumen::with('penilaian', 'files')
             ->where('modul_id', $modul->id)
             ->where('jenis', 'POST_ACTIVITY')
             ->when($userType === 'kader',  fn($q) => $q->where('kader_id', $user->id))
@@ -129,6 +129,12 @@ class LearningController extends Controller
 
         // Skor Akhir = rata-rata 50/50 post-test & nilai Post Activity, hanya bila KEDUANYA ada.
         $paNilai       = $postActivityDoc ? optional($postActivityDoc->penilaian)->nilai : null;
+        // Daftar file Post Activity; fallback ke kolom dokumen lama bila belum ada baris dokumen_files.
+        $postActivityFiles = $postActivityDoc
+            ? ($postActivityDoc->files->isNotEmpty()
+                ? $postActivityDoc->files->map(fn($f) => ['nama_file' => $f->nama_file, 'path_file' => $f->path_file])->values()
+                : collect([['nama_file' => $postActivityDoc->nama_file, 'path_file' => $postActivityDoc->path_file]]))
+            : collect();
         $posttestScore = $posttestResult ? $posttestResult->score : null;
         $finalScore    = ($posttestScore !== null && $paNilai !== null)
             ? round(($posttestScore + $paNilai) / 2, 2)
@@ -143,6 +149,7 @@ class LearningController extends Controller
             'posttest_score'        => $posttestResult ? $posttestResult->score : null,
             'post_activity'             => (bool) $postActivityDoc,
             'post_activity_file'        => $postActivityDoc ? $postActivityDoc->nama_file : null,
+            'post_activity_files'       => $postActivityFiles->values(),
             'post_activity_status'      => $postActivityDoc ? $postActivityDoc->status : null,
             'post_activity_nilai'       => $paNilai,
             'post_activity_rejection_reason' => $postActivityDoc ? $postActivityDoc->rejection_reason : null,
@@ -315,9 +322,11 @@ class LearningController extends Controller
 
     public function uploadPostActivity(Request $request)
     {
+        // Satu Post Activity bisa berisi banyak file (maks 10) — di-review & dinilai sekali sebagai satu paket.
         $request->validate([
             'modul_id' => 'required|integer',
-            'file'     => 'required|file|mimes:pdf,docx,xlsx|max:2048',
+            'files'    => 'required|array|min:1|max:10',
+            'files.*'  => 'required|file|mimes:pdf,docx,xlsx|max:2048',
         ]);
 
         $user     = auth()->user();
@@ -325,7 +334,8 @@ class LearningController extends Controller
         $mentorMasterId = optional($this->activeMentor($request))->id;
 
         // Cegah upload ulang jika dokumen terakhir masih menunggu review / sudah disetujui.
-        $lastDoc = Dokumen::where('modul_id', $request->modul_id)
+        $lastDoc = Dokumen::with('files')
+            ->where('modul_id', $request->modul_id)
             ->where('jenis', 'POST_ACTIVITY')
             ->when($userType === 'kader', fn($q) => $q->where('kader_id', $user->id))
             ->when($userType !== 'kader', function ($q) use ($user, $mentorMasterId) {
@@ -339,15 +349,19 @@ class LearningController extends Controller
             $msg = $lastDoc->status === 'approved'
                 ? 'Post Activity sudah disetujui Admin MAI dan tidak dapat diubah.'
                 : 'Post Activity masih menunggu review Admin MAI.';
-            return back()->withErrors(['file' => $msg]);
+            return back()->withErrors(['files' => $msg]);
         }
 
-        // Re-upload setelah ditolak — hapus dokumen lama (file + row) agar tidak menumpuk file sampah.
+        // Re-upload setelah ditolak — hapus dokumen lama (semua file + row) agar tidak menumpuk file sampah.
         if ($lastDoc && $lastDoc->status === 'rejected') {
-            $oldPath = public_path($lastDoc->path_file);
-            if ($lastDoc->path_file && file_exists($oldPath)) {
-                @unlink($oldPath);
+            $oldPaths = $lastDoc->files->pluck('path_file')->push($lastDoc->path_file)->filter()->unique();
+            foreach ($oldPaths as $oldPath) {
+                $full = public_path($oldPath);
+                if (file_exists($full)) {
+                    @unlink($full);
+                }
             }
+            $lastDoc->files()->delete();
             $lastDoc->delete();
         }
 
@@ -356,13 +370,23 @@ class LearningController extends Controller
             mkdir($folder, 0755, true);
         }
 
-        $ext      = $request->file('file')->extension();
-        $fileName = time() . '_' . uniqid() . '.' . $ext;
-        $request->file('file')->move($folder, $fileName);
+        // Simpan tiap file ke disk; tampung metadata-nya untuk dibuatkan baris dokumen_files.
+        $stored = [];
+        foreach ($request->file('files') as $uploaded) {
+            $originalName = $uploaded->getClientOriginalName();
+            $fileName = time() . '_' . uniqid() . '.' . $uploaded->extension();
+            $uploaded->move($folder, $fileName);
+            $stored[] = [
+                'nama_file' => $originalName,
+                'path_file' => 'uploads/post_activity/' . $fileName,
+            ];
+        }
 
-        $data = [
-            'nama_file' => $request->file('file')->getClientOriginalName(),
-            'path_file' => 'uploads/post_activity/' . $fileName,
+        // File pertama disimpan juga di kolom dokumen.nama_file/path_file sebagai perwakilan
+        // (kompatibilitas dengan tampilan lama); daftar lengkap ada di dokumen_files.
+        $dokumen = Dokumen::create([
+            'nama_file' => $stored[0]['nama_file'],
+            'path_file' => $stored[0]['path_file'],
             'tipe'      => $userType === 'kader' ? 'kader' : 'mentor',
             'status'    => 'pending',
             'jenis'     => 'POST_ACTIVITY',
@@ -370,11 +394,15 @@ class LearningController extends Controller
             'kader_id'  => $userType === 'kader'  ? $user->id : null,
             'mentor_id' => $userType === 'mentor' ? $user->id : null,
             'mentor_master_id' => $userType === 'mentor' ? $mentorMasterId : null,
-        ];
+        ]);
 
-        Dokumen::create($data);
+        $dokumen->files()->createMany($stored);
 
-        return back()->with('success', 'File berhasil diupload.');
+        $msg = count($stored) > 1
+            ? count($stored) . ' file berhasil diupload.'
+            : 'File berhasil diupload.';
+
+        return back()->with('success', $msg);
     }
 
     public function ajax_test($id, $type)
