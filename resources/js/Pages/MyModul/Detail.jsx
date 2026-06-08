@@ -451,13 +451,17 @@ export default function ModulDetail({ modul, progress = {}, pretest = [], postte
     const showToast = (type, message) =>
         setToast(prev => ({ open: true, type, message, key: prev.key + 1 }));
 
-    const hasPre     = modul?.fase != 3;
-    // Skor Akhir hanya muncul bila post-test & Post Activity sama-sama sudah dinilai.
+    // Komponen modul dikustom per modul (default true untuk modul lama).
+    const hasTest    = modul?.has_test ?? true;
+    const hasPA      = modul?.has_post_activity ?? true;
+    const hasPre     = hasTest && modul?.fase != 3;
+    // Skor Akhir dihitung backend dari komponen yang dimiliki modul.
     const finalScore = progress.final_score;
 
     const materiLocked = hasPre && !progress.pretest;
     const postLocked   = (progress.materi_progress ?? 0) < 100;
-    const paLocked     = !progress.posttest;
+    // Tanpa Post-Test sebagai gerbang, Post Activity terbuka setelah materi 100%.
+    const paLocked     = hasTest ? !progress.posttest : (progress.materi_progress ?? 0) < 100;
 
     const openPre = () => {
         if (progress.pretest) { setReview({ tipe: 'pre', title: 'Pre-Test' }); return; }
@@ -516,7 +520,8 @@ export default function ModulDetail({ modul, progress = {}, pretest = [], postte
                         )}
 
                         <CheckItem done={(progress.materi_progress ?? 0) >= 100}
-                            title="Materi Pembelajaran">
+                            title="Materi Pembelajaran"
+                            last={!hasTest && !hasPA && modul?.fase != 3}>
                             {!materiLocked && (
                                 <div className="flex items-center gap-1.5 mb-2">
                                     <svg className="w-4 h-4 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -536,21 +541,25 @@ export default function ModulDetail({ modul, progress = {}, pretest = [], postte
                             }
                         </CheckItem>
 
-                        <CheckItem done={progress.posttest}
-                            title="Post-Test"
-                            sub={progress.posttest ? `Skor: ${progress.posttest_score}` : 'Belum dikerjakan'}>
-                            {!progress.posttest && (
-                                postLocked
-                                    ? <LockedBtn label="Kerjakan Post-Test" message="Baca materi hingga 100% terlebih dahulu" />
-                                    : (
-                                        <button type="button" onClick={openPost}
-                                            className="text-sm px-3 py-1.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 transition">
-                                            Kerjakan Post-Test
-                                        </button>
-                                    )
-                            )}
-                        </CheckItem>
+                        {hasTest && (
+                            <CheckItem done={progress.posttest}
+                                title="Post-Test"
+                                sub={progress.posttest ? `Skor: ${progress.posttest_score}` : 'Belum dikerjakan'}
+                                last={!hasPA && modul?.fase != 3}>
+                                {!progress.posttest && (
+                                    postLocked
+                                        ? <LockedBtn label="Kerjakan Post-Test" message="Baca materi hingga 100% terlebih dahulu" />
+                                        : (
+                                            <button type="button" onClick={openPost}
+                                                className="text-sm px-3 py-1.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 transition">
+                                                Kerjakan Post-Test
+                                            </button>
+                                        )
+                                )}
+                            </CheckItem>
+                        )}
 
+                        {hasPA && (
                         <CheckItem done={progress.post_activity}
                             title="Post Activity"
                             sub={progress.post_activity_required > 1
@@ -579,7 +588,7 @@ export default function ModulDetail({ modul, progress = {}, pretest = [], postte
 
                             {/* Aksi sesuai state */}
                             {paLocked ? (
-                                <LockedBtn label="Upload Post Activity" message="Selesaikan Post-Test terlebih dahulu" />
+                                <LockedBtn label="Upload Post Activity" message={hasTest ? 'Selesaikan Post-Test terlebih dahulu' : 'Baca materi hingga 100% terlebih dahulu'} />
                             ) : progress.post_activity ? (
                                 <div className="text-xs text-emerald-600 font-medium">
                                     ✓ Semua sesi Post Activity selesai{progress.post_activity_nilai != null ? ` · Nilai: ${Number(progress.post_activity_nilai).toFixed(2)}` : ''}.
@@ -604,6 +613,7 @@ export default function ModulDetail({ modul, progress = {}, pretest = [], postte
                                 </div>
                             )}
                         </CheckItem>
+                        )}
 
                         {modul?.fase == 3 && (
                             <CheckItem done title="Evaluasi Mentor"
@@ -623,7 +633,7 @@ export default function ModulDetail({ modul, progress = {}, pretest = [], postte
                                 Pre-Test
                             </button>
                         )}
-                        {postLocked ? (
+                        {hasTest && (postLocked ? (
                             <div className="relative group">
                                 <div className="w-full py-3 rounded-xl font-semibold text-sm bg-slate-100 text-slate-400 cursor-not-allowed flex items-center justify-center gap-2 select-none">
                                     <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -641,7 +651,7 @@ export default function ModulDetail({ modul, progress = {}, pretest = [], postte
                                 className="w-full py-3 rounded-xl font-semibold text-sm bg-emerald-600 hover:bg-emerald-700 text-white transition">
                                 Post-Test
                             </button>
-                        )}
+                        ))}
                         {materiLocked ? (
                             <div className="relative group">
                                 <div className="w-full py-3 rounded-xl font-semibold text-sm bg-slate-100 text-slate-400 cursor-not-allowed flex items-center justify-center gap-2 select-none">
