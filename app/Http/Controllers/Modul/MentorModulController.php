@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Modul;
 
 use App\Http\Controllers\Controller;
 use App\Models\Company;
+use App\Models\Dokumen;
 use App\Models\Mentor;
 use App\Models\Modul;
 use App\Models\ModulTestResult;
@@ -33,6 +34,34 @@ class MentorModulController extends Controller
         $selectedMentor = $mentorId ? $mentors->firstWhere('id', $mentorId) : null;
 
         return [$mentors, $selectedMentor, $authUser];
+    }
+
+    /**
+     * Modul PA-only (tanpa Pre/Post Test) dianggap selesai bila kuota sesi Post Activity
+     * Mentor (10 sesi) sudah disetujui. Mengembalikan jumlah modul PA-only yang selesai.
+     * Scope: mentor_master_id (record mentor) atau mentor_id (akun login, "Program Sendiri").
+     */
+    private function paOnlyCompletedCount($modulIds, ?string $mentorMasterId, $mentorUserId): int
+    {
+        $ids = collect($modulIds)->all();
+        if (empty($ids)) return 0;
+
+        $q = Dokumen::whereIn('modul_id', $ids)
+            ->where('jenis', 'POST_ACTIVITY')
+            ->where('status', 'approved');
+
+        if ($mentorMasterId) {
+            $q->where('mentor_master_id', $mentorMasterId);
+        } elseif ($mentorUserId) {
+            $q->where('mentor_id', $mentorUserId)->whereNull('mentor_master_id');
+        } else {
+            return 0;
+        }
+
+        return $q->get(['modul_id'])
+            ->groupBy('modul_id')
+            ->filter(fn($g) => $g->count() >= 10) // Mentor: 10 sesi
+            ->count();
     }
 
     /** Library modul untuk Mentor (semua modul, tab filter, role isMentor only). */
@@ -93,11 +122,15 @@ class MentorModulController extends Controller
         $modulIds  = $moduls->pluck('id');
         $total     = $moduls->count();
 
-        // Progress di-key per record mentor (mentor.id) bila melihat mentor tertentu;
-        // untuk "Program Saya Sendiri" pakai akun login (mentor_id NULL).
+        // Modul dengan Pre/Post Test selesai bila post-test selesai; modul PA-only selesai
+        // bila kuota sesi Post Activity disetujui. Progress di-key per record mentor (mentor.id)
+        // bila melihat mentor tertentu; untuk "Program Saya Sendiri" pakai akun login (mentor_id NULL).
+        $testModulIds   = $moduls->where('has_test', true)->pluck('id');
+        $paOnlyModulIds = $moduls->where('has_test', false)->where('has_post_activity', true)->pluck('id');
+
         $resultBase = null;
-        if ($total > 0) {
-            $resultBase = ModulTestResult::whereIn('modul_id', $modulIds)
+        if ($testModulIds->isNotEmpty()) {
+            $resultBase = ModulTestResult::whereIn('modul_id', $testModulIds)
                 ->where('tipe', 'post')->where('is_completed', 1);
             if ($mentorMaster) {
                 $resultBase->where('mentor_id', $mentorMaster->id);
@@ -108,9 +141,14 @@ class MentorModulController extends Controller
             }
         }
 
-        $completed = $resultBase ? (clone $resultBase)->pluck('modul_id')->unique()->count() : 0;
-        $progress  = $total > 0 ? (int) round(($completed / $total) * 100) : 0;
-        $avgScore  = $resultBase ? (float) round((clone $resultBase)->avg('score') ?? 0, 1) : 0;
+        $mmId = $mentorMaster ? $mentorMaster->id : null;
+        $muId = $mentorMaster ? null : ($targetUser ? $targetUser->id : null);
+
+        $completedTest = $resultBase ? (clone $resultBase)->pluck('modul_id')->unique()->count() : 0;
+        $completedPA   = $this->paOnlyCompletedCount($paOnlyModulIds, $mmId, $muId);
+        $completed     = $completedTest + $completedPA;
+        $progress      = $total > 0 ? (int) round(($completed / $total) * 100) : 0;
+        $avgScore      = $resultBase ? (float) round((clone $resultBase)->avg('score') ?? 0, 1) : 0;
 
         $company = Company::where('company_code', ($mentorMaster ? $mentorMaster->company_code : $authUser->company_code))->first();
 
@@ -150,7 +188,10 @@ class MentorModulController extends Controller
         $usersById     = $mentorUsers->keyBy('id');
         $usersByName   = $mentorUsers->keyBy(fn($u) => $u->company_code . '|' . $u->name);
 
-        $list = $mentors->map(function ($m) use ($usersById, $usersByName) {
+        // Flag komponen per modul untuk membedakan modul ber-test vs PA-only saat hitung progress.
+        $modulFlags    = Modul::all(['id', 'has_test', 'has_post_activity'])->keyBy('id');
+
+        $list = $mentors->map(function ($m) use ($usersById, $usersByName, $modulFlags) {
             // Akun login mentor: utamakan relasi mentor.user_id, fallback ke cocok nama+BU.
             $targetUser = ($m->user_id ? $usersById->get($m->user_id) : null)
                 ?? $usersByName->get($m->company_code . '|' . $m->nama);
@@ -173,14 +214,23 @@ class MentorModulController extends Controller
 
             $total = $modulIds->count();
 
+            // Modul ber-test selesai bila post-test selesai; modul PA-only bila kuota PA disetujui.
+            $testModulIds   = $modulIds->filter(fn($mid) => (bool) (optional($modulFlags[$mid] ?? null)->has_test ?? true))->values();
+            $paOnlyModulIds = $modulIds->filter(fn($mid) =>
+                !((bool) (optional($modulFlags[$mid] ?? null)->has_test ?? true))
+                && ((bool) (optional($modulFlags[$mid] ?? null)->has_post_activity ?? true))
+            )->values();
+
             // Progress di-key per record mentor (mentor.id), bukan per akun login —
             // satu akun bisa memegang banyak mentor dengan progress yang berbeda.
-            $completed = ($total > 0)
+            $completedTest = $testModulIds->isNotEmpty()
                 ? ModulTestResult::where('mentor_id', $m->id)
-                    ->whereIn('modul_id', $modulIds)
+                    ->whereIn('modul_id', $testModulIds)
                     ->where('tipe', 'post')->where('is_completed', 1)
                     ->pluck('modul_id')->unique()->count()
                 : 0;
+            $completedPA = $this->paOnlyCompletedCount($paOnlyModulIds, $m->id, null);
+            $completed   = $completedTest + $completedPA;
 
             $progress = $total > 0 ? (int) round(($completed / $total) * 100) : 0;
 

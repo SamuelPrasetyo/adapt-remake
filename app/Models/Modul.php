@@ -12,6 +12,11 @@ class Modul extends Model
     protected $table = 'modul';
     protected $guarded = [];
 
+    protected $casts = [
+        'has_test'          => 'boolean',
+        'has_post_activity' => 'boolean',
+    ];
+
     public function assignments()
     {
         return $this->hasMany(ModulAssignment::class);

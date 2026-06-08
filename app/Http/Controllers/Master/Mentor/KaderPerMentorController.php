@@ -132,7 +132,8 @@ class KaderPerMentorController extends Controller
                 'divisis.nama as divisi_name',
                 'departemens.nama as dept_name',
                 'company.company_shortname as bu',
-                'mentor.nama as mentor_name'
+                'mentor.nama as mentor_name',
+                'mentor.jabatan as mentor_jabatan'
             )
             ->join('kader', 'list_kader_per_mentor.kader_id', '=', 'kader.id')
             ->leftJoin('mentor', 'list_kader_per_mentor.mentor_id', '=', 'mentor.id')
@@ -167,7 +168,8 @@ class KaderPerMentorController extends Controller
                 'batch.nama_batch as batch_name',
                 'batch.tahun_batch as batch_year',
                 'lkpm.mentor_id as mentor_id',
-                'mentor.nama as mentor_name'
+                'mentor.nama as mentor_name',
+                'mentor.jabatan as mentor_jabatan'
             )
             ->leftJoin('company', 'kader.company_code', '=', 'company.company_code')
             ->leftJoin('divisis', 'kader.id_divisi', '=', 'divisis.id')
@@ -239,7 +241,8 @@ class KaderPerMentorController extends Controller
             ->values()
             ->all();
 
-        $modulFase = Modul::whereIn('id', $allModulIds)->pluck('fase', 'id');
+        $modulFase  = Modul::whereIn('id', $allModulIds)->pluck('fase', 'id');
+        $modulFlags = Modul::whereIn('id', $allModulIds)->get(['id', 'has_test', 'has_post_activity'])->keyBy('id');
 
         $userIds = $userMap->values()->all();
 
@@ -269,7 +272,7 @@ class KaderPerMentorController extends Controller
             $docMap[$d->kader_id][$d->modul_id] = true;
         }
 
-        return $rows->map(function ($row) use ($userMap, $kaderModuls, $modulFase, $rpMap, $trMap, $docMap) {
+        return $rows->map(function ($row) use ($userMap, $kaderModuls, $modulFase, $modulFlags, $rpMap, $trMap, $docMap) {
             $userId   = $userMap[$row->nik_kader] ?? null;
             $modulIds = array_filter(
                 array_keys($kaderModuls[$row->k_id] ?? []),
@@ -277,24 +280,37 @@ class KaderPerMentorController extends Controller
             );
             $total    = count($modulIds);
 
-            $doneCheckpoints = 0;
+            $doneCheckpoints  = 0;
+            $totalCheckpoints = 0;
             $faseStats = [];
             $scores = [];
 
             foreach ($modulIds as $mid) {
                 $fase = $modulFase[$mid] ?? 'Tanpa Fase';
 
+                // Checkpoint hanya dihitung untuk komponen yang dimiliki modul (Materi selalu ada).
+                $hasTest  = (bool) (optional($modulFlags[$mid] ?? null)->has_test ?? true);
+                $hasPA    = (bool) (optional($modulFlags[$mid] ?? null)->has_post_activity ?? true);
+                $needPre  = $hasTest && (int) $modulFase[$mid] !== 3;
+                $needPost = $hasTest;
+                $needPA   = $hasPA;
+
                 $pre  = $userId && isset($trMap[$userId][$mid]['pre']);
                 $mat  = $userId && (($rpMap[$userId][$mid] ?? 0) >= 100);
                 $post = $userId && isset($trMap[$userId][$mid]['post']);
                 $pa   = $userId && isset($docMap[$userId][$mid]);
 
-                $modDone = (int)$pre + (int)$mat + (int)$post + (int)$pa;
-                $doneCheckpoints += $modDone;
+                $required = 1 + (int) $needPre + (int) $needPost + (int) $needPA;
+                $modDone  = (int) $mat
+                    + ($needPre  ? (int) $pre  : 0)
+                    + ($needPost ? (int) $post : 0)
+                    + ($needPA   ? (int) $pa   : 0);
+                $doneCheckpoints  += $modDone;
+                $totalCheckpoints += $required;
 
                 if (!isset($faseStats[$fase])) $faseStats[$fase] = ['total' => 0, 'done' => 0];
                 $faseStats[$fase]['total']++;
-                if ($modDone === 4) $faseStats[$fase]['done']++;
+                if ($modDone >= $required) $faseStats[$fase]['done']++;
 
                 if ($userId) {
                     if (isset($trMap[$userId][$mid]['pre']))  $scores[] = $trMap[$userId][$mid]['pre'];
@@ -302,7 +318,7 @@ class KaderPerMentorController extends Controller
                 }
             }
 
-            $totalCp = $total * 4;
+            $totalCp = $totalCheckpoints;
             $progress = $totalCp > 0 ? (int) round(($doneCheckpoints / $totalCp) * 100) : 0;
 
             ksort($faseStats);

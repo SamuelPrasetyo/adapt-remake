@@ -17,6 +17,22 @@ const COLS = [
     { key: 'fase',       label: 'Fase', sortable: true, render: (v) => v ? `Fase ${String(v).replace(/^Fase\s+/i, '')}` : <span className="text-slate-400">—</span> },
     { key: 'tag_kompetensi', label: 'Tag Kompetensi' },
     {
+        key: 'komponen', label: 'Komponen',
+        render: (_, row) => {
+            const hasTest = row.has_test ?? true;
+            const hasPA   = row.has_post_activity ?? true;
+            const chip = (label, on) => (
+                <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded ${on ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400 line-through'}`}>{label}</span>
+            );
+            return (
+                <div className="flex items-center gap-1">
+                    {chip('Test', hasTest)}
+                    {chip('PA', hasPA)}
+                </div>
+            );
+        },
+    },
+    {
         key: 'file_materi', label: 'File',
         render: (v) => v ? (
             <a href={`/${v}`} target="_blank" rel="noreferrer"
@@ -86,6 +102,29 @@ function ModulForm({ form, formId, onSubmit, currentFile }) {
                     onChange={(e) => form.setData('tag_kompetensi', e.target.value)} className={inputCls}
                     placeholder="Opsional" />
             </Field>
+            <Field label="Komponen Modul" error={form.errors.has_test || form.errors.has_post_activity}>
+                <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                        <input type="checkbox" checked={form.data.has_test}
+                            onChange={(e) => form.setData('has_test', e.target.checked)}
+                            className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500/30" />
+                        Pre/Post Test
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                        <input type="checkbox" checked={form.data.has_post_activity}
+                            onChange={(e) => form.setData('has_post_activity', e.target.checked)}
+                            className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500/30" />
+                        Post Activity
+                    </label>
+                    {form.data.has_post_activity && (
+                        <p className="text-xs text-blue-700 bg-blue-50 border border-blue-100 rounded-lg px-2.5 py-1.5">
+                            {isMentor
+                                ? 'Modul Mentor: Post Activity dapat diupload hingga 10 kali (10 sesi coaching, tiap sesi direview Admin MAI).'
+                                : 'Modul Kader: Post Activity hanya dapat diupload 1 kali.'}
+                        </p>
+                    )}
+                </div>
+            </Field>
             <Field label="File Materi (PDF, maks 8MB)" error={form.errors.file_materi}>
                 <input type="file" accept=".pdf"
                     onChange={(e) => {
@@ -141,8 +180,8 @@ export default function ModulIndex({ moduls }) {
     const [editOpen, setEditOpen]     = useState(false);
     const [editRow, setEditRow]       = useState(null);
 
-    const addForm  = useForm({ kode_modul: '', nama_modul: '', tipe: 'KADER', fase: '', tag_kompetensi: '', file_materi: null });
-    const editForm = useForm({ kode_modul: '', nama_modul: '', tipe: 'KADER', fase: '', tag_kompetensi: '', file_materi: null });
+    const addForm  = useForm({ kode_modul: '', nama_modul: '', tipe: 'KADER', fase: '', tag_kompetensi: '', has_test: true, has_post_activity: true, file_materi: null });
+    const editForm = useForm({ kode_modul: '', nama_modul: '', tipe: 'KADER', fase: '', tag_kompetensi: '', has_test: true, has_post_activity: true, file_materi: null });
 
     const submitAdd = (e) => {
         e.preventDefault();
@@ -155,12 +194,14 @@ export default function ModulIndex({ moduls }) {
     const openEdit = (row) => {
         setEditRow(row);
         editForm.setData({
-            kode_modul:     row.kode_modul     ?? '',
-            nama_modul:     row.nama_modul     ?? '',
-            tipe:           row.tipe           ?? 'KADER',
-            fase:           row.fase           ?? '',
-            tag_kompetensi: row.tag_kompetensi ?? '',
-            file_materi:    null,
+            kode_modul:        row.kode_modul     ?? '',
+            nama_modul:        row.nama_modul     ?? '',
+            tipe:              row.tipe           ?? 'KADER',
+            fase:              row.fase           ?? '',
+            tag_kompetensi:    row.tag_kompetensi ?? '',
+            has_test:          row.has_test          ?? true,
+            has_post_activity: row.has_post_activity ?? true,
+            file_materi:       null,
         });
         setEditOpen(true);
     };

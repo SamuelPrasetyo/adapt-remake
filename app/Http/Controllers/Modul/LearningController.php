@@ -152,11 +152,25 @@ class LearningController extends Controller
             'rejection_reason' => $d->rejection_reason,
         ])->values();
 
-        // Skor Akhir = rata-rata 50/50 post-test & nilai Post Activity, hanya bila KEDUANYA ada.
+        // Skor Akhir memakai komponen yang dimiliki modul:
+        // - punya keduanya  → rata-rata 50/50 post-test & Post Activity (hanya bila keduanya dinilai)
+        // - hanya test      → skor post-test
+        // - hanya PA        → nilai Post Activity
+        $hasTest       = (bool) $modul->has_test;
+        $hasPA         = (bool) $modul->has_post_activity;
         $posttestScore = $posttestResult ? $posttestResult->score : null;
-        $finalScore    = ($posttestScore !== null && $paNilai !== null)
-            ? round(($posttestScore + $paNilai) / 2, 2)
-            : null;
+
+        if ($hasTest && $hasPA) {
+            $finalScore = ($posttestScore !== null && $paNilai !== null)
+                ? round(($posttestScore + $paNilai) / 2, 2)
+                : null;
+        } elseif ($hasTest) {
+            $finalScore = $posttestScore;
+        } elseif ($hasPA) {
+            $finalScore = $paNilai;
+        } else {
+            $finalScore = null;
+        }
 
         $progress = [
             'pretest'               => (bool) $pretestResult,

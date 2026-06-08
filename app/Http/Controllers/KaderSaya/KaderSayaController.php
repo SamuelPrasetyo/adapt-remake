@@ -166,7 +166,7 @@ class KaderSayaController extends Controller
             : collect();
         $allModulIds = $userModulIds->merge($companyModulIds)->unique()->values()->all();
 
-        $moduls = Modul::whereIn('id', $allModulIds)->orderBy('fase')->orderBy('nama_modul')->get(['id', 'nama_modul as nama', 'fase']);
+        $moduls = Modul::whereIn('id', $allModulIds)->orderBy('fase')->orderBy('nama_modul')->get(['id', 'nama_modul as nama', 'fase', 'has_test', 'has_post_activity']);
 
         $testResults = $userId
             ? ModulTestResult::whereIn('modul_id', $allModulIds)->where('user_id', $userId)->where('is_completed', 1)->get(['modul_id', 'tipe', 'score'])
@@ -185,20 +185,32 @@ class KaderSayaController extends Controller
             ? Dokumen::where('kader_id', $userId)->whereIn('modul_id', $allModulIds)->where('jenis', 'POST_ACTIVITY')->pluck('modul_id')->flip()->map(fn() => true)->all()
             : [];
 
-        $faseGroups      = [];
-        $doneCheckpoints = 0;
+        $faseGroups       = [];
+        $doneCheckpoints  = 0;
+        $totalCheckpoints = 0;
         foreach ($moduls as $modul) {
             $fase = $modul->fase ?? 'Tanpa Fase';
             if (!isset($faseGroups[$fase])) {
                 $faseGroups[$fase] = ['fase' => $fase, 'moduls' => [], 'done' => 0, 'total' => 0, 'scores' => []];
             }
 
+            // Checkpoint hanya dihitung untuk komponen yang dimiliki modul (Materi selalu ada).
+            $needPre  = (bool) $modul->has_test && (int) $modul->fase !== 3;
+            $needPost = (bool) $modul->has_test;
+            $needPA   = (bool) $modul->has_post_activity;
+
             $pre  = isset($testMap[$modul->id]['pre']);
             $mat  = ((int) ($readMap[$modul->id] ?? 0)) >= 100;
             $post = isset($testMap[$modul->id]['post']);
             $pa   = isset($docIds[$modul->id]);
-            $done = (int)$pre + (int)$mat + (int)$post + (int)$pa;
-            $doneCheckpoints += $done;
+
+            $required = 1 + (int) $needPre + (int) $needPost + (int) $needPA;
+            $done     = (int) $mat
+                + ($needPre  ? (int) $pre  : 0)
+                + ($needPost ? (int) $post : 0)
+                + ($needPA   ? (int) $pa   : 0);
+            $doneCheckpoints  += $done;
+            $totalCheckpoints += $required;
 
             $scores = [];
             if (isset($testMap[$modul->id]['pre']))  $scores[] = $testMap[$modul->id]['pre'];
@@ -207,17 +219,20 @@ class KaderSayaController extends Controller
             if ($modulScore !== null) $faseGroups[$fase]['scores'][] = $modulScore;
 
             $faseGroups[$fase]['moduls'][] = [
-                'id'    => $modul->id,
-                'nama'  => $modul->nama,
-                'pre'   => $pre,
-                'mat'   => $mat,
-                'post'  => $post,
-                'pa'    => $pa,
-                'done'  => $done,
-                'score' => $modulScore,
+                'id'                => $modul->id,
+                'nama'              => $modul->nama,
+                'pre'               => $pre,
+                'mat'               => $mat,
+                'post'              => $post,
+                'pa'                => $pa,
+                'has_test'          => (bool) $modul->has_test,
+                'has_post_activity' => (bool) $modul->has_post_activity,
+                'done'              => $done,
+                'required'          => $required,
+                'score'             => $modulScore,
             ];
             $faseGroups[$fase]['total']++;
-            if ($done === 4) $faseGroups[$fase]['done']++;
+            if ($done >= $required) $faseGroups[$fase]['done']++;
         }
 
         $allFaseScores = [];
@@ -232,7 +247,7 @@ class KaderSayaController extends Controller
         $faseGroups = array_values($faseGroups);
 
         $totalModuls     = count($moduls);
-        $totalCp         = $totalModuls * 4;
+        $totalCp         = $totalCheckpoints;
         $overallProgress = $totalCp > 0 ? (int) round(($doneCheckpoints / $totalCp) * 100) : 0;
         $avgScoreOverall = !empty($allFaseScores) ? (int) round(array_sum($allFaseScores) / count($allFaseScores)) : null;
         $status          = $overallProgress < 40 ? 'kritis' : ($overallProgress < 70 ? 'perlu_perhatian' : 'on_track');
