@@ -336,7 +336,10 @@ function KaderTable({ kaders, mentorFilter, mentors, onMentorFilter, batches, ba
                                     const pct = Number(k.progress_overall || 0);
                                     const initials = (k.nama_kader || '?').split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() || '').join('');
                                     return (
-                                        <tr key={k.k_id || k.id} className="hover:bg-slate-50/60 transition">
+                                        <tr key={k.k_id || k.id}
+                                            className="hover:bg-slate-50/60 transition cursor-pointer"
+                                            onClick={() => router.visit(`/kader-saya/${k.k_id || k.kader_id}`)}>
+
                                             <td className="px-6 py-3 whitespace-nowrap">
                                                 <div className="flex items-center gap-3">
                                                     <div className={`w-9 h-9 rounded-full bg-linear-to-br ${avatarColor(k.nik_kader || k.nama_kader || '')} flex items-center justify-center text-xs font-bold text-white shrink-0`}>
@@ -350,8 +353,17 @@ function KaderTable({ kaders, mentorFilter, mentors, onMentorFilter, batches, ba
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-slate-700">
-                                                {k.mentor_name || <span className="text-slate-400 italic">Belum di-assign</span>}
+                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                {k.mentor_name ? (
+                                                    <div>
+                                                        <div className="text-sm font-medium text-slate-700">{k.mentor_name}</div>
+                                                        {k.mentor_jabatan && (
+                                                            <div className="text-[11px] text-slate-400 truncate max-w-36">{k.mentor_jabatan}</div>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-slate-400 italic text-sm">Belum di-assign</span>
+                                                )}
                                             </td>
                                             <td className="px-4 py-3 whitespace-nowrap">
                                                 {k.fase_aktif ? (
