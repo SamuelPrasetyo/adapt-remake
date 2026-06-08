@@ -29,7 +29,7 @@ class ModulController extends Controller
             'nama_modul'        => 'required',
             'tipe'              => 'required|in:KADER,MENTOR',
             'fase'              => 'required_if:tipe,KADER',
-            'tag_kompetensi'    => 'nullable',
+            'tag_kompetensi'    => 'required|in:FOUNDATION,SELF_LEARNING,LEADERSHIP,MENTOR',
             'has_test'          => 'boolean',
             'has_post_activity' => 'boolean',
             'file_materi'       => 'required|mimes:pdf|max:10240'
@@ -57,6 +57,17 @@ class ModulController extends Controller
     public function update(Request $request, $id)
     {
         $modul = Modul::findOrFail($id);
+
+        $request->validate([
+            'kode_modul'        => 'required',
+            'nama_modul'        => 'required',
+            'tipe'              => 'required|in:KADER,MENTOR',
+            'fase'              => 'required_if:tipe,KADER',
+            'tag_kompetensi'    => 'required|in:FOUNDATION,SELF_LEARNING,LEADERSHIP,MENTOR',
+            'has_test'          => 'boolean',
+            'has_post_activity' => 'boolean',
+            'file_materi'       => 'nullable|mimes:pdf|max:10240'
+        ]);
 
         if ($request->hasFile('file_materi')) {
 

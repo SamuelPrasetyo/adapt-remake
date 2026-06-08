@@ -6,6 +6,13 @@ import Modal from '@/Components/Modal';
 
 const FASE_OPTIONS = ['1', '2', '3', '4'].map((v) => ({ value: v, label: `Fase ${v}` }));
 const TIPE_OPTIONS = [{ value: 'KADER', label: 'Kader' }, { value: 'MENTOR', label: 'Mentor' }];
+const TAG_OPTIONS = [
+    { value: 'FOUNDATION',    label: 'Foundation' },
+    { value: 'SELF_LEARNING', label: 'Self Learning' },
+    { value: 'LEADERSHIP',    label: 'Leadership' },
+    { value: 'MENTOR',        label: 'Mentor' },
+];
+const TAG_LABELS = Object.fromEntries(TAG_OPTIONS.map((o) => [o.value, o.label]));
 
 const COLS = [
     { key: '_no',        label: 'No',   width: '52px', render: (_, __, i) => i + 1 },
@@ -15,7 +22,7 @@ const COLS = [
         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${v === 'MENTOR' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>{v ?? 'KADER'}</span>
     )},
     { key: 'fase',       label: 'Fase', sortable: true, render: (v) => v ? `Fase ${String(v).replace(/^Fase\s+/i, '')}` : <span className="text-slate-400">—</span> },
-    { key: 'tag_kompetensi', label: 'Tag Kompetensi' },
+    { key: 'tag_kompetensi', label: 'Tag Kompetensi', render: (v) => TAG_LABELS[v] ?? (v || <span className="text-slate-400">—</span>) },
     {
         key: 'komponen', label: 'Komponen',
         render: (_, row) => {
@@ -98,9 +105,11 @@ function ModulForm({ form, formId, onSubmit, currentFile }) {
                     onChange={(e) => form.setData('nama_modul', e.target.value)} className={inputCls} />
             </Field>
             <Field label="Tag Kompetensi" error={form.errors.tag_kompetensi}>
-                <input type="text" value={form.data.tag_kompetensi}
-                    onChange={(e) => form.setData('tag_kompetensi', e.target.value)} className={inputCls}
-                    placeholder="Opsional" />
+                <select value={form.data.tag_kompetensi} required
+                    onChange={(e) => form.setData('tag_kompetensi', e.target.value)} className={inputCls}>
+                    <option value="">Pilih Tag Kompetensi...</option>
+                    {TAG_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
             </Field>
             <Field label="Komponen Modul" error={form.errors.has_test || form.errors.has_post_activity}>
                 <div className="space-y-2">

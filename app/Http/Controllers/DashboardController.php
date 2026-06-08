@@ -9,6 +9,7 @@ use App\Models\Dokumen;
 use App\Models\Jawaban;
 use App\Models\Kader;
 use App\Models\Mentor;
+use App\Models\Modul;
 use App\Models\User;
 use App\Models\Week;
 use Illuminate\Http\Request;
@@ -111,11 +112,25 @@ class DashboardController extends Controller
             }
         }
 
+        // Jumlah modul per kategori — diambil dari kolom tag_kompetensi.
+        $kategoriDefs = [
+            'FOUNDATION'    => 'Foundation',
+            'SELF_LEARNING' => 'Self Learning',
+            'LEADERSHIP'    => 'Leadership',
+            'MENTOR'        => 'Mentor',
+        ];
+        $tagCounts = Modul::select('tag_kompetensi', DB::raw('COUNT(*) as c'))
+            ->groupBy('tag_kompetensi')
+            ->pluck('c', 'tag_kompetensi');
+        $modulPerKategori = collect($kategoriDefs)
+            ->map(fn($label, $val) => ['kategori' => $label, 'total' => (int) ($tagCounts[$val] ?? 0)])
+            ->values();
+
         return Inertia::render('Dashboard', [
             'stats'              => $stats,
             'departemenProgress' => [],
             'mentorMonitoring'   => [],
-            'modulPerKategori'   => [],
+            'modulPerKategori'   => $modulPerKategori,
             'showMentorPanel'    => $showMentorPanel,
             'mentors'            => $mentors,
             'selectedMentor'     => $selectedMentor,
