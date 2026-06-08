@@ -578,9 +578,6 @@ export default function ModulDetail({ modul, progress = {}, pretest = [], postte
                                             <span className={`font-medium ${STATUS_COLOR[s.status] ?? 'text-slate-500'}`}>
                                                 {STATUS_LABEL[s.status] ?? s.status}
                                             </span>
-                                            {s.nilai != null && (
-                                                <span className="font-semibold text-emerald-700">· Nilai: {Number(s.nilai).toFixed(2)}</span>
-                                            )}
                                         </li>
                                     ))}
                                 </ul>
