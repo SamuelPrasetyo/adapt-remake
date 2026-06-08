@@ -5,10 +5,10 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\KaderSaya\KaderSayaController;
 use App\Http\Controllers\Master\Mentor\KaderPerMentorController;
 use App\Models\Batch;
+use App\Models\Dokumen;
 use App\Models\Jawaban;
 use App\Models\Kader;
 use App\Models\Mentor;
-use App\Models\Modul;
 use App\Models\User;
 use App\Models\Week;
 use Illuminate\Http\Request;
@@ -29,17 +29,13 @@ class DashboardController extends Controller
      */
     public function index(Request $request)
     {
-        $stats = [
-            'totalKader'    => User::where('type', 'Kader')->where('status', 'Aktif')->count(),
-            'mentorAktif'   => User::where('type', 'Mentor')->where('status', 'Aktif')->count(),
-            'modulTersedia' => class_exists(Modul::class) ? Modul::count() : 0,
-            'dokPending'    => 0,
-        ];
-
         $user = Auth::user();
         $isAdmin021      = $user->type === 'Admin' && $user->company_code === '021';
         $isMentorUser    = $user->type === 'Mentor';
         $showMentorPanel = $isAdmin021 || $isMentorUser;
+
+        // Kartu statistik: Mentor di-scope ke BU sendiri; MAI (Admin) melihat semua BU.
+        $stats = $this->buildStats($isMentorUser ? $user->company_code : null);
 
         $mentors        = collect();
         $selectedMentor = null;
@@ -130,6 +126,66 @@ class DashboardController extends Controller
             'buName'             => $buName,
             'buShort'            => $buShort,
         ]);
+    }
+
+    /**
+     * Statistik kartu Dashboard.
+     * $companyCode = null → MAI (semua BU); selain itu → per BU (Mentor).
+     */
+    private function buildStats(?string $companyCode): array
+    {
+        // Batch yang sedang berjalan (rentang tanggalnya mencakup hari ini).
+        $runningBatchIds = Batch::active()->pluck('id_batch');
+
+        // Kader aktif = kader pada batch yang sedang berjalan (BU difilter untuk Mentor).
+        $kaderQuery = Kader::whereIn('id_batch', $runningBatchIds);
+        if ($companyCode) {
+            $kaderQuery->where('company_code', $companyCode);
+        }
+        $activeKaders = $kaderQuery->get(['nik', 'id_batch']);
+
+        // Feedback belum terisi = slot (kader × minggu feedback yang sudah berjalan) yang belum
+        // diisi Mentor. Feedback mentor = jawaban dengan nama_mentor NOT NULL & id_pertanyaan 1–6
+        // (mengacu ke tabel `weeks`, bukan refleksi kader di `weeks_kader`).
+        $availableWeeksByBatch = [];
+        foreach ($runningBatchIds as $bid) {
+            $availableWeeksByBatch[$bid] = Week::available()->forBatch($bid)->pluck('id_week')->all();
+        }
+        $totalSlots = 0;
+        $allWeekIds = [];
+        foreach ($activeKaders as $k) {
+            $wids = $availableWeeksByBatch[$k->id_batch] ?? [];
+            $totalSlots += count($wids);
+            foreach ($wids as $wid) {
+                $allWeekIds[$wid] = true;
+            }
+        }
+        $niks = $activeKaders->pluck('nik')->filter()->unique()->all();
+        $filledSlots = 0;
+        if ($totalSlots > 0 && !empty($niks)) {
+            $filledSlots = Jawaban::whereIn('nik_kader', $niks)
+                ->whereNotNull('nama_mentor')
+                ->whereIn('id_pertanyaan', [1, 2, 3, 4, 5, 6])
+                ->whereIn('id_week', array_keys($allWeekIds))
+                ->distinct()
+                ->get(['nik_kader', 'id_week'])
+                ->count();
+        }
+        $feedbackBelum = max(0, $totalSlots - $filledSlots);
+
+        // IDP belum lengkap = Form IDP yang belum di-approve Mentor (status masih 'pending').
+        $idpQuery = Dokumen::where('jenis', 'FORM_IDP')->where('status', 'pending');
+        if ($companyCode) {
+            $idpQuery->whereIn('kader_id', User::where('company_code', $companyCode)->pluck('id'));
+        }
+        $idpBelum = $idpQuery->count();
+
+        return [
+            'kaderAktif'    => $activeKaders->count(),
+            'batchBerjalan' => $runningBatchIds->count(),
+            'feedbackBelum' => $feedbackBelum,
+            'idpBelum'      => $idpBelum,
+        ];
     }
 
     /**

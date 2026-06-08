@@ -470,7 +470,7 @@ export default function Dashboard({
     buName,
     buShort,
 }) {
-    const s = stats || { totalKader: 0, mentorAktif: 0, modulTersedia: 0, dokPending: 0 };
+    const s = stats || { kaderAktif: 0, batchBerjalan: 0, feedbackBelum: 0, idpBelum: 0 };
 
     // Navigasi dengan mempertahankan filter mentor & batch sekaligus.
     const navigateFilter = (next) => {
@@ -540,11 +540,10 @@ export default function Dashboard({
                 </div>
             </div> */}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <StatsCard title="Kader Aktif" value={s.totalKader} subtitle="3 batch berjalan" color="green" />
-                <StatsCard title="Dokumen Masuk" value="127" subtitle="11 pending review" color="blue" />
-                <StatsCard title="Modul Terunduh" value="384" subtitle="Bulan ini" color="violet" />
-                <StatsCard title="IDP belum lengkap" value="24" subtitle="dari 48 kader" color="red" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <StatsCard title="Kader Aktif" value={s.kaderAktif} subtitle={`${s.batchBerjalan} batch berjalan`} color="green" />
+                <StatsCard title="Feedback Belum Terisi" value={s.feedbackBelum} subtitle="Perlu diisi mentor" color="amber" />
+                <StatsCard title="IDP Belum Lengkap" value={s.idpBelum} subtitle="Menunggu approve mentor" color="red" />
             </div>
 
             {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
