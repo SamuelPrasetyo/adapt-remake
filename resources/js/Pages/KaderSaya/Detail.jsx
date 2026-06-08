@@ -189,7 +189,7 @@ export default function KaderSayaDetail({
             {/* Tab navigation */}
             <div className="border-b border-slate-200 mb-6">
                 <div className="flex gap-1">
-                    {TABS.map((t) => (
+                    {TABS.filter((t) => !(kaderView && t.id === "perjanjian")).map((t) => (
                         <button key={t.id} onClick={() => handleTabChange(t.id)}
                             className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition border-b-2 -mb-px ${
                                 tab === t.id
@@ -227,6 +227,7 @@ export default function KaderSayaDetail({
                     komentarMap={penilaianKomentarMap}
                     structure={penilaianStructure}
                     canEdit={canEditPenilaian}
+                    kaderView={kaderView}
                 />
             )}
             {tab === "perjanjian" && (
