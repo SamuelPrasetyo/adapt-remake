@@ -30,6 +30,7 @@ export default function PenilaianOjtTab({
     komentarMap = {},
     structure,
     canEdit = false,
+    kaderView = false,
 }) {
     const [openFmc, setOpenFmc] = useState(null);
 
@@ -89,46 +90,50 @@ export default function PenilaianOjtTab({
                                 )}
                             </div>
 
-                            <button
-                                type="button"
-                                disabled={prevMissing}
-                                onClick={() => !prevMissing && setOpenFmc(fmc)}
-                                className={`mt-3 w-full px-3 py-2 text-sm font-semibold rounded-lg transition flex items-center justify-center gap-1.5 ${
-                                    prevMissing
-                                        ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                            {!kaderView && (
+                                <button
+                                    type="button"
+                                    disabled={prevMissing}
+                                    onClick={() => !prevMissing && setOpenFmc(fmc)}
+                                    className={`mt-3 w-full px-3 py-2 text-sm font-semibold rounded-lg transition flex items-center justify-center gap-1.5 ${
+                                        prevMissing
+                                            ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                                            : hasData
+                                                ? "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50"
+                                                : "bg-blue-600 text-white hover:bg-blue-700"
+                                    }`}
+                                >
+                                    {prevMissing
+                                        ? "🔒 Terkunci"
                                         : hasData
-                                            ? "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50"
-                                            : "bg-blue-600 text-white hover:bg-blue-700"
-                                }`}
-                            >
-                                {prevMissing
-                                    ? "🔒 Terkunci"
-                                    : hasData
-                                        ? (fmcCanEdit ? "✏️ Edit" : "👁️ Lihat")
-                                        : (fmcCanEdit ? "📋 Isi Penilaian" : "👁️ Lihat")}
-                            </button>
+                                            ? (fmcCanEdit ? "✏️ Edit" : "👁️ Lihat")
+                                            : (fmcCanEdit ? "📋 Isi Penilaian" : "👁️ Lihat")}
+                                </button>
+                            )}
                         </div>
                     );
                 })}
             </div>
 
             {/* Info box "Cara Pengisian" */}
-            <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-xl p-4">
-                <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center shrink-0 mt-0.5">
-                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+            {!kaderView && (
+                <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center shrink-0 mt-0.5">
+                        <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <p className="text-sm font-semibold text-blue-900">Cara Pengisian</p>
+                        <p className="text-xs text-blue-700 mt-0.5 leading-relaxed">
+                            {canEdit
+                                ? "Klik \"Isi Penilaian\" pada FMC yang sedang berjalan. Terdiri dari 4 tab: OJT Sheet (30%), Value Sheet (30%), Presentation Sheet (40%), dan Final Report. Skor menggunakan skala 0–100. Nilai akhir otomatis terhitung dari weighted average."
+                                : "Anda mode lihat saja (Admin). Penilaian OJT hanya dapat diinput oleh Mentor pembimbing Kader."}
+                        </p>
+                    </div>
                 </div>
-                <div>
-                    <p className="text-sm font-semibold text-blue-900">Cara Pengisian</p>
-                    <p className="text-xs text-blue-700 mt-0.5 leading-relaxed">
-                        {canEdit
-                            ? "Klik \"Isi Penilaian\" pada FMC yang sedang berjalan. Terdiri dari 4 tab: OJT Sheet (30%), Value Sheet (30%), Presentation Sheet (40%), dan Final Report. Skor menggunakan skala 0–100. Nilai akhir otomatis terhitung dari weighted average."
-                            : "Anda mode lihat saja (Admin). Penilaian OJT hanya dapat diinput oleh Mentor pembimbing Kader."}
-                    </p>
-                </div>
-            </div>
+            )}
 
             {openFmc !== null && (
                 <PenilaianOjtModal

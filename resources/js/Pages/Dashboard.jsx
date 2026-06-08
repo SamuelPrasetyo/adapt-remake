@@ -575,7 +575,7 @@ export default function Dashboard({
             </div> */}
 
             <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
-                <h3 className="font-semibold text-slate-900 mb-4">Kelola modul per kategori</h3>
+                <h3 className="font-semibold text-slate-900 mb-4">Jumlah Modul per Kategori</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {kategori.map((m, i) => (
                         <div

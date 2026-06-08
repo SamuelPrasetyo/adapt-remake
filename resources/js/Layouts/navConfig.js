@@ -10,6 +10,14 @@ export const ADMIN_NAV = [
     },
     {
         type: "item",
+        label: "All Mentor",
+        icon: "people",
+        href: "/all-mentor",
+        match: "/all-mentor",
+        requires: "admin021",
+    },
+    {
+        type: "item",
         label: "All Kader",
         icon: "people",
         href: "/kader-saya",
@@ -44,14 +52,6 @@ export const ADMIN_NAV = [
         preserveMentor: true,
     },
     { type: "section", label: "Program & Modul" },
-    {
-        type: "item",
-        label: "All Mentor",
-        icon: "people",
-        href: "/all-mentor",
-        match: "/all-mentor",
-        requires: "admin021",
-    },
     {
         type: "item",
         label: "Program Saya",
