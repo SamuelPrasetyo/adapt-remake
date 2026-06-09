@@ -14,6 +14,7 @@ use App\Models\ModulAssignment;
 use App\Models\ModulReadingProgress;
 use App\Models\ModulTestResult;
 use App\Models\User;
+use App\Support\ModulScore;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -263,16 +264,21 @@ class KaderPerMentorController extends Controller
             $trMap[$t->user_id][$t->modul_id][$t->tipe] = (float) $t->score;
         }
 
-        $docRows = Dokumen::whereIn('kader_id', $userIds)
-            ->whereIn('modul_id', $allModulIds)
-            ->where('jenis', 'POST_ACTIVITY')
-            ->get(['kader_id', 'modul_id']);
-        $docMap = [];
+        $docRows = Dokumen::whereIn('dokumen.kader_id', $userIds)
+            ->whereIn('dokumen.modul_id', $allModulIds)
+            ->where('dokumen.jenis', 'POST_ACTIVITY')
+            ->leftJoin('penilaian_post_activity', 'dokumen.id', '=', 'penilaian_post_activity.dokumen_id')
+            ->get(['dokumen.kader_id', 'dokumen.modul_id', 'penilaian_post_activity.nilai as pa_score']);
+        $docMap     = [];
+        $paScoreMap = [];
         foreach ($docRows as $d) {
             $docMap[$d->kader_id][$d->modul_id] = true;
+            if ($d->pa_score !== null) {
+                $paScoreMap[$d->kader_id][$d->modul_id] = (float) $d->pa_score;
+            }
         }
 
-        return $rows->map(function ($row) use ($userMap, $kaderModuls, $modulFase, $modulFlags, $rpMap, $trMap, $docMap) {
+        return $rows->map(function ($row) use ($userMap, $kaderModuls, $modulFase, $modulFlags, $rpMap, $trMap, $docMap, $paScoreMap) {
             $userId   = $userMap[$row->nik_kader] ?? null;
             $modulIds = array_filter(
                 array_keys($kaderModuls[$row->k_id] ?? []),
@@ -282,8 +288,9 @@ class KaderPerMentorController extends Controller
 
             $doneCheckpoints  = 0;
             $totalCheckpoints = 0;
-            $faseStats = [];
-            $scores = [];
+            $faseStats  = [];
+            $scores     = [];   // Skor Akhir per modul (untuk avg keseluruhan)
+            $faseScores = [];   // Skor Akhir per modul dikelompokkan per fase
 
             foreach ($modulIds as $mid) {
                 $fase = $modulFase[$mid] ?? 'Tanpa Fase';
@@ -312,9 +319,16 @@ class KaderPerMentorController extends Controller
                 $faseStats[$fase]['total']++;
                 if ($modDone >= $required) $faseStats[$fase]['done']++;
 
-                if ($userId) {
-                    if (isset($trMap[$userId][$mid]['pre']))  $scores[] = $trMap[$userId][$mid]['pre'];
-                    if (isset($trMap[$userId][$mid]['post'])) $scores[] = $trMap[$userId][$mid]['post'];
+                // Skor Akhir modul = rumus tunggal ModulScore (Post Test + Post Activity, TANPA Pre Test).
+                $modScore = ModulScore::finalScore(
+                    $hasTest,
+                    $hasPA,
+                    $userId ? ($trMap[$userId][$mid]['post'] ?? null) : null,
+                    $userId ? ($paScoreMap[$userId][$mid] ?? null) : null
+                );
+                if ($modScore !== null) {
+                    $scores[]            = $modScore;
+                    $faseScores[$fase][] = $modScore;
                 }
             }
 
@@ -330,7 +344,15 @@ class KaderPerMentorController extends Controller
                 $faseAktif = array_key_last($faseStats);
             }
 
-            $avgScore = !empty($scores) ? (int) round(array_sum($scores) / count($scores)) : null;
+            $avgRaw   = ModulScore::average($scores, null);
+            $avgScore = $avgRaw !== null ? (int) round($avgRaw) : null;
+
+            // Skor per fase (untuk badge "F1: 67" di list Kader Saya), rumus sama dengan avg keseluruhan.
+            $faseScoreMap = [];
+            foreach ($faseScores as $f => $list) {
+                $favg = ModulScore::average($list, null);
+                if ($favg !== null) $faseScoreMap[$f] = (int) round($favg);
+            }
 
             $status = 'on_track';
             if ($progress < 40)      $status = 'kritis';
@@ -339,6 +361,7 @@ class KaderPerMentorController extends Controller
             $row->fase_aktif       = $faseAktif;
             $row->progress_overall = $progress;
             $row->avg_score        = $avgScore;
+            $row->fase_scores      = $faseScoreMap;
             $row->status           = $status;
             $row->total_moduls     = $total;
 

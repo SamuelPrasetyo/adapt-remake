@@ -23,25 +23,11 @@ class Modul extends Model
     }
 
     /**
-     * Skor Akhir modul berdasarkan komponen yang dimilikinya:
-     * - punya keduanya  → rata-rata 50/50 post-test & Post Activity (hanya bila keduanya dinilai)
-     * - hanya test      → skor post-test
-     * - hanya PA        → nilai Post Activity
-     * Mengembalikan null bila modul belum bisa dinilai.
+     * Skor Akhir modul. Rumus tunggal ada di {@see \App\Support\ModulScore::finalScore()};
+     * method ini hanya delegasi agar pemanggil lama tetap jalan. Pre Test TIDAK dihitung.
      */
     public static function finalScore(bool $hasTest, bool $hasPA, $postScore, $paNilai): ?float
     {
-        if ($hasTest && $hasPA) {
-            return ($postScore !== null && $paNilai !== null)
-                ? round(((float) $postScore + (float) $paNilai) / 2, 2)
-                : null;
-        }
-        if ($hasTest) {
-            return $postScore !== null ? (float) $postScore : null;
-        }
-        if ($hasPA) {
-            return $paNilai !== null ? (float) $paNilai : null;
-        }
-        return null;
+        return \App\Support\ModulScore::finalScore($hasTest, $hasPA, $postScore, $paNilai);
     }
 }

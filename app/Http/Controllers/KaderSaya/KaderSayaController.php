@@ -19,6 +19,7 @@ use App\Models\ModulReadingProgress;
 use App\Models\ModulTestResult;
 use App\Models\User;
 use App\Models\Week;
+use App\Support\ModulScore;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
@@ -76,30 +77,8 @@ class KaderSayaController extends Controller
             ? $perMentor->listByMentorQuery($mentorFilter, $idBatch)
             : $perMentor->listAllKadersInBU($isMentor ? $user->company_code : null, $idBatch);
 
-        $niks    = $kaders->pluck('nik_kader')->unique()->filter()->values()->all();
-        $userMap = User::whereIn('nik', $niks)->pluck('id', 'nik');
-
-        $faseRows = ModulTestResult::where('is_completed', 1)
-            ->whereIn('modul_test_results.user_id', $userMap->values()->all())
-            ->join('modul', 'modul_test_results.modul_id', '=', 'modul.id')
-            ->select(
-                'modul_test_results.user_id',
-                'modul.fase',
-                DB::raw('AVG(modul_test_results.score) as avg_score')
-            )
-            ->groupBy('modul_test_results.user_id', 'modul.fase')
-            ->get();
-
-        $faseScoreMap = [];
-        foreach ($faseRows as $r) {
-            $faseScoreMap[$r->user_id][$r->fase] = (int) round($r->avg_score);
-        }
-
-        $kaders = $kaders->map(function ($row) use ($userMap, $faseScoreMap) {
-            $uid = $userMap[$row->nik_kader] ?? null;
-            $row->fase_scores = $uid ? ($faseScoreMap[$uid] ?? []) : [];
-            return $row;
-        });
+        // fase_scores & avg_score di-set oleh KaderPerMentorController::attachProgressStats
+        // memakai rumus tunggal ModulScore (Post Test + Post Activity, TANPA Pre Test).
 
         return Inertia::render('KaderSaya/Index', [
             'kaders'         => $kaders->values(),
@@ -226,10 +205,14 @@ class KaderSayaController extends Controller
             $doneCheckpoints  += $done;
             $totalCheckpoints += $required;
 
-            $scores = [];
-            if (isset($testMap[$modul->id]['pre']))  $scores[] = $testMap[$modul->id]['pre'];
-            if (isset($testMap[$modul->id]['post'])) $scores[] = $testMap[$modul->id]['post'];
-            $modulScore = !empty($scores) ? (int) round(array_sum($scores) / count($scores)) : null;
+            // Skor Akhir modul = rumus tunggal ModulScore (Post Test + Post Activity, TANPA Pre Test).
+            $modulScoreRaw = ModulScore::finalScore(
+                (bool) $modul->has_test,
+                (bool) $modul->has_post_activity,
+                $testMap[$modul->id]['post'] ?? null,
+                $paScoreMap[$modul->id] ?? null
+            );
+            $modulScore = $modulScoreRaw !== null ? (int) round($modulScoreRaw) : null;
             if ($modulScore !== null) $faseGroups[$fase]['scores'][] = $modulScore;
 
             $faseGroups[$fase]['moduls'][] = [

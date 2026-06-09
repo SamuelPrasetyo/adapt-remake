@@ -7,8 +7,10 @@ use App\Models\Company;
 use App\Models\Dokumen;
 use App\Models\Mentor;
 use App\Models\Modul;
+use App\Models\ModulReadingProgress;
 use App\Models\ModulTestResult;
 use App\Models\User;
+use App\Support\ModulScore;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -155,8 +157,57 @@ class MentorModulController extends Controller
         }
         $postDone = $resultBase ? (clone $resultBase)->pluck('modul_id')->unique() : collect();
 
+        // Pre-test yang sudah selesai per modul.
+        $preDone = collect();
+        if ($testModulIds->isNotEmpty()) {
+            $preBase = ModulTestResult::whereIn('modul_id', $testModulIds)
+                ->where('tipe', 'pre')->where('is_completed', 1);
+            if ($mentorMaster) {
+                $preBase->where('mentor_id', $mentorMaster->id);
+            } elseif ($targetUser) {
+                $preBase->where('user_id', $targetUser->id)->whereNull('mentor_id');
+            } else {
+                $preBase = null;
+            }
+            $preDone = $preBase ? $preBase->pluck('modul_id')->unique() : collect();
+        }
+
+        // Materi yang sudah dibaca (progress >= 100) per modul.
+        $readingDone = collect();
+        if ($targetUser && $moduls->isNotEmpty()) {
+            $rpQuery = ModulReadingProgress::whereIn('modul_id', $moduls->pluck('id'))
+                ->where('user_id', $targetUser->id)
+                ->where('progress', '>=', 100);
+            if ($mentorMaster) {
+                $rpQuery->where('mentor_id', $mentorMaster->id);
+            } else {
+                $rpQuery->whereNull('mentor_id');
+            }
+            $readingDone = $rpQuery->pluck('modul_id')->unique();
+        }
+
         // Post Activity yang sudah selesai per modul (kuota 10 sesi Mentor disetujui).
         $paDone = $this->paDoneModulIds($paModulIds, $mmId, $muId);
+
+        // Jumlah sesi Post Activity yang sudah disetujui per modul (untuk progress granular).
+        $paCountPerModul = collect();
+        if ($paModulIds->isNotEmpty()) {
+            $paCountQuery = Dokumen::whereIn('modul_id', $paModulIds->all())
+                ->where('jenis', 'POST_ACTIVITY')
+                ->where('status', 'approved');
+            if ($mmId) {
+                $paCountQuery->where('mentor_master_id', $mmId);
+            } elseif ($muId) {
+                $paCountQuery->where('mentor_id', $muId)->whereNull('mentor_master_id');
+            } else {
+                $paCountQuery = null;
+            }
+            if ($paCountQuery) {
+                $paCountPerModul = $paCountQuery->get(['modul_id'])
+                    ->groupBy('modul_id')
+                    ->map(fn ($g) => min($g->count(), 10));
+            }
+        }
 
         // Modul selesai = SEMUA komponen yang dimilikinya selesai. Modul ber-test + Post Activity
         // baru dihitung selesai bila post-test DAN Post Activity beres — bukan post-test saja.
@@ -169,11 +220,38 @@ class MentorModulController extends Controller
             return true;
         })->count();
 
-        $progress = $total > 0 ? (int) round(($completed / $total) * 100) : 0;
+        // Progress granular: tiap modul dibagi rata (50% per modul jika ada 2 modul), dan di
+        // dalam tiap modul, tiap aktivitas berkontribusi proporsional:
+        //   has_test=true   → Pre Test (1) + Post Test (1)
+        //   selalu           → Materi Pembelajaran (1)
+        //   has_post_activity=true → 10 sesi Post Activity (masing-masing 1)
+        $progressNumerator   = 0.0;
+        $progressDenominator = 0;
+        foreach ($moduls as $m) {
+            $hasTest = (bool) $m->has_test;
+            $hasPA   = (bool) $m->has_post_activity;
+
+            $moduleTotal = 1; // materi selalu ada
+            if ($hasTest) $moduleTotal += 2; // pre + post test
+            if ($hasPA)   $moduleTotal += 10; // 10 sesi
+
+            $moduleDone = 0;
+            if ($readingDone->contains($m->id))                   $moduleDone++;
+            if ($hasTest && $preDone->contains($m->id))           $moduleDone++;
+            if ($hasTest && $postDone->contains($m->id))          $moduleDone++;
+            if ($hasPA)  $moduleDone += $paCountPerModul->get($m->id, 0);
+
+            $progressNumerator   += $moduleDone / $moduleTotal;
+            $progressDenominator++;
+        }
+        $progress = $progressDenominator > 0
+            ? (int) round(($progressNumerator / $progressDenominator) * 100)
+            : 0;
 
         // Avg Score = rata-rata Skor Akhir tiap modul (rumus sama dengan halaman Detail Modul,
-        // lihat Modul::finalScore) — bukan sekadar rata-rata post-test. Kumpulkan skor post-test
-        // dan nilai Post Activity per modul, lalu rata-ratakan modul yang sudah bisa dinilai.
+        // lihat Modul::finalScore) dibagi jumlah SELURUH modul yang di-assign (bukan hanya yang
+        // sudah punya skor), sehingga modul yang belum selesai menurunkan skor rata-rata secara
+        // proporsional.
         $postScores = $resultBase
             ? (clone $resultBase)->get(['modul_id', 'score'])
                 ->groupBy('modul_id')->map(fn ($g) => (float) $g->first()->score)
@@ -202,14 +280,17 @@ class MentorModulController extends Controller
             }
         }
 
-        $finalScores = $moduls->map(fn ($m) => Modul::finalScore(
+        // Skor Akhir per modul (rumus tunggal ModulScore: Post Test + Post Activity, TANPA Pre Test),
+        // lalu dibagi SELURUH modul yang di-assign — modul belum dinilai menurunkan rata-rata.
+        $finalScores = $moduls->map(fn ($m) => ModulScore::finalScore(
             (bool) $m->has_test,
             (bool) $m->has_post_activity,
             $postScores->get($m->id),
             $paScores->get($m->id)
-        ))->reject(fn ($v) => $v === null);
+        ))->all();
 
-        $avgScore = $finalScores->isNotEmpty() ? (float) round($finalScores->avg(), 1) : 0;
+        $avgRaw   = ModulScore::average($finalScores, $total);
+        $avgScore = $avgRaw !== null ? (float) round($avgRaw, 1) : 0;
 
         $company = Company::where('company_code', ($mentorMaster ? $mentorMaster->company_code : $authUser->company_code))->first();
 
