@@ -42,6 +42,7 @@ function EyeIcon({ open }) {
 function TambahModal({ open, onClose, kaders, companys }) {
     const [userType, setUserType] = useState('Kader');
     const [showPwd, setShowPwd] = useState(false);
+    const [showPwd2, setShowPwd2] = useState(false);
     const form = useForm({
         nik_kader: '',
         nik_mentor: '',
@@ -54,14 +55,18 @@ function TambahModal({ open, onClose, kaders, companys }) {
 
     const handleSwitch = (t) => {
         setUserType(t);
-        form.setData('type', t);
-        if (t === 'Kader') {
-            form.setData('nik_mentor', '');
-            form.setData('company_code', '');
-            form.setData('name', '');
-        } else {
-            form.setData('nik_kader', '');
-        }
+        setShowPwd(false);
+        setShowPwd2(false);
+        form.setData({
+            ...form.data,
+            type: t,
+            password: '',
+            password2: '',
+            nik_kader: t === 'Mentor' ? '' : form.data.nik_kader,
+            nik_mentor: t === 'Kader' ? '' : form.data.nik_mentor,
+            company_code: t === 'Kader' ? '' : form.data.company_code,
+            name: t === 'Kader' ? '' : form.data.name,
+        });
     };
 
     const submit = (e) => {
@@ -213,7 +218,7 @@ function TambahModal({ open, onClose, kaders, companys }) {
                         <label className="block text-sm font-medium text-slate-700 mb-1.5">Konfirmasi Kata Sandi</label>
                         <div className="relative">
                             <input
-                                type={showPwd ? 'text' : 'password'}
+                                type={showPwd2 ? 'text' : 'password'}
                                 placeholder="ulangi kata sandi"
                                 value={form.data.password2}
                                 onChange={(e) => form.setData('password2', e.target.value)}
@@ -221,11 +226,11 @@ function TambahModal({ open, onClose, kaders, companys }) {
                             />
                             <button
                                 type="button"
-                                onClick={() => setShowPwd((v) => !v)}
+                                onClick={() => setShowPwd2((v) => !v)}
                                 className="absolute inset-y-0 right-2 flex items-center text-slate-400 hover:text-slate-600"
                                 tabIndex={-1}
                             >
-                                <EyeIcon open={showPwd} />
+                                <EyeIcon open={showPwd2} />
                             </button>
                         </div>
                     </div>
