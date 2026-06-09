@@ -198,6 +198,8 @@ function TambahModal({ open, onClose, kaders, companys }) {
                         <label className="block text-sm font-medium text-slate-700 mb-1.5">Kata Sandi</label>
                         <div className="relative">
                             <input
+                                id="tambah-password"
+                                name="new-password"
                                 type={showPwd ? 'text' : 'password'}
                                 placeholder="kata sandi"
                                 autoComplete="new-password"
@@ -219,12 +221,20 @@ function TambahModal({ open, onClose, kaders, companys }) {
                         <label className="block text-sm font-medium text-slate-700 mb-1.5">Konfirmasi Kata Sandi</label>
                         <div className="relative">
                             <input
+                                id="tambah-password-confirm"
+                                name="password-confirm"
                                 type={showPwd2 ? 'text' : 'password'}
                                 placeholder="ulangi kata sandi"
                                 autoComplete="new-password"
                                 value={form.data.password2}
                                 onChange={(e) => form.setData('password2', e.target.value)}
-                                className="w-full rounded-lg border-slate-200 focus:border-blue-500 focus:ring-blue-500/30 text-sm pr-9"
+                                className={`w-full rounded-lg text-sm pr-9 focus:ring-blue-500/30 ${
+                                    form.data.password2
+                                        ? form.data.password === form.data.password2
+                                            ? 'border-green-400 focus:border-green-500'
+                                            : 'border-red-400 focus:border-red-500'
+                                        : 'border-slate-200 focus:border-blue-500'
+                                }`}
                             />
                             <button
                                 type="button"
@@ -235,6 +245,11 @@ function TambahModal({ open, onClose, kaders, companys }) {
                                 <EyeIcon open={showPwd2} />
                             </button>
                         </div>
+                        {form.data.password2 && (
+                            form.data.password === form.data.password2
+                                ? <p className="mt-1 text-xs text-green-600">Password cocok</p>
+                                : <p className="mt-1 text-xs text-red-600">Password tidak cocok</p>
+                        )}
                     </div>
                 </div>
             </div>
