@@ -3,8 +3,14 @@ import { useForm, router } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import DataTable from '@/Components/DataTable';
 import Modal from '@/Components/Modal';
+import { FASE_LABELS } from '@/constants/fase';
 
-const FASE_OPTIONS = ['1', '2', '3', '4'].map((v) => ({ value: v, label: `Fase ${v}` }));
+const FASE_OPTIONS = [
+    { value: '1', label: 'Foundation' },
+    { value: '2', label: 'Self Learning' },
+    { value: '3', label: 'Monthly Training' },
+    { value: '4', label: 'Administration' },
+];
 const TIPE_OPTIONS = [{ value: 'KADER', label: 'Kader' }, { value: 'MENTOR', label: 'Mentor' }];
 const TAG_OPTIONS = [
     { value: 'FOUNDATION',    label: 'Foundation' },
@@ -21,7 +27,7 @@ const COLS = [
     { key: 'tipe',       label: 'Tipe', sortable: true, render: (v) => (
         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${v === 'MENTOR' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>{v ?? 'KADER'}</span>
     )},
-    { key: 'fase',       label: 'Fase', sortable: true, render: (v) => v ? `Fase ${String(v).replace(/^Fase\s+/i, '')}` : <span className="text-slate-400">—</span> },
+    { key: 'fase',       label: 'Fase', sortable: true, render: (v) => v ? (FASE_LABELS[v] ?? v) : <span className="text-slate-400">—</span> },
     { key: 'tag_kompetensi', label: 'Tag Kompetensi', render: (v) => TAG_LABELS[v] ?? (v || <span className="text-slate-400">—</span>) },
     {
         key: 'komponen', label: 'Komponen',

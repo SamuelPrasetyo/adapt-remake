@@ -26,8 +26,23 @@ function IconBtn({ title, color = 'blue', onClick, children }) {
     );
 }
 
+function EyeIcon({ open }) {
+    return open ? (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        </svg>
+    ) : (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+        </svg>
+    );
+}
+
 function TambahModal({ open, onClose, kaders, companys }) {
     const [userType, setUserType] = useState('Kader');
+    const [showPwd, setShowPwd] = useState(false);
+    const [showPwd2, setShowPwd2] = useState(false);
     const form = useForm({
         nik_kader: '',
         nik_mentor: '',
@@ -40,14 +55,18 @@ function TambahModal({ open, onClose, kaders, companys }) {
 
     const handleSwitch = (t) => {
         setUserType(t);
-        form.setData('type', t);
-        if (t === 'Kader') {
-            form.setData('nik_mentor', '');
-            form.setData('company_code', '');
-            form.setData('name', '');
-        } else {
-            form.setData('nik_kader', '');
-        }
+        setShowPwd(false);
+        setShowPwd2(false);
+        form.setData({
+            ...form.data,
+            type: t,
+            password: '',
+            password2: '',
+            nik_kader: t === 'Mentor' ? '' : form.data.nik_kader,
+            nik_mentor: t === 'Kader' ? '' : form.data.nik_mentor,
+            company_code: t === 'Kader' ? '' : form.data.company_code,
+            name: t === 'Kader' ? '' : form.data.name,
+        });
     };
 
     const submit = (e) => {
@@ -177,23 +196,60 @@ function TambahModal({ open, onClose, kaders, companys }) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1.5">Kata Sandi</label>
-                        <input
-                            type="password"
-                            placeholder="kata sandi"
-                            value={form.data.password}
-                            onChange={(e) => form.setData('password', e.target.value)}
-                            className="w-full rounded-lg border-slate-200 focus:border-blue-500 focus:ring-blue-500/30 text-sm"
-                        />
+                        <div className="relative">
+                            <input
+                                id="tambah-password"
+                                name="new-password"
+                                type={showPwd ? 'text' : 'password'}
+                                placeholder="kata sandi"
+                                autoComplete="new-password"
+                                value={form.data.password}
+                                onChange={(e) => form.setData('password', e.target.value)}
+                                className="w-full rounded-lg border-slate-200 focus:border-blue-500 focus:ring-blue-500/30 text-sm pr-9"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPwd((v) => !v)}
+                                className="absolute inset-y-0 right-2 flex items-center text-slate-400 hover:text-slate-600"
+                                tabIndex={-1}
+                            >
+                                <EyeIcon open={showPwd} />
+                            </button>
+                        </div>
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1.5">Konfirmasi Kata Sandi</label>
-                        <input
-                            type="password"
-                            placeholder="ulangi kata sandi"
-                            value={form.data.password2}
-                            onChange={(e) => form.setData('password2', e.target.value)}
-                            className="w-full rounded-lg border-slate-200 focus:border-blue-500 focus:ring-blue-500/30 text-sm"
-                        />
+                        <div className="relative">
+                            <input
+                                id="tambah-password-confirm"
+                                name="password-confirm"
+                                type={showPwd2 ? 'text' : 'password'}
+                                placeholder="ulangi kata sandi"
+                                autoComplete="new-password"
+                                value={form.data.password2}
+                                onChange={(e) => form.setData('password2', e.target.value)}
+                                className={`w-full rounded-lg text-sm pr-9 focus:ring-blue-500/30 ${
+                                    form.data.password2
+                                        ? form.data.password === form.data.password2
+                                            ? 'border-green-400 focus:border-green-500'
+                                            : 'border-red-400 focus:border-red-500'
+                                        : 'border-slate-200 focus:border-blue-500'
+                                }`}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPwd2((v) => !v)}
+                                className="absolute inset-y-0 right-2 flex items-center text-slate-400 hover:text-slate-600"
+                                tabIndex={-1}
+                            >
+                                <EyeIcon open={showPwd2} />
+                            </button>
+                        </div>
+                        {form.data.password2 && (
+                            form.data.password === form.data.password2
+                                ? <p className="mt-1 text-xs text-green-600">Password cocok</p>
+                                : <p className="mt-1 text-xs text-red-600">Password tidak cocok</p>
+                        )}
                     </div>
                 </div>
             </div>

@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
+import { FASE_LABELS } from '@/constants/fase';
 
 function ModulCard({ modul }) {
     return (
@@ -13,7 +14,7 @@ function ModulCard({ modul }) {
                     <p className="text-sm font-semibold text-slate-800 mt-0.5 leading-snug">{modul.nama_modul}</p>
                 </div>
                 <span className="shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                    Fase {String(modul.fase).replace(/^Fase\s+/i, '')}
+                    {FASE_LABELS[String(modul.fase).replace(/^Fase\s+/i, '')] ?? `Fase ${modul.fase}`}
                 </span>
             </div>
             {modul.tag_kompetensi && (
@@ -65,11 +66,10 @@ export default function MyModulIndex({ moduls = [] }) {
 
             {faseKeys.map((fase) => {
                 const items = grouped[fase];
-                const faseNum = String(fase).replace(/^Fase\s+/i, '');
                 return (
                     <div key={fase} className="mb-8">
                         <div className="flex items-center gap-3 mb-4">
-                            <h3 className="text-base font-bold text-slate-800">Fase {faseNum}</h3>
+                            <h3 className="text-base font-bold text-slate-800">{FASE_LABELS[fase] ?? `Fase ${fase}`}</h3>
                             <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
                                 {items.length} modul
                             </span>

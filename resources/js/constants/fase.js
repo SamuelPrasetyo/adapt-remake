@@ -1,8 +1,8 @@
 export const FASE_LABELS = {
     '1': 'Foundation',
     '2': 'Self Learning',
-    '3': 'Monthly Training (Leadership)',
-    '4': 'Administrasi',
+    '3': 'Monthly Training',
+    '4': 'Administration',
 };
 
 export function getFaseLabel(fase) {
