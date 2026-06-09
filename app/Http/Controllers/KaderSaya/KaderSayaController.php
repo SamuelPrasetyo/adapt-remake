@@ -181,9 +181,23 @@ class KaderSayaController extends Controller
             ? ModulReadingProgress::whereIn('modul_id', $allModulIds)->where('user_id', $userId)->pluck('progress', 'modul_id')->all()
             : [];
 
-        $docIds = $userId
-            ? Dokumen::where('kader_id', $userId)->whereIn('modul_id', $allModulIds)->where('jenis', 'POST_ACTIVITY')->pluck('modul_id')->flip()->map(fn() => true)->all()
-            : [];
+        $paData = $userId
+            ? Dokumen::where('dokumen.kader_id', $userId)
+                ->whereIn('dokumen.modul_id', $allModulIds)
+                ->where('dokumen.jenis', 'POST_ACTIVITY')
+                ->leftJoin('penilaian_post_activity', 'dokumen.id', '=', 'penilaian_post_activity.dokumen_id')
+                ->select('dokumen.modul_id', 'penilaian_post_activity.nilai as pa_score')
+                ->get()
+            : collect();
+
+        $docIds     = [];
+        $paScoreMap = [];
+        foreach ($paData as $d) {
+            $docIds[$d->modul_id] = true;
+            if ($d->pa_score !== null) {
+                $paScoreMap[$d->modul_id] = (float) $d->pa_score;
+            }
+        }
 
         $faseGroups       = [];
         $doneCheckpoints  = 0;
@@ -227,6 +241,10 @@ class KaderSayaController extends Controller
                 'pa'                => $pa,
                 'has_test'          => (bool) $modul->has_test,
                 'has_post_activity' => (bool) $modul->has_post_activity,
+                'need_pre'          => $needPre,
+                'pre_score'         => isset($testMap[$modul->id]['pre'])  ? (int) round($testMap[$modul->id]['pre'])  : null,
+                'post_score'        => isset($testMap[$modul->id]['post']) ? (int) round($testMap[$modul->id]['post']) : null,
+                'pa_score'          => isset($paScoreMap[$modul->id])      ? (int) round($paScoreMap[$modul->id])      : null,
                 'done'              => $done,
                 'required'          => $required,
                 'score'             => $modulScore,
