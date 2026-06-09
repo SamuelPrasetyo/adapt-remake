@@ -245,10 +245,12 @@ class KaderSayaController extends Controller
             if ($done >= $required) $faseGroups[$fase]['done']++;
         }
 
+        // Avg per fase & overall (FMC) memakai rumus tunggal ModulScore::average.
         $allFaseScores = [];
         foreach ($faseGroups as &$fg) {
             $fg['progress']  = $fg['total'] > 0 ? (int) round(($fg['done'] / $fg['total']) * 100) : 0;
-            $fg['avg_score'] = !empty($fg['scores']) ? (int) round(array_sum($fg['scores']) / count($fg['scores'])) : null;
+            $faseAvg         = ModulScore::average($fg['scores'], null);
+            $fg['avg_score'] = $faseAvg !== null ? (int) round($faseAvg) : null;
             if ($fg['avg_score'] !== null) $allFaseScores[] = $fg['avg_score'];
             unset($fg['scores']);
         }
@@ -259,16 +261,17 @@ class KaderSayaController extends Controller
         $totalModuls     = count($moduls);
         $totalCp         = $totalCheckpoints;
         $overallProgress = $totalCp > 0 ? (int) round(($doneCheckpoints / $totalCp) * 100) : 0;
-        $avgScoreOverall = !empty($allFaseScores) ? (int) round(array_sum($allFaseScores) / count($allFaseScores)) : null;
+        $avgOverall      = ModulScore::average($allFaseScores, null);
+        $avgScoreOverall = $avgOverall !== null ? (int) round($avgOverall) : null;
         $status          = $overallProgress < 40 ? 'kritis' : ($overallProgress < 70 ? 'perlu_perhatian' : 'on_track');
 
         $weeklyData = [];
         if ($kader->nik) {
-            $rows = Jawaban::selectRaw('SUM(jawaban) / 4 as avg_s, weeks.angka_week as week')
+            $rows = Jawaban::selectRaw('AVG(jawaban) as avg_s, weeks.angka_week as week')
                 ->join('weeks', 'jawaban.id_week', '=', 'weeks.id_week')
                 ->where('nik_kader', $kader->nik)
                 ->whereNotNull('nama_mentor')
-                ->whereNotIn('id_pertanyaan', ['5', '6'])
+                ->whereIn('id_pertanyaan', ['1', '2', '3', '4'])
                 ->groupBy('weeks.angka_week')
                 ->orderBy('weeks.angka_week')
                 ->get();
@@ -277,15 +280,20 @@ class KaderSayaController extends Controller
             }
         }
 
+        // Avg Feedback = rata-rata skor feedback mingguan (rumus tunggal ModulScore::feedbackAverage):
+        // tiap minggu = (Routine Job + Assignment + Pemahaman SOP + Project) / 4, lalu dibagi jumlah minggu.
+        $avgFeedbackRaw = ModulScore::feedbackAverage(array_map(fn ($w) => $w['score'], $weeklyData));
+        $avgFeedback    = $avgFeedbackRaw !== null ? round($avgFeedbackRaw, 1) : null;
+
         $cohortMap = [];
         if ($kader->id_batch) {
             $batchNiks  = Kader::where('id_batch', $kader->id_batch)->pluck('nik')->all();
             $cohortRows = DB::table('jawaban')
                 ->join('weeks', 'jawaban.id_week', '=', 'weeks.id_week')
-                ->selectRaw('weeks.angka_week as week, AVG(jawaban.jawaban) / 4 as avg_s')
+                ->selectRaw('weeks.angka_week as week, AVG(jawaban.jawaban) as avg_s')
                 ->whereIn('jawaban.nik_kader', $batchNiks)
                 ->whereNotNull('jawaban.nama_mentor')
-                ->whereNotIn('jawaban.id_pertanyaan', ['5', '6'])
+                ->whereIn('jawaban.id_pertanyaan', ['1', '2', '3', '4'])
                 ->groupBy('weeks.angka_week')
                 ->orderBy('weeks.angka_week')
                 ->get();
@@ -437,6 +445,7 @@ class KaderSayaController extends Controller
             'status'             => $status,
             'totalModuls'        => $totalModuls,
             'weeklyData'         => $weeklyData,
+            'avgFeedback'        => $avgFeedback,
             'cohortMap'          => $cohortMap,
             'currentWeek'        => $currentWeek,
             'totalWeeks'         => $totalWeeks,

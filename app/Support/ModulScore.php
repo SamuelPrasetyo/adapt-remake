@@ -62,4 +62,41 @@ class ModulScore
 
         return array_sum($scored) / $divisor;
     }
+
+    /**
+     * Skor feedback mingguan = rata-rata 4 aspek Penilaian Kinerja yang diberikan mentor:
+     * (Routine Job + Assignment + Pemahaman SOP + Project) / 4. Skala mengikuti slider 1–10.
+     *
+     * Catatan: query SQL weeklyData (KaderSayaController) memakai SUM(4 aspek)/4 yang ekuivalen
+     * dengan rumus ini — jika nanti dipindah ke PHP, pakai helper ini agar tetap satu sumber.
+     *
+     * @return float|null null bila belum ada satu pun aspek terisi
+     */
+    public static function feedbackWeekScore($routineJob, $assignment, $pemahamanSop, $project): ?float
+    {
+        $parts = array_filter(
+            [$routineJob, $assignment, $pemahamanSop, $project],
+            fn ($v) => $v !== null
+        );
+
+        if (empty($parts)) return null;
+
+        return array_sum($parts) / 4;
+    }
+
+    /**
+     * Avg Feedback = rata-rata skor feedback mingguan di seluruh minggu yang sudah diisi mentor.
+     * Langkah kedua dari rumus: skor per minggu (lihat feedbackWeekScore) dibagi jumlah minggu.
+     *
+     * @param  array $weekScores  daftar skor per minggu (boleh berisi null untuk minggu kosong)
+     * @return float|null null bila belum ada minggu yang diisi
+     */
+    public static function feedbackAverage(array $weekScores): ?float
+    {
+        $scored = array_values(array_filter($weekScores, fn ($s) => $s !== null));
+
+        if (empty($scored)) return null;
+
+        return array_sum($scored) / count($scored);
+    }
 }
