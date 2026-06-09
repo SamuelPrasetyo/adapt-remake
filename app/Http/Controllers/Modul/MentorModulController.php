@@ -37,14 +37,14 @@ class MentorModulController extends Controller
     }
 
     /**
-     * Modul PA-only (tanpa Pre/Post Test) dianggap selesai bila kuota sesi Post Activity
-     * Mentor (10 sesi) sudah disetujui. Mengembalikan jumlah modul PA-only yang selesai.
+     * Modul-modul yang Post Activity-nya sudah selesai (kuota 10 sesi Mentor disetujui).
      * Scope: mentor_master_id (record mentor) atau mentor_id (akun login, "Program Sendiri").
+     * Mengembalikan koleksi modul_id.
      */
-    private function paOnlyCompletedCount($modulIds, ?string $mentorMasterId, $mentorUserId): int
+    private function paDoneModulIds($modulIds, ?string $mentorMasterId, $mentorUserId)
     {
         $ids = collect($modulIds)->all();
-        if (empty($ids)) return 0;
+        if (empty($ids)) return collect();
 
         $q = Dokumen::whereIn('modul_id', $ids)
             ->where('jenis', 'POST_ACTIVITY')
@@ -55,13 +55,23 @@ class MentorModulController extends Controller
         } elseif ($mentorUserId) {
             $q->where('mentor_id', $mentorUserId)->whereNull('mentor_master_id');
         } else {
-            return 0;
+            return collect();
         }
 
         return $q->get(['modul_id'])
             ->groupBy('modul_id')
             ->filter(fn($g) => $g->count() >= 10) // Mentor: 10 sesi
-            ->count();
+            ->keys()
+            ->values();
+    }
+
+    /**
+     * Modul PA-only (tanpa Pre/Post Test) dianggap selesai bila kuota sesi Post Activity
+     * Mentor (10 sesi) sudah disetujui. Mengembalikan jumlah modul PA-only yang selesai.
+     */
+    private function paOnlyCompletedCount($modulIds, ?string $mentorMasterId, $mentorUserId): int
+    {
+        return $this->paDoneModulIds($modulIds, $mentorMasterId, $mentorUserId)->count();
     }
 
     /** Library modul untuk Mentor (semua modul, tab filter, role isMentor only). */
@@ -119,15 +129,18 @@ class MentorModulController extends Controller
             })->orderBy('fase')->orderBy('kode_modul')->get();
         }
 
-        $modulIds  = $moduls->pluck('id');
-        $total     = $moduls->count();
+        $total = $moduls->count();
 
-        // Modul dengan Pre/Post Test selesai bila post-test selesai; modul PA-only selesai
-        // bila kuota sesi Post Activity disetujui. Progress di-key per record mentor (mentor.id)
-        // bila melihat mentor tertentu; untuk "Program Saya Sendiri" pakai akun login (mentor_id NULL).
-        $testModulIds   = $moduls->where('has_test', true)->pluck('id');
-        $paOnlyModulIds = $moduls->where('has_test', false)->where('has_post_activity', true)->pluck('id');
+        // Komponen yang dinilai berbeda per modul (flags has_test/has_post_activity). Progress
+        // di-key per record mentor (mentor.id) bila melihat mentor tertentu; untuk "Program Saya
+        // Sendiri" pakai akun login (mentor_id NULL).
+        $testModulIds = $moduls->where('has_test', true)->pluck('id');
+        $paModulIds   = $moduls->where('has_post_activity', true)->pluck('id');
 
+        $mmId = $mentorMaster ? $mentorMaster->id : null;
+        $muId = $mentorMaster ? null : ($targetUser ? $targetUser->id : null);
+
+        // Post-test yang sudah selesai per modul.
         $resultBase = null;
         if ($testModulIds->isNotEmpty()) {
             $resultBase = ModulTestResult::whereIn('modul_id', $testModulIds)
@@ -140,15 +153,63 @@ class MentorModulController extends Controller
                 $resultBase = null;
             }
         }
+        $postDone = $resultBase ? (clone $resultBase)->pluck('modul_id')->unique() : collect();
 
-        $mmId = $mentorMaster ? $mentorMaster->id : null;
-        $muId = $mentorMaster ? null : ($targetUser ? $targetUser->id : null);
+        // Post Activity yang sudah selesai per modul (kuota 10 sesi Mentor disetujui).
+        $paDone = $this->paDoneModulIds($paModulIds, $mmId, $muId);
 
-        $completedTest = $resultBase ? (clone $resultBase)->pluck('modul_id')->unique()->count() : 0;
-        $completedPA   = $this->paOnlyCompletedCount($paOnlyModulIds, $mmId, $muId);
-        $completed     = $completedTest + $completedPA;
-        $progress      = $total > 0 ? (int) round(($completed / $total) * 100) : 0;
-        $avgScore      = $resultBase ? (float) round((clone $resultBase)->avg('score') ?? 0, 1) : 0;
+        // Modul selesai = SEMUA komponen yang dimilikinya selesai. Modul ber-test + Post Activity
+        // baru dihitung selesai bila post-test DAN Post Activity beres — bukan post-test saja.
+        $completed = $moduls->filter(function ($m) use ($postDone, $paDone) {
+            $hasTest = (bool) $m->has_test;
+            $hasPA   = (bool) $m->has_post_activity;
+            if (!$hasTest && !$hasPA) return false;
+            if ($hasTest && !$postDone->contains($m->id)) return false;
+            if ($hasPA && !$paDone->contains($m->id)) return false;
+            return true;
+        })->count();
+
+        $progress = $total > 0 ? (int) round(($completed / $total) * 100) : 0;
+
+        // Avg Score = rata-rata Skor Akhir tiap modul (rumus sama dengan halaman Detail Modul,
+        // lihat Modul::finalScore) — bukan sekadar rata-rata post-test. Kumpulkan skor post-test
+        // dan nilai Post Activity per modul, lalu rata-ratakan modul yang sudah bisa dinilai.
+        $postScores = $resultBase
+            ? (clone $resultBase)->get(['modul_id', 'score'])
+                ->groupBy('modul_id')->map(fn ($g) => (float) $g->first()->score)
+            : collect();
+
+        $paScores = collect();
+        if ($paModulIds->isNotEmpty()) {
+            $paQuery = Dokumen::with('penilaian')
+                ->whereIn('modul_id', $paModulIds)
+                ->where('jenis', 'POST_ACTIVITY')
+                ->where('status', 'approved');
+            if ($mmId) {
+                $paQuery->where('mentor_master_id', $mmId);
+            } elseif ($muId) {
+                $paQuery->where('mentor_id', $muId)->whereNull('mentor_master_id');
+            } else {
+                $paQuery = null;
+            }
+            if ($paQuery) {
+                // Nilai PA diberikan di sesi terakhir; ambil dari dokumen approved yang punya penilaian.
+                $paScores = $paQuery->orderBy('created_at')->get()
+                    ->groupBy('modul_id')
+                    ->map(fn ($docs) => optional(optional($docs->first(fn ($d) => $d->penilaian))->penilaian)->nilai)
+                    ->reject(fn ($v) => $v === null)
+                    ->map(fn ($v) => (float) $v);
+            }
+        }
+
+        $finalScores = $moduls->map(fn ($m) => Modul::finalScore(
+            (bool) $m->has_test,
+            (bool) $m->has_post_activity,
+            $postScores->get($m->id),
+            $paScores->get($m->id)
+        ))->reject(fn ($v) => $v === null);
+
+        $avgScore = $finalScores->isNotEmpty() ? (float) round($finalScores->avg(), 1) : 0;
 
         $company = Company::where('company_code', ($mentorMaster ? $mentorMaster->company_code : $authUser->company_code))->first();
 
