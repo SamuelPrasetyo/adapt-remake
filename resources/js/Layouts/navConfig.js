@@ -43,13 +43,26 @@ export const ADMIN_NAV = [
         requires: "admin021",
     },
     {
-        type: "item",
-        label: "Approval IDP",
+        type: "group",
+        label: "Approval",
         icon: "check",
-        href: "/approval/idp",
-        match: "/approval/idp",
         requires: "mentor_only",
-        preserveMentor: true,
+        children: [
+            {
+                label: "IDP",
+                href: "/approval/idp",
+                match: "/approval/idp",
+                requires: "mentor_only",
+                badge: "idp",
+            },
+            {
+                label: "Weekly Feedback",
+                href: "/approval/weekly-feedback",
+                match: "/approval/weekly-feedback",
+                requires: "mentor_only",
+                badge: "weekly",
+            },
+        ],
     },
     { type: "section", label: "Program & Modul" },
     {
@@ -224,5 +237,12 @@ export const KADER_NAV = [
         icon: "file",
         href: "/form-idp",
         match: "/form-idp",
+    },
+    {
+        type: "item",
+        label: "Upload File Weekly Feedback",
+        icon: "file",
+        href: "/weekly-feedback",
+        match: "/weekly-feedback",
     },
 ];
