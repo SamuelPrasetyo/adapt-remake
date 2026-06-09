@@ -9,8 +9,8 @@ const TABS = [
     { id: 'mentor', label: 'Modul Mentor' },
     { id: '1',      label: 'Foundation' },
     { id: '2',      label: 'Self Learning' },
-    { id: '3',      label: 'Monthly Training (Leadership)' },
-    { id: '4',      label: 'Administrasi' },
+    { id: '3',      label: 'Monthly Training' },
+    { id: '4',      label: 'Administration' },
 ];
 
 const FASE_CONFIG = {
