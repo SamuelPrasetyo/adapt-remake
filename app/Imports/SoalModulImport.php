@@ -13,6 +13,7 @@ class SoalModulImport implements ToCollection, WithHeadingRow
 {
     private int $modulId;
     public int $imported = 0;
+    public int $updated  = 0;
     public int $skipped  = 0;
     public array $errors = [];
 
@@ -33,7 +34,7 @@ class SoalModulImport implements ToCollection, WithHeadingRow
             $jawabanD    = trim($row['jawaban_d'] ?? '');
             $benar       = strtoupper(trim($row['jawaban_benar'] ?? ''));
 
-            if (empty($soal)) continue;
+            if ($soal === '') continue;
 
             if (!in_array($benar, ['A', 'B', 'C', 'D'])) {
                 $this->errors[] = "Baris {$rowNum}: kolom jawaban_benar harus berisi A, B, C, atau D.";
@@ -45,47 +46,100 @@ class SoalModulImport implements ToCollection, WithHeadingRow
                 continue;
             }
 
-            // Skip jika soal dengan teks yang sama sudah ada di modul ini
-            $alreadyExists = SoalModul::where('modul_id', $this->modulId)
-                ->where('soal', $soal)
-                ->exists();
-            if ($alreadyExists) {
-                $this->skipped++;
-                continue;
-            }
-
+            // Jawaban terurut A→D beserta penanda jawaban benar.
             $jawabans = [
-                'A' => $jawabanA,
-                'B' => $jawabanB,
-                'C' => $jawabanC,
-                'D' => $jawabanD,
+                ['jawaban' => $jawabanA, 'is_benar' => $benar === 'A' ? 1 : 0],
+                ['jawaban' => $jawabanB, 'is_benar' => $benar === 'B' ? 1 : 0],
+                ['jawaban' => $jawabanC, 'is_benar' => $benar === 'C' ? 1 : 0],
+                ['jawaban' => $jawabanD, 'is_benar' => $benar === 'D' ? 1 : 0],
             ];
 
             DB::beginTransaction();
             try {
-                foreach (['pre', 'post'] as $tipe) {
-                    $soalModul = SoalModul::create([
-                        'modul_id' => $this->modulId,
-                        'soal'     => $soal,
-                        'tipe'     => $tipe,
-                    ]);
+                $created = false;
+                $changed = false;
 
-                    foreach ($jawabans as $label => $teks) {
-                        JawabanModul::create([
-                            'soal_id'  => $soalModul->id,
-                            'jawaban'  => $teks,
-                            'is_benar' => $label === $benar ? 1 : 0,
+                // Soal disimpan sebagai pasangan pre & post. Sinkronkan keduanya
+                // dengan kunci unik (modul_id, teks soal, tipe):
+                //   belum ada      → insert
+                //   ada tapi beda  → update jawaban / kunci jawaban
+                //   ada & sama     → lewati
+                foreach (['pre', 'post'] as $tipe) {
+                    $soalModul = SoalModul::where('modul_id', $this->modulId)
+                        ->where('soal', $soal)
+                        ->where('tipe', $tipe)
+                        ->first();
+
+                    if (!$soalModul) {
+                        $soalModul = SoalModul::create([
+                            'modul_id' => $this->modulId,
+                            'soal'     => $soal,
+                            'tipe'     => $tipe,
                         ]);
+                        $this->writeJawabans($soalModul->id, $jawabans);
+                        $created = true;
+                        continue;
+                    }
+
+                    if ($this->jawabansChanged($soalModul->id, $jawabans)) {
+                        JawabanModul::where('soal_id', $soalModul->id)->delete();
+                        $this->writeJawabans($soalModul->id, $jawabans);
+                        $changed = true;
                     }
                 }
 
                 DB::commit();
-                $this->imported++;
+
+                if ($created) {
+                    $this->imported++;
+                } elseif ($changed) {
+                    $this->updated++;
+                } else {
+                    $this->skipped++;
+                }
             } catch (\Throwable $e) {
                 DB::rollBack();
                 $this->errors[] = "Baris {$rowNum}: gagal disimpan — {$e->getMessage()}";
             }
         }
+    }
+
+    /**
+     * Tulis 4 pilihan jawaban (A→D) untuk satu soal.
+     */
+    private function writeJawabans(int $soalId, array $jawabans): void
+    {
+        foreach ($jawabans as $j) {
+            JawabanModul::create([
+                'soal_id'  => $soalId,
+                'jawaban'  => $j['jawaban'],
+                'is_benar' => $j['is_benar'],
+            ]);
+        }
+    }
+
+    /**
+     * Bandingkan jawaban yang sudah tersimpan dengan jawaban dari file.
+     * Berbeda bila jumlah, teks salah satu jawaban, atau kunci jawaban berubah.
+     */
+    private function jawabansChanged(int $soalId, array $jawabans): bool
+    {
+        $existing = JawabanModul::where('soal_id', $soalId)
+            ->orderBy('id')
+            ->get(['jawaban', 'is_benar']);
+
+        if ($existing->count() !== count($jawabans)) {
+            return true;
+        }
+
+        foreach ($jawabans as $i => $j) {
+            $cur = $existing[$i];
+            if (trim($cur->jawaban) !== $j['jawaban'] || (int) $cur->is_benar !== $j['is_benar']) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function headingRow(): int

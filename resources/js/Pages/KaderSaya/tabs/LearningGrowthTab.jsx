@@ -199,21 +199,53 @@ export default function LearningGrowthTab({ faseGroups, weeklyData, cohortMap, a
                             </div>
                             <div className="divide-y divide-slate-100">
                                 {fg.moduls.map((m, mi) => (
-                                    <div key={m.id} className="px-5 py-3 flex items-center gap-3">
-                                        <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0 ${pal.bar}`}>
-                                            {mi + 1}
-                                        </span>
-                                        <span className="text-sm text-slate-800 truncate flex-1 min-w-0">{m.nama}</span>
-                                        <div className="flex items-center gap-2 shrink-0 w-28">
-                                            <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                                <div className={`h-full rounded-full ${pal.bar}`} style={{ width: `${m.score ?? 0}%` }} />
+                                    <div key={m.id} className="px-5 py-3 space-y-2">
+                                        {/* baris atas: badge + nama + skor bar */}
+                                        <div className="flex items-center gap-3">
+                                            <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0 ${pal.bar}`}>
+                                                {mi + 1}
+                                            </span>
+                                            <span className="text-sm text-slate-800 truncate flex-1 min-w-0">{m.nama}</span>
+                                            <div className="flex items-center gap-2 shrink-0 w-24">
+                                                <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                                    <div className={`h-full rounded-full ${pal.bar}`} style={{ width: `${m.score ?? 0}%` }} />
+                                                </div>
+                                                {m.score != null ? (
+                                                    <span className={`text-sm font-bold w-7 text-right ${scoreColor(m.score)}`}>{m.score}</span>
+                                                ) : (
+                                                    <span className="text-sm text-slate-300 w-7 text-right">—</span>
+                                                )}
                                             </div>
-                                            {m.score != null ? (
-                                                <span className={`text-sm font-bold w-7 text-right ${scoreColor(m.score)}`}>{m.score}</span>
-                                            ) : (
-                                                <span className="text-sm text-slate-300 w-7 text-right">—</span>
-                                            )}
                                         </div>
+                                        {/* baris bawah: kartu skor equal-width 1 baris */}
+                                        {(m.need_pre || m.has_test || m.has_post_activity) && (
+                                            <div className="flex items-stretch gap-2">
+                                                {m.need_pre && (
+                                                    <div className="flex-1 flex flex-col items-center justify-center rounded-lg bg-blue-50 border border-blue-200 py-2 gap-1">
+                                                        <span className="text-[10px] font-medium text-blue-600 leading-none">Pre Test</span>
+                                                        <span className={`text-sm font-bold leading-none ${scoreColor(m.pre_score)}`}>
+                                                            {m.pre_score != null ? m.pre_score : '—'}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {m.has_test && (
+                                                    <div className="flex-1 flex flex-col items-center justify-center rounded-lg bg-amber-50 border border-amber-200 py-2 gap-1">
+                                                        <span className="text-[10px] font-medium text-amber-600 leading-none">Post Test</span>
+                                                        <span className={`text-sm font-bold leading-none ${scoreColor(m.post_score)}`}>
+                                                            {m.post_score != null ? m.post_score : '—'}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {m.has_post_activity && (
+                                                    <div className="flex-1 flex flex-col items-center justify-center rounded-lg bg-rose-50 border border-rose-200 py-2 gap-1">
+                                                        <span className="text-[10px] font-medium text-rose-600 leading-none">Post Activity</span>
+                                                        <span className={`text-sm font-bold leading-none ${scoreColor(m.pa_score)}`}>
+                                                            {m.pa_score != null ? m.pa_score : '—'}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>

@@ -173,20 +173,34 @@ class SoalModulController extends Controller
         ActivityLog::activity_log('Import Soal Modul via Excel');
 
         $msg = "{$importer->imported} soal berhasil diimport!";
+        if ($importer->updated > 0) {
+            $msg .= " {$importer->updated} soal diperbarui.";
+        }
         if ($importer->skipped > 0) {
             $msg .= " {$importer->skipped} soal dilewati karena sudah ada.";
         }
 
+        $hasResult = $importer->imported > 0 || $importer->updated > 0 || $importer->skipped > 0;
+
         return redirect()->route('soal-modul.index')->with([
-            'import_success' => ($importer->imported > 0 || $importer->skipped > 0) ? $msg : null,
+            'import_success' => $hasResult ? $msg : null,
             'import_errors'  => $importer->errors,
         ]);
     }
 
     public function destroy(int $id)
     {
-        JawabanModul::where('soal_id', $id)->delete();
-        SoalModul::findOrFail($id)->delete();
+        $soalModul = SoalModul::findOrFail($id);
+
+        // Soal disimpan berpasangan (pre & post). Hapus keduanya agar tidak
+        // meninggalkan record yatim yang membuat import berikutnya salah deteksi
+        // ("sudah ada" padahal sudah dihapus dari daftar).
+        $pairIds = SoalModul::where('modul_id', $soalModul->modul_id)
+            ->where('soal', $soalModul->soal)
+            ->pluck('id');
+
+        JawabanModul::whereIn('soal_id', $pairIds)->delete();
+        SoalModul::whereIn('id', $pairIds)->delete();
 
         ActivityLog::activity_log('Menghapus data Soal Modul');
         Alert::success('Success', 'Soal berhasil dihapus!');

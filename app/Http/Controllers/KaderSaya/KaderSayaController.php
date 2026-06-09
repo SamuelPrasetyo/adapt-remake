@@ -19,6 +19,7 @@ use App\Models\ModulReadingProgress;
 use App\Models\ModulTestResult;
 use App\Models\User;
 use App\Models\Week;
+use App\Support\ModulScore;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
@@ -49,9 +50,18 @@ class KaderSayaController extends Controller
 
         $mentors = $mentorsQuery->get();
 
+        // Filter batch: default ke batch yang sedang berjalan; 'all' = semua batch.
+        $batches      = Batch::orderByDesc('tanggal_mulai')->orderByDesc('id_batch')->get();
+        $defaultBatch = optional(Batch::current())->id_batch;
+        $batchFilter  = $request->query('batch_id', $defaultBatch);
+        $idBatch      = ($batchFilter === 'all') ? null : $batchFilter;
+
+        // Jumlah kader per mentor mengikuti filter batch — seorang mentor bisa membina kader
+        // di banyak batch, jadi tanpa filter ini angkanya gabungan semua batch (tidak akurat).
         $mentorIds = $mentors->pluck('id')->all();
         $countMap  = ListKaderPerMentor::whereIn('mentor_id', $mentorIds)
             ->whereNull('deleted_at')
+            ->when($idBatch, fn($q) => $q->where('id_batch', $idBatch))
             ->select('mentor_id', DB::raw('COUNT(*) as c'))
             ->groupBy('mentor_id')
             ->pluck('c', 'mentor_id');
@@ -60,12 +70,6 @@ class KaderSayaController extends Controller
         $mentorFilter   = $request->query('mentor_id', 'all');
         $selectedMentor = null;
         $perMentor      = app(KaderPerMentorController::class);
-
-        // Filter batch: default ke batch yang sedang berjalan; 'all' = semua batch.
-        $batches      = Batch::orderByDesc('tanggal_mulai')->orderByDesc('id_batch')->get();
-        $defaultBatch = optional(Batch::current())->id_batch;
-        $batchFilter  = $request->query('batch_id', $defaultBatch);
-        $idBatch      = ($batchFilter === 'all') ? null : $batchFilter;
 
         if ($mentorFilter && $mentorFilter !== 'all') {
             $selectedMentor = $mentors->firstWhere('id', $mentorFilter);
@@ -76,38 +80,22 @@ class KaderSayaController extends Controller
             ? $perMentor->listByMentorQuery($mentorFilter, $idBatch)
             : $perMentor->listAllKadersInBU($isMentor ? $user->company_code : null, $idBatch);
 
-        $niks    = $kaders->pluck('nik_kader')->unique()->filter()->values()->all();
-        $userMap = User::whereIn('nik', $niks)->pluck('id', 'nik');
+        // fase_scores & avg_score di-set oleh KaderPerMentorController::attachProgressStats
+        // memakai rumus tunggal ModulScore (Post Test + Post Activity, TANPA Pre Test).
 
-        $faseRows = ModulTestResult::where('is_completed', 1)
-            ->whereIn('modul_test_results.user_id', $userMap->values()->all())
-            ->join('modul', 'modul_test_results.modul_id', '=', 'modul.id')
-            ->select(
-                'modul_test_results.user_id',
-                'modul.fase',
-                DB::raw('AVG(modul_test_results.score) as avg_score')
-            )
-            ->groupBy('modul_test_results.user_id', 'modul.fase')
-            ->get();
-
-        $faseScoreMap = [];
-        foreach ($faseRows as $r) {
-            $faseScoreMap[$r->user_id][$r->fase] = (int) round($r->avg_score);
-        }
-
-        $kaders = $kaders->map(function ($row) use ($userMap, $faseScoreMap) {
-            $uid = $userMap[$row->nik_kader] ?? null;
-            $row->fase_scores = $uid ? ($faseScoreMap[$uid] ?? []) : [];
-            return $row;
-        });
+        // Jumlah SEMUA kader di batch yang dipilih (termasuk yang belum di-assign ke mentor).
+        $totalKaderInBatch = Kader::when($idBatch, fn($q) => $q->where('id_batch', $idBatch))
+            ->when($isMentor, fn($q) => $q->where('company_code', $user->company_code))
+            ->count();
 
         return Inertia::render('KaderSaya/Index', [
-            'kaders'         => $kaders->values(),
-            'mentors'        => $mentors,
-            'selectedMentor' => $selectedMentor,
-            'mentorFilter'   => $mentorFilter,
-            'batches'        => $batches,
-            'batchFilter'    => $batchFilter !== null ? (string) $batchFilter : 'all',
+            'kaders'             => $kaders->values(),
+            'mentors'            => $mentors,
+            'selectedMentor'     => $selectedMentor,
+            'mentorFilter'       => $mentorFilter,
+            'batches'            => $batches,
+            'batchFilter'        => $batchFilter !== null ? (string) $batchFilter : 'all',
+            'totalKaderInBatch'  => $totalKaderInBatch,
         ]);
     }
 
@@ -181,9 +169,23 @@ class KaderSayaController extends Controller
             ? ModulReadingProgress::whereIn('modul_id', $allModulIds)->where('user_id', $userId)->pluck('progress', 'modul_id')->all()
             : [];
 
-        $docIds = $userId
-            ? Dokumen::where('kader_id', $userId)->whereIn('modul_id', $allModulIds)->where('jenis', 'POST_ACTIVITY')->pluck('modul_id')->flip()->map(fn() => true)->all()
-            : [];
+        $paData = $userId
+            ? Dokumen::where('dokumen.kader_id', $userId)
+                ->whereIn('dokumen.modul_id', $allModulIds)
+                ->where('dokumen.jenis', 'POST_ACTIVITY')
+                ->leftJoin('penilaian_post_activity', 'dokumen.id', '=', 'penilaian_post_activity.dokumen_id')
+                ->select('dokumen.modul_id', 'penilaian_post_activity.nilai as pa_score')
+                ->get()
+            : collect();
+
+        $docIds     = [];
+        $paScoreMap = [];
+        foreach ($paData as $d) {
+            $docIds[$d->modul_id] = true;
+            if ($d->pa_score !== null) {
+                $paScoreMap[$d->modul_id] = (float) $d->pa_score;
+            }
+        }
 
         $faseGroups       = [];
         $doneCheckpoints  = 0;
@@ -212,10 +214,14 @@ class KaderSayaController extends Controller
             $doneCheckpoints  += $done;
             $totalCheckpoints += $required;
 
-            $scores = [];
-            if (isset($testMap[$modul->id]['pre']))  $scores[] = $testMap[$modul->id]['pre'];
-            if (isset($testMap[$modul->id]['post'])) $scores[] = $testMap[$modul->id]['post'];
-            $modulScore = !empty($scores) ? (int) round(array_sum($scores) / count($scores)) : null;
+            // Skor Akhir modul = rumus tunggal ModulScore (Post Test + Post Activity, TANPA Pre Test).
+            $modulScoreRaw = ModulScore::finalScore(
+                (bool) $modul->has_test,
+                (bool) $modul->has_post_activity,
+                $testMap[$modul->id]['post'] ?? null,
+                $paScoreMap[$modul->id] ?? null
+            );
+            $modulScore = $modulScoreRaw !== null ? (int) round($modulScoreRaw) : null;
             if ($modulScore !== null) $faseGroups[$fase]['scores'][] = $modulScore;
 
             $faseGroups[$fase]['moduls'][] = [
@@ -227,6 +233,10 @@ class KaderSayaController extends Controller
                 'pa'                => $pa,
                 'has_test'          => (bool) $modul->has_test,
                 'has_post_activity' => (bool) $modul->has_post_activity,
+                'need_pre'          => $needPre,
+                'pre_score'         => isset($testMap[$modul->id]['pre'])  ? (int) round($testMap[$modul->id]['pre'])  : null,
+                'post_score'        => isset($testMap[$modul->id]['post']) ? (int) round($testMap[$modul->id]['post']) : null,
+                'pa_score'          => isset($paScoreMap[$modul->id])      ? (int) round($paScoreMap[$modul->id])      : null,
                 'done'              => $done,
                 'required'          => $required,
                 'score'             => $modulScore,
@@ -235,10 +245,12 @@ class KaderSayaController extends Controller
             if ($done >= $required) $faseGroups[$fase]['done']++;
         }
 
+        // Avg per fase & overall (FMC) memakai rumus tunggal ModulScore::average.
         $allFaseScores = [];
         foreach ($faseGroups as &$fg) {
             $fg['progress']  = $fg['total'] > 0 ? (int) round(($fg['done'] / $fg['total']) * 100) : 0;
-            $fg['avg_score'] = !empty($fg['scores']) ? (int) round(array_sum($fg['scores']) / count($fg['scores'])) : null;
+            $faseAvg         = ModulScore::average($fg['scores'], null);
+            $fg['avg_score'] = $faseAvg !== null ? (int) round($faseAvg) : null;
             if ($fg['avg_score'] !== null) $allFaseScores[] = $fg['avg_score'];
             unset($fg['scores']);
         }
@@ -249,16 +261,17 @@ class KaderSayaController extends Controller
         $totalModuls     = count($moduls);
         $totalCp         = $totalCheckpoints;
         $overallProgress = $totalCp > 0 ? (int) round(($doneCheckpoints / $totalCp) * 100) : 0;
-        $avgScoreOverall = !empty($allFaseScores) ? (int) round(array_sum($allFaseScores) / count($allFaseScores)) : null;
+        $avgOverall      = ModulScore::average($allFaseScores, null);
+        $avgScoreOverall = $avgOverall !== null ? (int) round($avgOverall) : null;
         $status          = $overallProgress < 40 ? 'kritis' : ($overallProgress < 70 ? 'perlu_perhatian' : 'on_track');
 
         $weeklyData = [];
         if ($kader->nik) {
-            $rows = Jawaban::selectRaw('SUM(jawaban) / 4 as avg_s, weeks.angka_week as week')
+            $rows = Jawaban::selectRaw('AVG(jawaban) as avg_s, weeks.angka_week as week')
                 ->join('weeks', 'jawaban.id_week', '=', 'weeks.id_week')
                 ->where('nik_kader', $kader->nik)
                 ->whereNotNull('nama_mentor')
-                ->whereNotIn('id_pertanyaan', ['5', '6'])
+                ->whereIn('id_pertanyaan', ['1', '2', '3', '4'])
                 ->groupBy('weeks.angka_week')
                 ->orderBy('weeks.angka_week')
                 ->get();
@@ -267,15 +280,20 @@ class KaderSayaController extends Controller
             }
         }
 
+        // Avg Feedback = rata-rata skor feedback mingguan (rumus tunggal ModulScore::feedbackAverage):
+        // tiap minggu = (Routine Job + Assignment + Pemahaman SOP + Project) / 4, lalu dibagi jumlah minggu.
+        $avgFeedbackRaw = ModulScore::feedbackAverage(array_map(fn ($w) => $w['score'], $weeklyData));
+        $avgFeedback    = $avgFeedbackRaw !== null ? round($avgFeedbackRaw, 1) : null;
+
         $cohortMap = [];
         if ($kader->id_batch) {
             $batchNiks  = Kader::where('id_batch', $kader->id_batch)->pluck('nik')->all();
             $cohortRows = DB::table('jawaban')
                 ->join('weeks', 'jawaban.id_week', '=', 'weeks.id_week')
-                ->selectRaw('weeks.angka_week as week, AVG(jawaban.jawaban) / 4 as avg_s')
+                ->selectRaw('weeks.angka_week as week, AVG(jawaban.jawaban) as avg_s')
                 ->whereIn('jawaban.nik_kader', $batchNiks)
                 ->whereNotNull('jawaban.nama_mentor')
-                ->whereNotIn('jawaban.id_pertanyaan', ['5', '6'])
+                ->whereIn('jawaban.id_pertanyaan', ['1', '2', '3', '4'])
                 ->groupBy('weeks.angka_week')
                 ->orderBy('weeks.angka_week')
                 ->get();
@@ -427,6 +445,7 @@ class KaderSayaController extends Controller
             'status'             => $status,
             'totalModuls'        => $totalModuls,
             'weeklyData'         => $weeklyData,
+            'avgFeedback'        => $avgFeedback,
             'cohortMap'          => $cohortMap,
             'currentWeek'        => $currentWeek,
             'totalWeeks'         => $totalWeeks,

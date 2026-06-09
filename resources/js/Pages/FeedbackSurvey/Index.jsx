@@ -98,7 +98,9 @@ function MentorForm({ subject, kaders, pertanyaan, idPertanyaan, nilai }) {
                         <select name="id_week" required className={inputCls} disabled={!nikKader || loadingWeek}>
                             <option value="">{loadingWeek ? 'Memuat...' : '-- Pilih Week --'}</option>
                             {weeks.map((w) => (
-                                <option key={w.id_week} value={w.id_week}>Week {w.angka_week}</option>
+                                <option key={w.id_week} value={w.id_week} disabled={w.is_filled}>
+                                    Week {w.angka_week}{w.is_filled ? ' (sudah diisi)' : ''}
+                                </option>
                             ))}
                         </select>
                     </div>

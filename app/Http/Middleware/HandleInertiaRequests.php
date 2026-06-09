@@ -101,21 +101,29 @@ class HandleInertiaRequests extends Middleware
                 $paItems  = collect();
 
                 if ($user->type === 'Kader') {
-                    // Kader: notif Post Activity + Form IDP
+                    // Kader: notif Post Activity + Form IDP + Weekly Feedback
                     $paRaw = DB::table('dokumen')
                         ->where('kader_id', $user->id)
-                        ->whereIn('jenis', ['POST_ACTIVITY', 'FORM_IDP'])
+                        ->whereIn('jenis', ['POST_ACTIVITY', 'FORM_IDP', 'WEEKLY_FEEDBACK'])
                         ->whereIn('status', ['approved', 'rejected'])
                         ->orderBy('updated_at', 'desc')
                         ->get(['id', 'nama_file', 'status', 'rejection_reason', 'modul_id', 'jenis', 'rejected_by_role', 'updated_at']);
                     $modulIds   = $paRaw->pluck('modul_id')->unique()->filter()->values()->all();
                     $modulNames = $modulIds ? DB::table('modul')->whereIn('id', $modulIds)->pluck('nama_modul', 'id') : collect();
                     $paItems = $paRaw->map(function ($r) use ($modulNames) {
-                        $isIdp = $r->jenis === 'FORM_IDP';
-                        // Untuk IDP: gunakan rejected_by_role yang eksplisit; untuk PA selalu Admin MAI.
-                        $actor = !$isIdp ? 'admin' : ($r->rejected_by_role ?? 'admin');
+                        // Penolak: IDP pakai rejected_by_role eksplisit; Weekly selalu Mentor; PA selalu Admin MAI.
+                        if ($r->jenis === 'FORM_IDP') {
+                            $type = 'idp';
+                            $actor = $r->rejected_by_role ?? 'admin';
+                        } elseif ($r->jenis === 'WEEKLY_FEEDBACK') {
+                            $type = 'weekly';
+                            $actor = 'mentor';
+                        } else {
+                            $type = 'pa';
+                            $actor = 'admin';
+                        }
                         return [
-                            'type'             => $isIdp ? 'idp' : 'pa',
+                            'type'             => $type,
                             'fmc_number'       => null,
                             'approval_status'  => $r->status,
                             'rejection_reason' => $r->rejection_reason,
@@ -203,7 +211,30 @@ class HandleInertiaRequests extends Middleware
                         'nama_file'        => $r->nama_file,
                         'actor'            => null,
                     ]);
-                    $paItems = $paItems->merge($idpReviewItems);
+
+                    // Weekly Feedback milik Kader (per-mentor) yang menunggu review Mentor.
+                    $weeklyRaw = DB::table('dokumen as d')
+                        ->leftJoin('users as ku', DB::raw('CONVERT(d.kader_id USING utf8mb4) COLLATE utf8mb4_unicode_ci'), '=', 'ku.id')
+                        ->leftJoin('weeks as w', 'd.id_week', '=', 'w.id_week')
+                        ->where('d.jenis', 'WEEKLY_FEEDBACK')
+                        ->where('d.status', 'pending')
+                        ->whereIn('ku.nik', $kaderNiks->all())
+                        ->orderBy('d.created_at', 'desc')
+                        ->get(['d.id', 'd.nama_file', 'd.created_at', 'ku.name as kader_nama', 'w.angka_week']);
+                    $weeklyReviewItems = $weeklyRaw->map(fn($r) => [
+                        'type'             => 'weekly_review',
+                        'fmc_number'       => null,
+                        'approval_status'  => 'pending',
+                        'rejection_reason' => null,
+                        'final_score'      => null,
+                        'updated_at'       => $r->created_at,
+                        'kader_nama'       => $r->kader_nama,
+                        'modul_nama'       => null,
+                        'nama_file'        => $r->nama_file,
+                        'angka_week'       => $r->angka_week,
+                        'actor'            => null,
+                    ]);
+                    $paItems = $paItems->merge($idpReviewItems)->merge($weeklyReviewItems);
                 }
 
                 $all = $ojtItems->merge($paItems)->sortByDesc('updated_at')->values()->all();
@@ -212,6 +243,45 @@ class HandleInertiaRequests extends Middleware
                     'total'         => count($all),
                     'is_admin'      => false,
                     'pending_count' => 0,
+                ];
+            },
+            // Badge approval di sidebar Mentor: jumlah file pending per jenis (IDP & Weekly
+            // Feedback) untuk Kader yang menjadi tanggung jawab Mentor (cakupan per-mentor).
+            'approvalBadges' => function () use ($request) {
+                $user = $request->user();
+                if (!$user || $user->type !== 'Mentor') {
+                    return ['idp' => 0, 'weekly' => 0];
+                }
+
+                $mentorIds = DB::table('mentor')
+                    ->whereNull('deleted_at')
+                    ->where('user_id', $user->id)
+                    ->pluck('id');
+                $kaderIds = $mentorIds->isEmpty()
+                    ? collect()
+                    : DB::table('list_kader_per_mentor')
+                        ->whereNull('deleted_at')
+                        ->whereIn('mentor_id', $mentorIds->all())
+                        ->pluck('kader_id');
+                $kaderNiks = $kaderIds->isEmpty()
+                    ? collect()
+                    : DB::table('kader')->whereIn('id', $kaderIds->all())->pluck('nik');
+
+                if ($kaderNiks->isEmpty()) {
+                    return ['idp' => 0, 'weekly' => 0];
+                }
+
+                $countPending = fn (string $jenis, $statuses) => DB::table('dokumen as d')
+                    ->leftJoin('users as ku', DB::raw('CONVERT(d.kader_id USING utf8mb4) COLLATE utf8mb4_unicode_ci'), '=', 'ku.id')
+                    ->where('d.jenis', $jenis)
+                    ->whereIn('d.status', (array) $statuses)
+                    ->whereIn('ku.nik', $kaderNiks->all())
+                    ->count();
+
+                return [
+                    // IDP yang menunggu review Mentor = status 'pending'.
+                    'idp'    => $countPending('FORM_IDP', 'pending'),
+                    'weekly' => $countPending('WEEKLY_FEEDBACK', 'pending'),
                 ];
             },
             'flash' => [

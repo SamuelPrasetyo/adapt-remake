@@ -36,7 +36,6 @@ class ApprovalController extends Controller
         $ojtApproved = (clone $ojtBase)
             ->where('p.approval_status', 'approved')
             ->orderBy('p.approved_at', 'desc')
-            ->limit(50)
             ->get(['p.kader_id','p.fmc_number','p.final_score','p.updated_at','p.approved_at',
                    'kader.nama as kader_nama','company.company_shortname as bu','creator.name as mentor_nama']);
 
@@ -62,7 +61,6 @@ class ApprovalController extends Controller
         $paApproved = (clone $paBase)
             ->where('d.status', 'approved')
             ->orderBy('d.approved_at', 'desc')
-            ->limit(50)
             ->get(['d.id','d.nama_file','d.path_file','d.tipe','d.created_at','d.approved_at','m.nama_modul','pa.nilai','co.company_shortname as uploader_bu',
                    DB::raw('COALESCE(ku.name, mt.nama, mu.name) as uploader_nama')]);
 
@@ -90,7 +88,6 @@ class ApprovalController extends Controller
         $idpApproved = (clone $idpBase)
             ->where('d.status', 'approved')
             ->orderBy('d.approved_at', 'desc')
-            ->limit(50)
             ->get(['d.id','d.nama_file','d.path_file','d.created_at','d.approved_at','ku.name as kader_nama','b.nama_batch']);
 
         return Inertia::render('Approval/Index', [
@@ -294,7 +291,6 @@ class ApprovalController extends Controller
         $processed = (clone $base)
             ->whereIn('d.status', ['mentor_approved', 'approved', 'rejected'])
             ->orderBy('d.updated_at', 'desc')
-            ->limit(50)
             ->get(['d.id','d.nama_file','d.path_file','d.status','d.rejection_reason',
                    'd.mentor_approved_at','d.created_at','ku.name as kader_nama','b.nama_batch']);
 
@@ -347,6 +343,105 @@ class ApprovalController extends Controller
         ActivityLog::activity_log("Mentor tolak Form IDP (Dokumen ID {$dokumen->id})");
 
         return back()->with('success', 'Form IDP ditolak.');
+    }
+
+    /* ──────────────── Mentor: approval Weekly Feedback (1 level, final) ──────────────── */
+
+    /**
+     * Halaman approval Weekly Feedback untuk Mentor — file laporan mingguan milik Kader
+     * dari daftar kader BU-nya (cakupan per-mentor, konsisten dengan Form IDP).
+     */
+    public function mentorWeekly()
+    {
+        $user = Auth::user();
+        $niks = $this->mentorKaderNiks($user);
+
+        $base = DB::table('dokumen as d')
+            ->leftJoin('users as ku', DB::raw('CONVERT(d.kader_id USING utf8mb4) COLLATE utf8mb4_unicode_ci'), '=', 'ku.id')
+            ->leftJoin('weeks as w', 'd.id_week', '=', 'w.id_week')
+            ->leftJoin('batch as b', 'd.id_batch', '=', 'b.id_batch')
+            ->where('d.jenis', 'WEEKLY_FEEDBACK')
+            ->whereIn('ku.nik', $niks->all());
+
+        $cols = ['d.id', 'd.nama_file', 'd.path_file', 'd.status', 'd.rejection_reason',
+                 'd.created_at', 'd.updated_at', 'ku.name as kader_nama',
+                 'w.angka_week', 'w.bulan', 'w.tahun', 'b.nama_batch'];
+
+        $pending = (clone $base)
+            ->where('d.status', 'pending')
+            ->orderBy('d.created_at', 'desc')
+            ->get($cols);
+
+        $processed = (clone $base)
+            ->whereIn('d.status', ['approved', 'rejected'])
+            ->orderBy('d.updated_at', 'desc')
+            ->get($cols);
+
+        return Inertia::render('Approval/MentorWeekly', [
+            'pending'   => $pending,
+            'processed' => $processed,
+        ]);
+    }
+
+    public function mentorApproveWeekly(Dokumen $dokumen)
+    {
+        $this->authorizeMentorWeekly($dokumen);
+
+        if ($dokumen->status !== 'pending') {
+            return back()->with('error', 'File Weekly Feedback ini sudah diproses.');
+        }
+
+        $dokumen->update([
+            'status'           => 'approved',
+            'approved_by'      => Auth::id(),
+            'approved_at'      => now(),
+            'rejection_reason' => null,
+            'rejected_by_role' => null,
+        ]);
+
+        ActivityLog::activity_log("Mentor approve Weekly Feedback (Dokumen ID {$dokumen->id})");
+
+        return back()->with('success', 'File Weekly Feedback disetujui.');
+    }
+
+    public function mentorRejectWeekly(Request $request, Dokumen $dokumen)
+    {
+        $this->authorizeMentorWeekly($dokumen);
+
+        if ($dokumen->status !== 'pending') {
+            return back()->with('error', 'File Weekly Feedback ini sudah diproses.');
+        }
+
+        $validated = $request->validate([
+            'rejection_reason' => 'nullable|string',
+        ]);
+
+        $dokumen->update([
+            'status'           => 'rejected',
+            'rejection_reason' => $validated['rejection_reason'] ?? null,
+            'rejected_by_role' => 'mentor',
+            'approved_by'      => null,
+            'approved_at'      => null,
+        ]);
+
+        ActivityLog::activity_log("Mentor tolak Weekly Feedback (Dokumen ID {$dokumen->id})");
+
+        return back()->with('success', 'File Weekly Feedback ditolak.');
+    }
+
+    /** Mentor hanya boleh memproses Weekly Feedback milik Kader di daftar kader BU-nya. */
+    private function authorizeMentorWeekly(Dokumen $dokumen): void
+    {
+        if ($dokumen->jenis !== 'WEEKLY_FEEDBACK') {
+            abort(404);
+        }
+        $user     = Auth::user();
+        $niks     = $this->mentorKaderNiks($user);
+        $kaderNik = DB::table('users')->where('id', $dokumen->kader_id)->value('nik');
+
+        if (!$kaderNik || !$niks->contains($kaderNik)) {
+            abort(403, 'File Weekly Feedback ini bukan milik Kader dari daftar Anda.');
+        }
     }
 
     /** Mentor hanya boleh memproses IDP milik Kader yang ada di daftar kader BU-nya. */

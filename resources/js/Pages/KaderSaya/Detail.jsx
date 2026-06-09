@@ -66,6 +66,7 @@ export default function KaderSayaDetail({
     status = "kritis",
     totalModuls = 0,
     weeklyData = [],
+    avgFeedback = null,
     cohortMap = {},
     currentWeek = 0,
     totalWeeks = 0,
@@ -146,7 +147,7 @@ export default function KaderSayaDetail({
                 </div>
 
                 {/* Stats row */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-5 pt-5 border-t border-slate-100">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mt-5 pt-5 border-t border-slate-100">
                     {allFases.map((fase, idx) => {
                         const faseKey = getFaseNum(fase);
                         const label = getFaseLabel(fase);
@@ -182,6 +183,12 @@ export default function KaderSayaDetail({
                             {avgScore != null ? avgScore : "—"}
                         </div>
                         <div className="text-xs text-slate-500 mt-0.5">FMC</div>
+                    </div>
+                    <div className="text-center">
+                        <div className="text-2xl font-bold text-rose-600">
+                            {avgFeedback != null ? avgFeedback : "—"}
+                        </div>
+                        <div className="text-xs text-slate-500 mt-0.5">Avg Feedback</div>
                     </div>
                 </div>
             </div>

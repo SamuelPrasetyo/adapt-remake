@@ -3,10 +3,12 @@ import { router } from "@inertiajs/react";
 import AppLayout from "@/Layouts/AppLayout";
 import FilterableTable from "@/Components/FilterableTable";
 
+const BULAN_ID = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
 const STATUS_CONFIG = {
-    mentor_approved: { label: "Disetujui Mentor", cls: "bg-blue-100 text-blue-700" },
-    approved:        { label: "Disetujui Admin MAI", cls: "bg-green-100 text-green-700" },
-    rejected:        { label: "Ditolak", cls: "bg-red-100 text-red-700" },
+    approved: { label: "Disetujui", cls: "bg-green-100 text-green-700" },
+    rejected: { label: "Ditolak",   cls: "bg-red-100 text-red-700" },
 };
 
 function StatusBadge({ status }) {
@@ -16,6 +18,12 @@ function StatusBadge({ status }) {
             {cfg.label}
         </span>
     );
+}
+
+function weekLabel(r) {
+    if (!r.angka_week) return "—";
+    const month = r.bulan ? ` · ${BULAN_ID[r.bulan]}${r.tahun ? ` ${r.tahun}` : ""}` : "";
+    return `W${r.angka_week}${month}`;
 }
 
 function fileLink(r) {
@@ -29,14 +37,16 @@ function fmtDate(s) {
     return new Date(s).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" });
 }
 
-export default function MentorIdp({ idpPending = [], idpProcessed = [] }) {
+const WEEK_FILTER = { key: "angka_week", label: "Week", labelFormat: (v) => `W${v}` };
+
+export default function MentorWeekly({ pending = [], processed = [] }) {
     const [reject, setReject] = useState(null); // { id }
     const [reason, setReason] = useState("");
     const [busy, setBusy] = useState(false);
 
     const doApprove = (id) => {
         setBusy(true);
-        router.post(`/approval/idp/${id}/approve`, {}, {
+        router.post(`/approval/weekly-feedback/${id}/approve`, {}, {
             preserveScroll: true,
             onFinish: () => setBusy(false),
         });
@@ -47,7 +57,7 @@ export default function MentorIdp({ idpPending = [], idpProcessed = [] }) {
     const submitReject = () => {
         if (!reject) return;
         setBusy(true);
-        router.post(`/approval/idp/${reject.id}/reject`, { rejection_reason: reason || null }, {
+        router.post(`/approval/weekly-feedback/${reject.id}/reject`, { rejection_reason: reason || null }, {
             preserveScroll: true,
             onSuccess: () => setReject(null),
             onFinish: () => setBusy(false),
@@ -55,16 +65,17 @@ export default function MentorIdp({ idpPending = [], idpProcessed = [] }) {
     };
 
     const kaderCol = { key: "kader_nama", label: "Kader", sortable: true, render: (v) => <span className="font-medium text-slate-700">{v ?? "—"}</span> };
-    const batchCol = { key: "nama_batch", label: "Batch", sortable: true, render: (v) => v ?? "—" };
+    const weekCol  = { key: "angka_week", label: "Week", sortable: true, render: (_, r) => weekLabel(r) };
+    const batchCol = { key: "nama_batch", label: "Batch", render: (v) => v ?? "—" };
     const fileCol  = { key: "nama_file", label: "File", render: (_, r) => fileLink(r) };
 
     const pendingCols = [
-        kaderCol, batchCol, fileCol,
+        kaderCol, weekCol, batchCol, fileCol,
         { key: "created_at", label: "Diupload", sortable: true, render: (v) => fmtDate(v) },
     ];
 
     const processedCols = [
-        kaderCol, batchCol, fileCol,
+        kaderCol, weekCol, batchCol, fileCol,
         {
             key: "status", label: "Status", render: (_, r) => (
                 <div>
@@ -75,25 +86,25 @@ export default function MentorIdp({ idpPending = [], idpProcessed = [] }) {
                 </div>
             ),
         },
-        { key: "mentor_approved_at", label: "Diproses", sortable: true, render: (_, r) => fmtDate(r.mentor_approved_at ?? r.created_at) },
+        { key: "updated_at", label: "Diproses", sortable: true, render: (_, r) => fmtDate(r.updated_at ?? r.created_at) },
     ];
 
     return (
-        <AppLayout title="APPROVAL FORM IDP" breadcrumb="Approval / Form IDP">
+        <AppLayout title="APPROVAL WEEKLY FEEDBACK" breadcrumb="Approval / Weekly Feedback">
             <div className="space-y-6">
                 {/* Pending — menunggu review Mentor */}
                 <div>
                     <h3 className="text-sm font-semibold text-slate-600 mb-2">
                         Menunggu Review Anda
-                        {idpPending.length > 0 && (
-                            <span className="ml-2 px-1.5 rounded-full bg-amber-400 text-amber-900 text-xs">{idpPending.length}</span>
+                        {pending.length > 0 && (
+                            <span className="ml-2 px-1.5 rounded-full bg-amber-400 text-amber-900 text-xs">{pending.length}</span>
                         )}
                     </h3>
                     <FilterableTable
                         columns={pendingCols}
-                        data={idpPending}
-                        emptyMessage="Tidak ada Form IDP yang menunggu review Anda."
-                        filters={[{ key: "nama_batch", label: "Batch" }]}
+                        data={pending}
+                        emptyMessage="Tidak ada file yang menunggu review Anda."
+                        filters={[{ key: "nama_batch", label: "Batch" }, WEEK_FILTER]}
                         actions={(r) => (
                             <div className="flex items-center justify-end gap-2">
                                 <button disabled={busy} onClick={() => doApprove(r.id)}
@@ -110,15 +121,12 @@ export default function MentorIdp({ idpPending = [], idpProcessed = [] }) {
                     <h3 className="text-sm font-semibold text-slate-600 mb-2">Riwayat</h3>
                     <FilterableTable
                         columns={processedCols}
-                        data={idpProcessed}
+                        data={processed}
                         emptyMessage="Belum ada riwayat."
                         filters={[
-                            { key: "status", label: "Status", options: [
-                                { value: "mentor_approved", label: "Disetujui Mentor" },
-                                { value: "approved", label: "Disetujui Admin MAI" },
-                                { value: "rejected", label: "Ditolak" },
-                            ] },
+                            { key: "status", label: "Status", options: [{ value: "approved", label: "Disetujui" }, { value: "rejected", label: "Ditolak" }] },
                             { key: "nama_batch", label: "Batch" },
+                            WEEK_FILTER,
                         ]}
                     />
                 </div>
@@ -127,7 +135,7 @@ export default function MentorIdp({ idpPending = [], idpProcessed = [] }) {
             {reject && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => !busy && setReject(null)}>
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5" onClick={(e) => e.stopPropagation()}>
-                        <h3 className="text-base font-semibold text-slate-800">Reject Form IDP</h3>
+                        <h3 className="text-base font-semibold text-slate-800">Reject Weekly Feedback</h3>
                         <p className="text-xs text-slate-500 mt-1">Alasan penolakan opsional. Akan ditampilkan ke Kader agar dapat upload ulang.</p>
                         <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={4}
                             placeholder="Tulis alasan penolakan (opsional)..."

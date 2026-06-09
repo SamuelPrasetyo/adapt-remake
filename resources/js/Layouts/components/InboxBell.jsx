@@ -30,6 +30,8 @@ function itemKey(item) {
     if (item.type === "ojt") return `ojt_fmc${item.fmc_number}_${item.updated_at ?? ""}${item.kader_nama ?? ""}`;
     if (item.type === "idp") return `idp_${item.nama_file ?? ""}_${item.updated_at ?? ""}`;
     if (item.type === "idp_review") return `idprev_${item.nama_file ?? ""}_${item.kader_nama ?? ""}_${item.updated_at ?? ""}`;
+    if (item.type === "weekly") return `weekly_${item.nama_file ?? ""}_${item.updated_at ?? ""}`;
+    if (item.type === "weekly_review") return `weeklyrev_${item.nama_file ?? ""}_${item.kader_nama ?? ""}_${item.updated_at ?? ""}`;
     return `pa_${item.nama_file ?? ""}_${item.updated_at ?? ""}`;
 }
 
@@ -194,13 +196,15 @@ function UserBell({ inbox, userId }) {
                                 Tidak ada notifikasi baru.
                             </div>
                         ) : visible.map((item, i) => {
-                            const isReview = item.type === "idp_review";
+                            const isWeeklyReview = item.type === "weekly_review";
+                            const isReview = item.type === "idp_review" || isWeeklyReview;
                             const approved = item.approval_status === "approved";
                             const actorLabel = item.actor === "mentor" ? "Mentor" : "Admin MAI";
                             const dotColor = isReview ? "bg-amber-500" : approved ? "bg-emerald-500" : "bg-red-500";
+                            const reviewTarget = isWeeklyReview ? "/approval/weekly-feedback" : "/approval/idp";
                             return (
                                 <div key={i}
-                                    onClick={isReview ? () => { setOpen(false); router.visit("/approval/idp"); } : undefined}
+                                    onClick={isReview ? () => { setOpen(false); router.visit(reviewTarget); } : undefined}
                                     className={`px-4 py-3 hover:bg-slate-50 transition group relative ${isReview ? "cursor-pointer" : ""}`}>
                                     <div className="flex items-start gap-2.5 pr-6">
                                         <span className={`mt-1 shrink-0 w-2 h-2 rounded-full ${dotColor}`} />
@@ -208,7 +212,9 @@ function UserBell({ inbox, userId }) {
                                             <p className="text-xs font-semibold text-slate-700 line-clamp-2">
                                                 {item.type === "ojt"
                                                     ? `OJT FMC-${item.fmc_number}${item.kader_nama ? ` · ${item.kader_nama}` : ""}`
-                                                    : item.type === "idp" || isReview
+                                                    : (item.type === "weekly" || isWeeklyReview)
+                                                    ? `Weekly Feedback${item.angka_week ? ` · W${item.angka_week}` : ""}${item.kader_nama ? ` · ${item.kader_nama}` : ""}${item.nama_file ? ` (${item.nama_file})` : ""}`
+                                                    : (item.type === "idp" || item.type === "idp_review")
                                                     ? `Form IDP${item.kader_nama ? ` · ${item.kader_nama}` : ""}${item.nama_file ? ` (${item.nama_file})` : ""}`
                                                     : `Post Activity${item.modul_nama ? ` · ${item.modul_nama}` : ""}${item.nama_file ? ` (${item.nama_file})` : ""}`
                                                 }

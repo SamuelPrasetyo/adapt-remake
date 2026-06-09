@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { router, Link } from "@inertiajs/react";
 import AppLayout from "@/Layouts/AppLayout";
+import FilterableTable from "@/Components/FilterableTable";
 
 const VALID_TABS = ["ojt", "pa", "idp", "history"];
 
@@ -24,6 +25,10 @@ function PaFiles({ row }) {
         </div>
     );
 }
+
+const BU_FILTER  = { key: "bu", label: "BU" };
+const PABU_FILTER = { key: "uploader_bu", label: "BU" };
+const BATCH_FILTER = { key: "nama_batch", label: "Batch" };
 
 export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtApproved = [], paApproved = [], idpPending = [], idpApproved = [] }) {
     const [tab, setTab] = useState(() => {
@@ -82,295 +87,174 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
         });
     };
 
+    const TabButton = ({ id, label, count }) => (
+        <button onClick={() => setTab(id)}
+            className={`px-4 py-2 text-sm font-semibold rounded-lg transition ${tab === id ? "bg-blue-600 text-white" : "bg-white text-slate-600 border border-slate-300 hover:bg-slate-50"}`}>
+            {label} {count > 0 && <span className="ml-1 px-1.5 rounded-full bg-amber-400 text-amber-900 text-xs">{count}</span>}
+        </button>
+    );
+
+    /* ───────── Column builders ───────── */
+    const ojtKader  = { key: "kader_nama", label: "Kader", sortable: true, render: (v) => <span className="font-medium text-slate-700">{v ?? "—"}</span> };
+    const ojtBU     = { key: "bu", label: "BU", sortable: true, render: (v) => v ?? "—" };
+    const ojtFmc    = { key: "fmc_number", label: "FMC", align: "center", render: (v) => `FMC-${v}` };
+    const ojtScore  = { key: "final_score", label: "Final Score", align: "center", render: (v) => v != null ? <span className="font-semibold text-emerald-600">{Number(v).toFixed(1)}</span> : "—" };
+    const ojtMentor = { key: "mentor_nama", label: "Mentor", render: (v) => v ?? "—" };
+
+    const ojtPendingCols  = [ojtKader, ojtBU, ojtFmc, ojtScore, ojtMentor, { key: "updated_at", label: "Diperbarui", sortable: true, render: (v) => fmtDate(v) }];
+    const ojtApprovedCols = [ojtKader, ojtBU, ojtFmc, ojtScore, ojtMentor, { key: "approved_at", label: "Disetujui", sortable: true, render: (v) => fmtDate(v) }];
+
+    const paUploader = { key: "uploader_nama", label: "Uploader", sortable: true, render: (v) => <span className="font-medium text-slate-700">{v ?? "—"}</span> };
+    const paBU       = { key: "uploader_bu", label: "BU", sortable: true, render: (v) => v ?? "—" };
+    const paTipe     = { key: "tipe", label: "Tipe", render: (v) => <span className="capitalize">{v ?? "—"}</span> };
+    const paModul    = { key: "nama_modul", label: "Modul", render: (v) => v ?? "—" };
+    const paFile     = { key: "nama_file", label: "File", render: (_, r) => <PaFiles row={r} /> };
+    const paSesi     = {
+        key: "session_no", label: "Sesi", align: "center", render: (_, r) => (
+            r.required_sessions > 1
+                ? <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${r.is_scoring ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>{r.session_no}/{r.required_sessions}</span>
+                : <span className="text-slate-400 text-xs">—</span>
+        ),
+    };
+
+    const paPendingCols  = [paUploader, paBU, paTipe, paModul, paSesi, paFile, { key: "created_at", label: "Diupload", sortable: true, render: (v) => fmtDate(v) }];
+    const paApprovedCols = [paUploader, paBU, paTipe, paModul, paFile, { key: "nilai", label: "Nilai", align: "center", render: (v) => v != null ? <span className="font-semibold text-emerald-600">{Number(v).toFixed(2)}</span> : "—" }, { key: "approved_at", label: "Disetujui", sortable: true, render: (v) => fmtDate(v) }];
+
+    const idpKader = { key: "kader_nama", label: "Kader", sortable: true, render: (v) => <span className="font-medium text-slate-700">{v ?? "—"}</span> };
+    const idpBatch = { key: "nama_batch", label: "Batch", sortable: true, render: (v) => v ?? "—" };
+    const idpFile  = {
+        key: "nama_file", label: "File", render: (_, r) => (
+            r.path_file
+                ? <a href={`/${r.path_file}`} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline text-xs break-all">{r.nama_file ?? "Unduh"}</a>
+                : <span className="text-slate-400 text-xs">{r.nama_file ?? "—"}</span>
+        ),
+    };
+    const idpStatus = {
+        key: "status", label: "Status", render: (_, r) => (
+            r.status === "pending"
+                ? <span className="inline-flex items-center w-fit px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">Menunggu Mentor</span>
+                : <span className="inline-flex items-center w-fit px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">Disetujui Mentor</span>
+        ),
+    };
+
+    const idpPendingCols  = [idpKader, idpBatch, idpFile, idpStatus, { key: "created_at", label: "Diupload", sortable: true, render: (v) => fmtDate(v) }];
+    const idpApprovedCols = [idpKader, idpBatch, idpFile, { key: "approved_at", label: "Disetujui", sortable: true, render: (v) => fmtDate(v) }];
+
     return (
         <AppLayout title="APPROVAL" breadcrumb="Approval">
-            <div className="flex gap-2 mb-4">
-                <button onClick={() => setTab("ojt")}
-                    className={`px-4 py-2 text-sm font-semibold rounded-lg transition ${tab === "ojt" ? "bg-blue-600 text-white" : "bg-white text-slate-600 border border-slate-300 hover:bg-slate-50"}`}>
-                    Penilaian OJT {ojtPending.length > 0 && <span className="ml-1 px-1.5 rounded-full bg-amber-400 text-amber-900 text-xs">{ojtPending.length}</span>}
-                </button>
-                <button onClick={() => setTab("pa")}
-                    className={`px-4 py-2 text-sm font-semibold rounded-lg transition ${tab === "pa" ? "bg-blue-600 text-white" : "bg-white text-slate-600 border border-slate-300 hover:bg-slate-50"}`}>
-                    Post Activity {paPending.length > 0 && <span className="ml-1 px-1.5 rounded-full bg-amber-400 text-amber-900 text-xs">{paPending.length}</span>}
-                </button>
-                <button onClick={() => setTab("idp")}
-                    className={`px-4 py-2 text-sm font-semibold rounded-lg transition ${tab === "idp" ? "bg-blue-600 text-white" : "bg-white text-slate-600 border border-slate-300 hover:bg-slate-50"}`}>
-                    Form IDP {idpPending.length > 0 && <span className="ml-1 px-1.5 rounded-full bg-amber-400 text-amber-900 text-xs">{idpPending.length}</span>}
-                </button>
-                <button onClick={() => setTab("history")}
-                    className={`px-4 py-2 text-sm font-semibold rounded-lg transition ${tab === "history" ? "bg-blue-600 text-white" : "bg-white text-slate-600 border border-slate-300 hover:bg-slate-50"}`}>
-                    History Approved
-                </button>
+            <div className="flex gap-2 mb-4 flex-wrap">
+                <TabButton id="ojt" label="Penilaian OJT" count={ojtPending.length} />
+                <TabButton id="pa" label="Post Activity" count={paPending.length} />
+                <TabButton id="idp" label="Form IDP" count={idpPending.length} />
+                <TabButton id="history" label="History Approved" count={0} />
             </div>
 
             {tab === "ojt" && (
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
-                    <table className="w-full text-sm min-w-180">
-                        <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
-                            <tr>
-                                <th className="text-left px-4 py-3 whitespace-nowrap">Kader</th>
-                                <th className="text-left px-4 py-3 whitespace-nowrap">BU</th>
-                                <th className="text-center px-4 py-3 whitespace-nowrap">FMC</th>
-                                <th className="text-center px-4 py-3 whitespace-nowrap">Final Score</th>
-                                <th className="text-left px-4 py-3 whitespace-nowrap">Mentor</th>
-                                <th className="text-left px-4 py-3 whitespace-nowrap">Diperbarui</th>
-                                <th className="text-right px-4 py-3 whitespace-nowrap">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {ojtPending.length === 0 && (
-                                <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">Tidak ada penilaian OJT yang menunggu approval.</td></tr>
-                            )}
-                            {ojtPending.map((r) => (
-                                <tr key={`${r.kader_id}-${r.fmc_number}`} className="hover:bg-slate-50">
-                                    <td className="px-4 py-3 font-medium text-slate-700 whitespace-nowrap">{r.kader_nama ?? "—"}</td>
-                                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.bu ?? "—"}</td>
-                                    <td className="px-4 py-3 text-center">FMC-{r.fmc_number}</td>
-                                    <td className="px-4 py-3 text-center font-semibold text-emerald-600">{r.final_score != null ? Number(r.final_score).toFixed(1) : "—"}</td>
-                                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.mentor_nama ?? "—"}</td>
-                                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{fmtDate(r.updated_at)}</td>
-                                    <td className="px-4 py-3">
-                                        <div className="flex items-center justify-end gap-2">
-                                            <Link href={`/kader-saya/${r.kader_id}`}
-                                                className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap border border-slate-300 text-slate-600 hover:bg-slate-50">Lihat</Link>
-                                            <button disabled={busy} onClick={() => doApprove(`/approval/ojt/${r.kader_id}/${r.fmc_number}/approve`)}
-                                                className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">Approve</button>
-                                            <button disabled={busy} onClick={() => openReject("ojt", `/approval/ojt/${r.kader_id}/${r.fmc_number}/reject`)}
-                                                className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">Reject</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                <FilterableTable
+                    columns={ojtPendingCols}
+                    data={ojtPending}
+                    emptyMessage="Tidak ada penilaian OJT yang menunggu approval."
+                    filters={[BU_FILTER]}
+                    actions={(r) => (
+                        <div className="flex items-center justify-end gap-2">
+                            <Link href={`/kader-saya/${r.kader_id}`}
+                                className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap border border-slate-300 text-slate-600 hover:bg-slate-50">Lihat</Link>
+                            <button disabled={busy} onClick={() => doApprove(`/approval/ojt/${r.kader_id}/${r.fmc_number}/approve`)}
+                                className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">Approve</button>
+                            <button disabled={busy} onClick={() => openReject("ojt", `/approval/ojt/${r.kader_id}/${r.fmc_number}/reject`)}
+                                className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">Reject</button>
+                        </div>
+                    )}
+                />
             )}
 
             {tab === "pa" && (
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
-                    <table className="w-full text-sm min-w-180">
-                        <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
-                            <tr>
-                                <th className="text-left px-4 py-3 whitespace-nowrap">Uploader</th>
-                                <th className="text-left px-4 py-3 whitespace-nowrap">BU</th>
-                                <th className="text-left px-4 py-3 whitespace-nowrap">Tipe</th>
-                                <th className="text-left px-4 py-3 whitespace-nowrap">Modul</th>
-                                <th className="text-center px-4 py-3 whitespace-nowrap">Sesi</th>
-                                <th className="text-left px-4 py-3 whitespace-nowrap">File</th>
-                                <th className="text-left px-4 py-3 whitespace-nowrap">Diupload</th>
-                                <th className="text-right px-4 py-3 whitespace-nowrap">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {paPending.length === 0 && (
-                                <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400">Tidak ada Post Activity yang menunggu approval.</td></tr>
+                <FilterableTable
+                    columns={paPendingCols}
+                    data={paPending}
+                    emptyMessage="Tidak ada Post Activity yang menunggu approval."
+                    filters={[PABU_FILTER]}
+                    actions={(r) => (
+                        <div className="flex items-center justify-end gap-2">
+                            {r.is_scoring ? (
+                                <button disabled={busy} onClick={() => openApprovePa(r.id)}
+                                    className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">Setujui &amp; Nilai</button>
+                            ) : (
+                                <button disabled={busy} onClick={() => doApprove(`/approval/post-activity/${r.id}/approve`)}
+                                    className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">Approve</button>
                             )}
-                            {paPending.map((r) => (
-                                <tr key={r.id} className="hover:bg-slate-50">
-                                    <td className="px-4 py-3 font-medium text-slate-700 whitespace-nowrap">{r.uploader_nama ?? "—"}</td>
-                                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.uploader_bu ?? "—"}</td>
-                                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap capitalize">{r.tipe ?? "—"}</td>
-                                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.nama_modul ?? "—"}</td>
-                                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                                        {r.required_sessions > 1 ? (
-                                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${r.is_scoring ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
-                                                {r.session_no}/{r.required_sessions}
-                                            </span>
-                                        ) : <span className="text-slate-400 text-xs">—</span>}
-                                    </td>
-                                    <td className="px-4 py-3"><PaFiles row={r} /></td>
-                                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{fmtDate(r.created_at)}</td>
-                                    <td className="px-4 py-3">
-                                        <div className="flex items-center justify-end gap-2">
-                                            {r.is_scoring ? (
-                                                <button disabled={busy} onClick={() => openApprovePa(r.id)}
-                                                    className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">Setujui & Nilai</button>
-                                            ) : (
-                                                <button disabled={busy} onClick={() => doApprove(`/approval/post-activity/${r.id}/approve`)}
-                                                    className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">Approve</button>
-                                            )}
-                                            <button disabled={busy} onClick={() => openReject("pa", `/approval/post-activity/${r.id}/reject`)}
-                                                className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">Reject</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                            <button disabled={busy} onClick={() => openReject("pa", `/approval/post-activity/${r.id}/reject`)}
+                                className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">Reject</button>
+                        </div>
+                    )}
+                />
             )}
 
             {tab === "idp" && (
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
-                    <table className="w-full text-sm min-w-180">
-                        <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
-                            <tr>
-                                <th className="text-left px-4 py-3 whitespace-nowrap">Kader</th>
-                                <th className="text-left px-4 py-3 whitespace-nowrap">Batch</th>
-                                <th className="text-left px-4 py-3 whitespace-nowrap">File</th>
-                                <th className="text-left px-4 py-3 whitespace-nowrap">Status</th>
-                                <th className="text-left px-4 py-3 whitespace-nowrap">Diupload</th>
-                                <th className="text-right px-4 py-3 whitespace-nowrap">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {idpPending.length === 0 && (
-                                <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-400">Tidak ada Form IDP yang menunggu approval.</td></tr>
-                            )}
-                            {idpPending.map((r) => {
-                                const waitingMentor = r.status === "pending";
-                                return (
-                                <tr key={r.id} className="hover:bg-slate-50">
-                                    <td className="px-4 py-3 font-medium text-slate-700 whitespace-nowrap">{r.kader_nama ?? "—"}</td>
-                                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.nama_batch ?? "—"}</td>
-                                    <td className="px-4 py-3">
-                                        {r.path_file ? (
-                                            <a href={`/${r.path_file}`} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline text-xs">{r.nama_file ?? "Unduh"}</a>
-                                        ) : <span className="text-slate-400 text-xs">{r.nama_file ?? "—"}</span>}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        {waitingMentor ? (
-                                            <span className="inline-flex items-center w-fit px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">Menunggu Mentor</span>
-                                        ) : (
-                                            <span className="inline-flex items-center w-fit px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">Disetujui Mentor</span>
-                                        )}
-                                    </td>
-                                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{fmtDate(r.created_at)}</td>
-                                    <td className="px-4 py-3">
-                                        <div className="flex items-center justify-end gap-2">
-                                            <button disabled={busy || waitingMentor} title={waitingMentor ? "Belum di-approve Mentor" : ""} onClick={() => doApprove(`/approval/form-idp/${r.id}/approve`)}
-                                                className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed">Approve</button>
-                                            <button disabled={busy || waitingMentor} onClick={() => openReject("idp", `/approval/form-idp/${r.id}/reject`)}
-                                                className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">Reject</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
+                <FilterableTable
+                    columns={idpPendingCols}
+                    data={idpPending}
+                    emptyMessage="Tidak ada Form IDP yang menunggu approval."
+                    filters={[
+                        { key: "status", label: "Status", options: [{ value: "pending", label: "Menunggu Mentor" }, { value: "mentor_approved", label: "Disetujui Mentor" }] },
+                        BATCH_FILTER,
+                    ]}
+                    actions={(r) => {
+                        const waitingMentor = r.status === "pending";
+                        return (
+                            <div className="flex items-center justify-end gap-2">
+                                <button disabled={busy || waitingMentor} title={waitingMentor ? "Belum di-approve Mentor" : ""} onClick={() => doApprove(`/approval/form-idp/${r.id}/approve`)}
+                                    className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed">Approve</button>
+                                <button disabled={busy || waitingMentor} onClick={() => openReject("idp", `/approval/form-idp/${r.id}/reject`)}
+                                    className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">Reject</button>
+                            </div>
+                        );
+                    }}
+                />
             )}
 
             {tab === "history" && (
                 <div className="space-y-5">
-                    {/* OJT Approved */}
                     <div>
                         <h3 className="text-sm font-semibold text-slate-600 mb-2">Penilaian OJT — Sudah Disetujui</h3>
-                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
-                            <table className="w-full text-sm min-w-180">
-                                <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
-                                    <tr>
-                                        <th className="text-left px-4 py-3 whitespace-nowrap">Kader</th>
-                                        <th className="text-left px-4 py-3 whitespace-nowrap">BU</th>
-                                        <th className="text-center px-4 py-3 whitespace-nowrap">FMC</th>
-                                        <th className="text-center px-4 py-3 whitespace-nowrap">Final Score</th>
-                                        <th className="text-left px-4 py-3 whitespace-nowrap">Mentor</th>
-                                        <th className="text-left px-4 py-3 whitespace-nowrap">Disetujui</th>
-                                        <th className="text-right px-4 py-3 whitespace-nowrap">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {ojtApproved.length === 0 && (
-                                        <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">Belum ada penilaian OJT yang disetujui.</td></tr>
-                                    )}
-                                    {ojtApproved.map((r) => (
-                                        <tr key={`${r.kader_id}-${r.fmc_number}`} className="hover:bg-slate-50">
-                                            <td className="px-4 py-3 font-medium text-slate-700 whitespace-nowrap">{r.kader_nama ?? "—"}</td>
-                                            <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.bu ?? "—"}</td>
-                                            <td className="px-4 py-3 text-center">FMC-{r.fmc_number}</td>
-                                            <td className="px-4 py-3 text-center font-semibold text-emerald-600">{r.final_score != null ? Number(r.final_score).toFixed(1) : "—"}</td>
-                                            <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.mentor_nama ?? "—"}</td>
-                                            <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{fmtDate(r.approved_at)}</td>
-                                            <td className="px-4 py-3 text-right">
-                                                <button disabled={busy} onClick={() => openReject("ojt", `/approval/ojt/${r.kader_id}/${r.fmc_number}/reject`, true)}
-                                                    className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">Reject</button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                        <FilterableTable
+                            columns={ojtApprovedCols}
+                            data={ojtApproved}
+                            emptyMessage="Belum ada penilaian OJT yang disetujui."
+                            filters={[BU_FILTER]}
+                            actions={(r) => (
+                                <button disabled={busy} onClick={() => openReject("ojt", `/approval/ojt/${r.kader_id}/${r.fmc_number}/reject`, true)}
+                                    className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">Reject</button>
+                            )}
+                        />
                     </div>
 
-                    {/* IDP Approved */}
                     <div>
                         <h3 className="text-sm font-semibold text-slate-600 mb-2">Form IDP — Sudah Disetujui</h3>
-                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
-                            <table className="w-full text-sm min-w-180">
-                                <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
-                                    <tr>
-                                        <th className="text-left px-4 py-3 whitespace-nowrap">Kader</th>
-                                        <th className="text-left px-4 py-3 whitespace-nowrap">Batch</th>
-                                        <th className="text-left px-4 py-3 whitespace-nowrap">File</th>
-                                        <th className="text-left px-4 py-3 whitespace-nowrap">Disetujui</th>
-                                        <th className="text-right px-4 py-3 whitespace-nowrap">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {idpApproved.length === 0 && (
-                                        <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-400">Belum ada Form IDP yang disetujui.</td></tr>
-                                    )}
-                                    {idpApproved.map((r) => (
-                                        <tr key={r.id} className="hover:bg-slate-50">
-                                            <td className="px-4 py-3 font-medium text-slate-700 whitespace-nowrap">{r.kader_nama ?? "—"}</td>
-                                            <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.nama_batch ?? "—"}</td>
-                                            <td className="px-4 py-3">
-                                                {r.path_file ? (
-                                                    <a href={`/${r.path_file}`} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline text-xs">{r.nama_file ?? "Unduh"}</a>
-                                                ) : <span className="text-slate-400 text-xs">{r.nama_file ?? "—"}</span>}
-                                            </td>
-                                            <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{fmtDate(r.approved_at)}</td>
-                                            <td className="px-4 py-3 text-right">
-                                                <button disabled={busy} onClick={() => openReject("idp", `/approval/form-idp/${r.id}/reject`, true)}
-                                                    className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">Reject</button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                        <FilterableTable
+                            columns={idpApprovedCols}
+                            data={idpApproved}
+                            emptyMessage="Belum ada Form IDP yang disetujui."
+                            filters={[BATCH_FILTER]}
+                            actions={(r) => (
+                                <button disabled={busy} onClick={() => openReject("idp", `/approval/form-idp/${r.id}/reject`, true)}
+                                    className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">Reject</button>
+                            )}
+                        />
                     </div>
 
-                    {/* PA Approved */}
                     <div>
                         <h3 className="text-sm font-semibold text-slate-600 mb-2">Post Activity — Sudah Disetujui</h3>
-                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
-                            <table className="w-full text-sm min-w-180">
-                                <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
-                                    <tr>
-                                        <th className="text-left px-4 py-3 whitespace-nowrap">Uploader</th>
-                                        <th className="text-left px-4 py-3 whitespace-nowrap">BU</th>
-                                        <th className="text-left px-4 py-3 whitespace-nowrap">Tipe</th>
-                                        <th className="text-left px-4 py-3 whitespace-nowrap">Modul</th>
-                                        <th className="text-left px-4 py-3 whitespace-nowrap">File</th>
-                                        <th className="text-center px-4 py-3 whitespace-nowrap">Nilai</th>
-                                        <th className="text-left px-4 py-3 whitespace-nowrap">Disetujui</th>
-                                        <th className="text-right px-4 py-3 whitespace-nowrap">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {paApproved.length === 0 && (
-                                        <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400">Belum ada Post Activity yang disetujui.</td></tr>
-                                    )}
-                                    {paApproved.map((r) => (
-                                        <tr key={r.id} className="hover:bg-slate-50">
-                                            <td className="px-4 py-3 font-medium text-slate-700 whitespace-nowrap">{r.uploader_nama ?? "—"}</td>
-                                            <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.uploader_bu ?? "—"}</td>
-                                            <td className="px-4 py-3 text-slate-500 whitespace-nowrap capitalize">{r.tipe ?? "—"}</td>
-                                            <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.nama_modul ?? "—"}</td>
-                                            <td className="px-4 py-3"><PaFiles row={r} /></td>
-                                            <td className="px-4 py-3 text-center font-semibold text-emerald-600">{r.nilai != null ? Number(r.nilai).toFixed(2) : "—"}</td>
-                                            <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{fmtDate(r.approved_at)}</td>
-                                            <td className="px-4 py-3 text-right">
-                                                <button disabled={busy} onClick={() => openReject("pa", `/approval/post-activity/${r.id}/reject`, true)}
-                                                    className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">Reject</button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                        <FilterableTable
+                            columns={paApprovedCols}
+                            data={paApproved}
+                            emptyMessage="Belum ada Post Activity yang disetujui."
+                            filters={[PABU_FILTER]}
+                            actions={(r) => (
+                                <button disabled={busy} onClick={() => openReject("pa", `/approval/post-activity/${r.id}/reject`, true)}
+                                    className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">Reject</button>
+                            )}
+                        />
                     </div>
                 </div>
             )}
@@ -378,7 +262,7 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
             {approvePa && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => !busy && setApprovePa(null)}>
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5" onClick={(e) => e.stopPropagation()}>
-                        <h3 className="text-base font-semibold text-slate-800">Setujui & Nilai Post Activity</h3>
+                        <h3 className="text-base font-semibold text-slate-800">Setujui &amp; Nilai Post Activity</h3>
                         <p className="text-xs text-slate-500 mt-1">Masukkan nilai Post Activity (0–100). Nilai ini digabung ke Skor Akhir modul.</p>
                         <label className="block mt-3 text-xs font-medium text-slate-600">Nilai <span className="text-red-500">*</span></label>
                         <input type="number" min={0} max={100} step="0.01" value={paNilai}

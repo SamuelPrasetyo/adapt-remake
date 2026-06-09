@@ -86,6 +86,7 @@ Route::middleware(['can:isAdmin'])->group(function () {
         Route::put('/kader/update/{id}', 'update')->name('kader.update');
         Route::delete('/kader/delete/{id}', 'destroy')->name('kader.delete');
         Route::post('/kader/import', 'import')->name('kader.import');
+        Route::get('/kader/template', 'downloadTemplate')->name('kader.template');
         Route::get('/kader/export', 'export_kader')->name('kader.exportexcel');
     });
 

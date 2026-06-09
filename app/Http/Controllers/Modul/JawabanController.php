@@ -318,16 +318,25 @@ class JawabanController extends Controller
 
     public function fetchWeek(Request $request)
     {
-        $last_week = Jawaban::select('weeks.angka_week')
+        $filledAngkaWeeks = Jawaban::select('weeks.angka_week')
             ->join('weeks', 'jawaban.id_week', 'weeks.id_week')
             ->where('jawaban.nik_kader', $request->id_kader)
             ->whereNotNull('jawaban.nama_mentor')
             ->groupBy('weeks.angka_week')
-            ->orderBy('weeks.angka_week', 'desc')
-            ->get()
+            ->pluck('weeks.angka_week')
             ->toArray();
 
-        $data['weeks'] = Week::orderBy('angka_week', 'asc')->whereNotIn('angka_week', $last_week)->get();
+        $idBatch = Kader::where('nik', $request->id_kader)->value('id_batch');
+
+        $data['weeks'] = Week::available()
+            ->when($idBatch, fn($q) => $q->forBatch($idBatch))
+            ->orderBy('angka_week', 'asc')
+            ->get()
+            ->map(fn($w) => [
+                'id_week'    => $w->id_week,
+                'angka_week' => $w->angka_week,
+                'is_filled'  => in_array($w->angka_week, $filledAngkaWeeks),
+            ]);
 
         return response()->json($data);
     }

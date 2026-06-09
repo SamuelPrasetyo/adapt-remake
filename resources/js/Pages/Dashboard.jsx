@@ -42,7 +42,7 @@ function StatusBadge({ status }) {
     );
 }
 
-function MentorFilter({ mentors, value, onChange }) {
+function MentorFilter({ mentors, value, onChange, totalKaderInBatch }) {
     const [open, setOpen] = useState(false);
     const [q, setQ] = useState('');
     const ref = useRef(null);
@@ -53,10 +53,11 @@ function MentorFilter({ mentors, value, onChange }) {
         return () => document.removeEventListener('mousedown', h);
     }, []);
 
-    const totalKader = useMemo(
+    const mentorSum = useMemo(
         () => (mentors || []).reduce((acc, m) => acc + (m.kader_count || 0), 0),
         [mentors]
     );
+    const totalKader = totalKaderInBatch ?? mentorSum;
 
     const filtered = useMemo(() => {
         const list = mentors || [];
@@ -251,7 +252,7 @@ function BatchFilter({ batches, value, onChange }) {
 
 const PAGE_SIZE = 10;
 
-function KaderTable({ kaders, mentorFilter, mentors, onMentorFilter, batches, batchFilter, onBatchFilter, headerTitle, headerSubtitle }) {
+function KaderTable({ kaders, mentorFilter, mentors, onMentorFilter, batches, batchFilter, onBatchFilter, headerTitle, headerSubtitle, totalKaderInBatch }) {
     const list = kaders || [];
     const totalKader = list.length;
     const [page, setPage] = useState(1);
@@ -293,7 +294,7 @@ function KaderTable({ kaders, mentorFilter, mentors, onMentorFilter, batches, ba
                         {/* Filter — mobile: below info, desktop: hidden here */}
                         <div className="mt-2 flex flex-wrap gap-2 sm:hidden">
                             <BatchFilter batches={batches} value={batchFilter} onChange={onBatchFilter} />
-                            <MentorFilter mentors={mentors} value={mentorFilter} onChange={onMentorFilter} />
+                            <MentorFilter mentors={mentors} value={mentorFilter} onChange={onMentorFilter} totalKaderInBatch={totalKaderInBatch} />
                         </div>
                     </div>
                     {/* Filter — desktop only */}
@@ -302,7 +303,7 @@ function KaderTable({ kaders, mentorFilter, mentors, onMentorFilter, batches, ba
                             {totalKader} Kader
                         </span>
                         <BatchFilter batches={batches} value={batchFilter} onChange={onBatchFilter} />
-                        <MentorFilter mentors={mentors} value={mentorFilter} onChange={onMentorFilter} />
+                        <MentorFilter mentors={mentors} value={mentorFilter} onChange={onMentorFilter} totalKaderInBatch={totalKaderInBatch} />
                     </div>
                 </div>
             </div>
@@ -469,6 +470,7 @@ export default function Dashboard({
     kaders,
     buName,
     buShort,
+    totalKaderInBatch,
 }) {
     const s = stats || { kaderAktif: 0, batchBerjalan: 0, feedbackBelum: 0, idpBelum: 0 };
 
@@ -602,6 +604,7 @@ export default function Dashboard({
                         onBatchFilter={handleBatchFilter}
                         headerTitle={headerTitle}
                         headerSubtitle={headerSubtitle}
+                        totalKaderInBatch={totalKaderInBatch}
                     />
                 </section>
             )}

@@ -29,17 +29,24 @@ function progressColor(pct) {
     return 'bg-rose-500';
 }
 
+const FASE_LABELS = {
+    '1': 'Foundation',
+    '2': 'Self Learning',
+    '3': 'Monthly Training',
+};
+
 function FaseScoreBadge({ fase, score }) {
     const num = String(fase).replace(/^Fase\s+/i, '');
+    const label = FASE_LABELS[num] || `Fase ${num}`;
     const color = score >= 80 ? 'bg-emerald-100 text-emerald-700' : score >= 60 ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700';
     return (
         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${color}`}>
-            F{num}: {score}
+            {label}: {score}
         </span>
     );
 }
 
-function MentorDropdown({ mentors, value, onChange }) {
+function MentorDropdown({ mentors, value, onChange, totalKaderInBatch }) {
     const [open, setOpen] = useState(false);
     const [q, setQ] = useState('');
     const ref = useRef(null);
@@ -58,7 +65,7 @@ function MentorDropdown({ mentors, value, onChange }) {
     }, [mentors, q]);
 
     const current = value === 'all' ? null : (mentors || []).find(m => m.id === value);
-    const totalKader = (mentors || []).reduce((acc, m) => acc + (m.kader_count || 0), 0);
+    const totalKader = totalKaderInBatch ?? (mentors || []).reduce((acc, m) => acc + (m.kader_count || 0), 0);
 
     return (
         <div className="relative" ref={ref}>
@@ -224,16 +231,12 @@ function KaderCard({ kader }) {
                         {initials || '?'}
                     </div>
                     <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-slate-900 truncate group-hover:text-blue-600 transition">{kader.nama_kader}</div>
+                        <div className="font-semibold text-slate-900 leading-snug group-hover:text-blue-600 transition wrap-break-word">{kader.nama_kader}</div>
                         <div className="text-xs text-slate-500 truncate mt-0.5">
                             {kader.divisi_name || '—'}
-                            {kader.batch_name ? ` · ${kader.batch_name}${kader.batch_year ? ' ' + kader.batch_year : ''}` : ''}
+                            {kader.batch_name ? ` · Batch ${kader.batch_name}${kader.batch_year ? ' ' + kader.batch_year : ''}` : ''}
                         </div>
                     </div>
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ring-1 shrink-0 ${meta.cls}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
-                        {meta.label}
-                    </span>
                 </div>
 
                 {/* Fase score badges */}
@@ -266,17 +269,21 @@ function KaderCard({ kader }) {
                 <span className="text-xs text-slate-500">
                     Mentor: <span className="font-medium text-slate-700">{kader.mentor_name || '—'}</span>
                 </span>
-                {kader.avg_score != null && (
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ring-1 shrink-0 ${meta.cls}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
+                    {meta.label}
+                </span>
+                {/* {kader.avg_score != null && (
                     <span className="text-xs font-semibold text-slate-700">
                         Avg: {kader.avg_score}
                     </span>
-                )}
+                )} */}
             </div>
         </Link>
     );
 }
 
-export default function KaderSayaIndex({ kaders = [], mentors = [], selectedMentor, mentorFilter = 'all', batches = [], batchFilter = 'all' }) {
+export default function KaderSayaIndex({ kaders = [], mentors = [], selectedMentor, mentorFilter = 'all', batches = [], batchFilter = 'all', totalKaderInBatch }) {
     const [search, setSearch] = useState('');
 
     // Navigasi dengan mempertahankan filter mentor & batch sekaligus.
@@ -324,7 +331,7 @@ export default function KaderSayaIndex({ kaders = [], mentors = [], selectedMent
                         <BatchDropdown batches={batches} value={batchFilter} onChange={handleBatchFilter} />
                     )}
                     {mentors.length > 0 && (
-                        <MentorDropdown mentors={mentors} value={mentorFilter} onChange={handleMentorFilter} />
+                        <MentorDropdown mentors={mentors} value={mentorFilter} onChange={handleMentorFilter} totalKaderInBatch={totalKaderInBatch} />
                     )}
                 </div>
             </div>

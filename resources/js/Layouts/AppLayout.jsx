@@ -27,6 +27,7 @@ export default function AppLayout({
     const nav = user?.type === "Kader" ? KADER_NAV : ADMIN_NAV;
 
     const inbox = props?.inbox;
+    const approvalBadges = props?.approvalBadges ?? {};
 
     const [profileOpen, setProfileOpen] = useState(false);
     const [cpOpen, setCpOpen] = useState(false);
@@ -178,9 +179,14 @@ export default function AppLayout({
                             const slice = nextSectionIdx === -1 ? nav.slice(i + 1) : nav.slice(i + 1, i + 1 + nextSectionIdx);
                             const sectionVisible = slice.some((next) => {
                                 if (next.type === "group") {
+                                    // Grup dengan requires (mis. Approval mentor_only) ikut menentukan visibilitas section.
+                                    if (next.requires === "mentor_only" && !isMentor) return false;
+                                    if (next.requires === "admin021" && !isAdmin021) return false;
+                                    if (next.requires === "admin" && !isAdmin) return false;
                                     return next.children.some((c) => {
                                         if (c.requires === "admin021") return isAdmin021;
                                         if (c.requires === "admin") return isAdmin;
+                                        if (c.requires === "mentor_only") return isMentor;
                                         return true;
                                     });
                                 }
@@ -205,6 +211,7 @@ export default function AppLayout({
                                     item={item}
                                     currentUrl={currentPath}
                                     user={user}
+                                    badges={approvalBadges}
                                 />
                             );
 

@@ -16,6 +16,11 @@ Route::middleware(['can:isMentor'])->group(function () {
     Route::post('/approval/idp/{dokumen}/approve', [ApprovalController::class, 'mentorApproveIdp'])->name('mentor.idp.approve');
     Route::post('/approval/idp/{dokumen}/reject', [ApprovalController::class, 'mentorRejectIdp'])->name('mentor.idp.reject');
 
+    // Approval Weekly Feedback oleh Mentor (1 level, final — tanpa Admin MAI)
+    Route::get('/approval/weekly-feedback', [ApprovalController::class, 'mentorWeekly'])->name('mentor.weekly.index');
+    Route::post('/approval/weekly-feedback/{dokumen}/approve', [ApprovalController::class, 'mentorApproveWeekly'])->name('mentor.weekly.approve');
+    Route::post('/approval/weekly-feedback/{dokumen}/reject', [ApprovalController::class, 'mentorRejectWeekly'])->name('mentor.weekly.reject');
+
     // Program Saya & Modul (learning program milik Mentor sendiri)
     Route::get('/program-saya', [MentorModulController::class, 'programSaya'])->name('mentor.programSaya');
     Route::get('/mentor-modul', [MentorModulController::class, 'index'])->name('mentor.modul');
