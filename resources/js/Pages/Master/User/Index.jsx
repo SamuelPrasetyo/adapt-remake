@@ -200,6 +200,7 @@ function TambahModal({ open, onClose, kaders, companys }) {
                             <input
                                 type={showPwd ? 'text' : 'password'}
                                 placeholder="kata sandi"
+                                autoComplete="new-password"
                                 value={form.data.password}
                                 onChange={(e) => form.setData('password', e.target.value)}
                                 className="w-full rounded-lg border-slate-200 focus:border-blue-500 focus:ring-blue-500/30 text-sm pr-9"
@@ -220,6 +221,7 @@ function TambahModal({ open, onClose, kaders, companys }) {
                             <input
                                 type={showPwd2 ? 'text' : 'password'}
                                 placeholder="ulangi kata sandi"
+                                autoComplete="new-password"
                                 value={form.data.password2}
                                 onChange={(e) => form.setData('password2', e.target.value)}
                                 className="w-full rounded-lg border-slate-200 focus:border-blue-500 focus:ring-blue-500/30 text-sm pr-9"
