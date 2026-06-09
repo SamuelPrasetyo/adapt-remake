@@ -50,9 +50,18 @@ class KaderSayaController extends Controller
 
         $mentors = $mentorsQuery->get();
 
+        // Filter batch: default ke batch yang sedang berjalan; 'all' = semua batch.
+        $batches      = Batch::orderByDesc('tanggal_mulai')->orderByDesc('id_batch')->get();
+        $defaultBatch = optional(Batch::current())->id_batch;
+        $batchFilter  = $request->query('batch_id', $defaultBatch);
+        $idBatch      = ($batchFilter === 'all') ? null : $batchFilter;
+
+        // Jumlah kader per mentor mengikuti filter batch — seorang mentor bisa membina kader
+        // di banyak batch, jadi tanpa filter ini angkanya gabungan semua batch (tidak akurat).
         $mentorIds = $mentors->pluck('id')->all();
         $countMap  = ListKaderPerMentor::whereIn('mentor_id', $mentorIds)
             ->whereNull('deleted_at')
+            ->when($idBatch, fn($q) => $q->where('id_batch', $idBatch))
             ->select('mentor_id', DB::raw('COUNT(*) as c'))
             ->groupBy('mentor_id')
             ->pluck('c', 'mentor_id');
@@ -61,12 +70,6 @@ class KaderSayaController extends Controller
         $mentorFilter   = $request->query('mentor_id', 'all');
         $selectedMentor = null;
         $perMentor      = app(KaderPerMentorController::class);
-
-        // Filter batch: default ke batch yang sedang berjalan; 'all' = semua batch.
-        $batches      = Batch::orderByDesc('tanggal_mulai')->orderByDesc('id_batch')->get();
-        $defaultBatch = optional(Batch::current())->id_batch;
-        $batchFilter  = $request->query('batch_id', $defaultBatch);
-        $idBatch      = ($batchFilter === 'all') ? null : $batchFilter;
 
         if ($mentorFilter && $mentorFilter !== 'all') {
             $selectedMentor = $mentors->firstWhere('id', $mentorFilter);
@@ -80,13 +83,19 @@ class KaderSayaController extends Controller
         // fase_scores & avg_score di-set oleh KaderPerMentorController::attachProgressStats
         // memakai rumus tunggal ModulScore (Post Test + Post Activity, TANPA Pre Test).
 
+        // Jumlah SEMUA kader di batch yang dipilih (termasuk yang belum di-assign ke mentor).
+        $totalKaderInBatch = Kader::when($idBatch, fn($q) => $q->where('id_batch', $idBatch))
+            ->when($isMentor, fn($q) => $q->where('company_code', $user->company_code))
+            ->count();
+
         return Inertia::render('KaderSaya/Index', [
-            'kaders'         => $kaders->values(),
-            'mentors'        => $mentors,
-            'selectedMentor' => $selectedMentor,
-            'mentorFilter'   => $mentorFilter,
-            'batches'        => $batches,
-            'batchFilter'    => $batchFilter !== null ? (string) $batchFilter : 'all',
+            'kaders'             => $kaders->values(),
+            'mentors'            => $mentors,
+            'selectedMentor'     => $selectedMentor,
+            'mentorFilter'       => $mentorFilter,
+            'batches'            => $batches,
+            'batchFilter'        => $batchFilter !== null ? (string) $batchFilter : 'all',
+            'totalKaderInBatch'  => $totalKaderInBatch,
         ]);
     }
 

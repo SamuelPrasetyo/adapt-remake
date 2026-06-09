@@ -126,6 +126,14 @@ class DashboardController extends Controller
             ->map(fn($label, $val) => ['kategori' => $label, 'total' => (int) ($tagCounts[$val] ?? 0)])
             ->values();
 
+        // Jumlah SEMUA kader di batch yang dipilih (termasuk yang belum di-assign ke mentor).
+        $totalKaderInBatch = 0;
+        if ($showMentorPanel) {
+            $totalKaderInBatch = Kader::when($idBatch, fn($q) => $q->where('id_batch', $idBatch))
+                ->when($targetCompanyCode ?? null, fn($q, $cc) => $q->where('company_code', $cc))
+                ->count();
+        }
+
         return Inertia::render('Dashboard', [
             'stats'              => $stats,
             'departemenProgress' => [],
@@ -140,6 +148,7 @@ class DashboardController extends Controller
             'kaders'             => $kaders,
             'buName'             => $buName,
             'buShort'            => $buShort,
+            'totalKaderInBatch'  => $totalKaderInBatch,
         ]);
     }
 

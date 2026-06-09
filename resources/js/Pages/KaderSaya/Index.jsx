@@ -39,7 +39,7 @@ function FaseScoreBadge({ fase, score }) {
     );
 }
 
-function MentorDropdown({ mentors, value, onChange }) {
+function MentorDropdown({ mentors, value, onChange, totalKaderInBatch }) {
     const [open, setOpen] = useState(false);
     const [q, setQ] = useState('');
     const ref = useRef(null);
@@ -58,7 +58,7 @@ function MentorDropdown({ mentors, value, onChange }) {
     }, [mentors, q]);
 
     const current = value === 'all' ? null : (mentors || []).find(m => m.id === value);
-    const totalKader = (mentors || []).reduce((acc, m) => acc + (m.kader_count || 0), 0);
+    const totalKader = totalKaderInBatch ?? (mentors || []).reduce((acc, m) => acc + (m.kader_count || 0), 0);
 
     return (
         <div className="relative" ref={ref}>
@@ -276,7 +276,7 @@ function KaderCard({ kader }) {
     );
 }
 
-export default function KaderSayaIndex({ kaders = [], mentors = [], selectedMentor, mentorFilter = 'all', batches = [], batchFilter = 'all' }) {
+export default function KaderSayaIndex({ kaders = [], mentors = [], selectedMentor, mentorFilter = 'all', batches = [], batchFilter = 'all', totalKaderInBatch }) {
     const [search, setSearch] = useState('');
 
     // Navigasi dengan mempertahankan filter mentor & batch sekaligus.
@@ -324,7 +324,7 @@ export default function KaderSayaIndex({ kaders = [], mentors = [], selectedMent
                         <BatchDropdown batches={batches} value={batchFilter} onChange={handleBatchFilter} />
                     )}
                     {mentors.length > 0 && (
-                        <MentorDropdown mentors={mentors} value={mentorFilter} onChange={handleMentorFilter} />
+                        <MentorDropdown mentors={mentors} value={mentorFilter} onChange={handleMentorFilter} totalKaderInBatch={totalKaderInBatch} />
                     )}
                 </div>
             </div>
