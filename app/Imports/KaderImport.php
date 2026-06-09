@@ -16,14 +16,51 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 class KaderImport implements ToCollection, WithHeadingRow
 {
+    /** Hasil validasi import; dibaca controller setelah Excel::import. */
+    public bool $valid = true;
+    public string $errorMessage = '';
+
     public function collection(Collection $rows)
     {
+        // Semua baris wajib memakai batch & tahun yang sedang berjalan.
+        $current = Batch::current();
+        if (!$current) {
+            $this->valid = false;
+            $this->errorMessage = 'Tidak ada batch yang sedang berjalan. Import dibatalkan.';
+            return;
+        }
+
+        $mismatched = [];
+        foreach ($rows as $row) {
+            if (blank($row['nama'] ?? null) && blank($row['nik'] ?? null)) {
+                continue; // lewati baris kosong
+            }
+            $rowBatch = trim((string) ($row['batch'] ?? ''));
+            $rowTahun = trim((string) ($row['tahun'] ?? ''));
+            if ($rowBatch !== (string) $current->nama_batch || $rowTahun !== (string) $current->tahun_batch) {
+                $mismatched[] = ($row['nama'] ?? '-') . " (batch {$rowBatch}/{$rowTahun})";
+            }
+        }
+
+        if (!empty($mismatched)) {
+            $shown = implode('; ', array_slice($mismatched, 0, 5));
+            $this->valid = false;
+            $this->errorMessage = 'Data tidak valid. Kolom batch/tahun harus sesuai batch yang sedang berjalan '
+                . "(Batch {$current->nama_batch} / {$current->tahun_batch}). "
+                . count($mismatched) . " baris tidak sesuai: {$shown}"
+                . (count($mismatched) > 5 ? ', ...' : '');
+            return; // batalkan total — tidak ada data yang disimpan
+        }
+
         $data = [];
         $missingCompanies = [];
         $missingDivisions = [];
         $missingDepartments = [];
         $missingBatches = [];
         foreach ($rows as $row) {
+            if (blank($row['nama'] ?? null) && blank($row['nik'] ?? null)) {
+                continue; // lewati baris kosong
+            }
             $company = Company::where('company_shortname', $row['company_shortname'])->first();
             $divisi = Divisi::where('nama', $row['divisi'])->first();
             $departemen = Departemen::where('nama', $row['departemen'])->first();

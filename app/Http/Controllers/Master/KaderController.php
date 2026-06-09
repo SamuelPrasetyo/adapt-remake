@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Master;
 
 use App\Http\Controllers\Controller;
 use App\Exports\KadersExport;
+use App\Exports\KaderTemplateExport;
 use App\Models\Kader;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 use RealRashid\SweetAlert\Facades\Alert;
 use App\Imports\KaderImport;
@@ -46,12 +48,18 @@ class KaderController extends Controller
         $divisis = Divisi::get();
         $departemens = Departemen::get();
         $batchs = Batch::get();
+        $currentBatch = Batch::current();
         return Inertia::render('Master/Kader/Index', [
             'kaders'     => $kaders,
             'companys'   => $companys,
             'divisis'    => $divisis,
             'departemens'=> $departemens,
             'batchs'     => $batchs,
+            'currentBatch' => $currentBatch ? [
+                'id_batch'    => $currentBatch->id_batch,
+                'nama_batch'  => $currentBatch->nama_batch,
+                'tahun_batch' => $currentBatch->tahun_batch,
+            ] : null,
         ]);
     }
 
@@ -73,7 +81,43 @@ class KaderController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'nama'          => 'required|string|max:255',
+            'nik'           => 'required|string|max:255|unique:kader,nik',
+            'jenis_kelamin' => 'required|in:L,P',
+            'iq'            => 'nullable|numeric',
+            'ipk'           => 'nullable|numeric',
+            'company_code'  => 'required',
+            'id_divisi'     => 'required',
+            'id_departemen' => 'required',
+            'id_batch'      => 'required',
+        ], [], [
+            'nik'           => 'NIK',
+            'jenis_kelamin' => 'Jenis Kelamin',
+            'company_code'  => 'Bisnis Unit',
+            'id_divisi'     => 'Divisi',
+            'id_departemen' => 'Departemen',
+            'id_batch'      => 'Batch',
+        ]);
+
+        Kader::insert([
+            'id'            => Str::uuid(),
+            'nik'           => $validated['nik'],
+            'nama'          => $validated['nama'],
+            'jenis_kelamin' => $validated['jenis_kelamin'],
+            'iq'            => $validated['iq'] ?? '0',
+            'ipk'           => $validated['ipk'] ?? '0',
+            'company_code'  => $validated['company_code'],
+            'id_divisi'     => $validated['id_divisi'],
+            'id_departemen' => $validated['id_departemen'],
+            'id_batch'      => $validated['id_batch'],
+            'created_at'    => now(),
+            'created_by'    => Auth::user()->id,
+        ]);
+
+        ActivityLog::activity_log('Menambah data Kader');
+        Alert::success('Success', 'Data berhasil ditambahkan!');
+        return redirect()->route('kader.index');
     }
 
     public function export_kader()
@@ -83,6 +127,11 @@ class KaderController extends Controller
         return Excel::download(new KadersExport,$file_name);
     }
 
+    public function downloadTemplate()
+    {
+        return Excel::download(new KaderTemplateExport, 'template_import_kader.xlsx');
+    }
+
     public function import(Request $request)
     {
         $this->validate($request, [
@@ -90,7 +139,13 @@ class KaderController extends Controller
         ]);
 
         try {
-            Excel::import(new KaderImport, request()->file('file'));
+            $importer = new KaderImport;
+            Excel::import($importer, request()->file('file'));
+
+            if (!$importer->valid) {
+                Alert::warning('Data Tidak Valid', $importer->errorMessage);
+                return redirect()->route('kader.index');
+            }
 
             Alert::success('Success', 'Import data berhasil!');
             ActivityLog::activity_log('Mengimport data Kader');
