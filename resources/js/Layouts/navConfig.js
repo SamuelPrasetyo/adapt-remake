@@ -240,17 +240,24 @@ export const KADER_NAV = [
     },
     { type: "section", label: "Dokumen" },
     {
-        type: "item",
-        label: "Upload File IDP",
-        icon: "file",
-        href: "/form-idp",
-        match: "/form-idp",
-    },
-    {
-        type: "item",
-        label: "Upload File Weekly Feedback",
-        icon: "file",
-        href: "/weekly-feedback",
-        match: "/weekly-feedback",
+        type: "group",
+        label: "Upload File",
+        icon: "check",
+        children: [
+            {
+                type: "item",
+                label: "IDP",
+                icon: "file",
+                href: "/form-idp",
+                match: "/form-idp",
+            },
+            {
+                type: "item",
+                label: "Weekly Feedback",
+                icon: "file",
+                href: "/weekly-feedback",
+                match: "/weekly-feedback",
+            },
+        ],
     },
 ];
