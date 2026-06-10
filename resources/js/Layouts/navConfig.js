@@ -77,7 +77,7 @@ export const ADMIN_NAV = [
     {
         type: "item",
         label: "Modul",
-        icon: "layers",
+        icon: "book",
         href: "/mentor-modul",
         match: "/mentor-modul",
         requires: "mentor_only",
@@ -139,7 +139,7 @@ export const ADMIN_NAV = [
     {
         type: "group",
         label: "Modul",
-        icon: "layers",
+        icon: "book",
         children: [
             {
                 label: "Activity Log",
@@ -180,7 +180,7 @@ export const ADMIN_NAV = [
     {
         type: "group",
         label: "Upload",
-        icon: "document",
+        icon: "upload_doc",
         children: [
             {
                 label: "Dokumen",
@@ -195,6 +195,14 @@ export const ADMIN_NAV = [
                 requires: "admin021",
             },
         ],
+    },
+    {
+        type: "item",
+        label: "Arsip Dokumen",
+        icon: "archive",
+        href: "/arsip-dokumen",
+        match: "/arsip-dokumen",
+        requires: "admin021",
     },
     { type: "section", label: "Report" },
     {
@@ -234,7 +242,7 @@ export const KADER_NAV = [
     {
         type: "item",
         label: "My Modul",
-        icon: "layers",
+        icon: "book",
         href: "/my-learning",
         match: "/my-learning",
     },
@@ -242,7 +250,7 @@ export const KADER_NAV = [
     {
         type: "group",
         label: "Upload File",
-        icon: "check",
+        icon: "upload_doc",
         children: [
             {
                 type: "item",
