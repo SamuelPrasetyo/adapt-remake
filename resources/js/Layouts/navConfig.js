@@ -19,7 +19,7 @@ export const ADMIN_NAV = [
     {
         type: "item",
         label: "All Kader",
-        icon: "people",
+        icon: "user_group",
         href: "/kader-saya",
         match: "/kader-saya",
         requires: "admin021",
@@ -174,6 +174,14 @@ export const ADMIN_NAV = [
                 match: "/soal-modul",
                 requires: "admin",
             },
+        ],
+    },
+    { type: "section", label: "Dokumen" },
+    {
+        type: "group",
+        label: "Upload",
+        icon: "document",
+        children: [
             {
                 label: "Dokumen",
                 href: "/dokumen",
@@ -181,9 +189,9 @@ export const ADMIN_NAV = [
                 requires: "admin",
             },
             {
-                label: "Template IDP",
-                href: "/form-idp/admin",
-                match: "/form-idp/admin",
+                label: "Template",
+                href: "/template",
+                match: "/template",
                 requires: "admin021",
             },
         ],

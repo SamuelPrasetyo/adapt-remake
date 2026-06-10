@@ -79,10 +79,16 @@ class WeeklyFeedbackController extends Controller
             ];
         })->sortByDesc('angka_week')->values();
 
+        $template = Dokumen::where('jenis', 'TEMPLATE_WEEKLY_FEEDBACK')->latest()->first();
+
         return Inertia::render('WeeklyFeedback/Index', [
             'weeks'    => $weeks,
             'history'  => $history,
             'hasBatch' => $idBatch !== null,
+            'template' => $template ? [
+                'nama_file' => $template->nama_file,
+                'path_file' => $template->path_file,
+            ] : null,
         ]);
     }
 
