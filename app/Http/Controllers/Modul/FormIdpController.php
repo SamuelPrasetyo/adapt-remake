@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Modul;
 use App\Http\Controllers\Controller;
 use App\Models\Dokumen;
 use App\Models\Kader;
+use App\Support\UploadName;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -86,38 +87,47 @@ class FormIdpController extends Controller
             mkdir($folder, 0755, true);
         }
 
-        $ext      = $request->file('file')->extension();
-        $fileName = time() . '_' . uniqid() . '.' . $ext;
+        // Format nama: idkader_form_idp_namakader_batchN
+        $ext       = $request->file('file')->extension();
+        $nameParts = [$user->id, 'form_idp', $user->name, 'batch' . $idBatch];
+        $fileName  = UploadName::stored($nameParts, $ext);
         $request->file('file')->move($folder, $fileName);
 
-        if ($lastDoc) {
-            // Re-upload setelah ditolak — perbarui baris yang sama agar unique key terjaga.
-            // Hapus file lama dari storage agar tidak menumpuk file sampah.
-            $oldPath = public_path($lastDoc->path_file);
-            if ($lastDoc->path_file && file_exists($oldPath)) {
-                @unlink($oldPath);
+        try {
+            if ($lastDoc) {
+                // Re-upload setelah ditolak — perbarui baris yang sama agar unique key terjaga.
+                // Hapus file lama dari storage agar tidak menumpuk file sampah.
+                $oldPath = public_path($lastDoc->path_file);
+                if ($lastDoc->path_file && file_exists($oldPath)) {
+                    @unlink($oldPath);
+                }
+                $lastDoc->update([
+                    'nama_file'          => UploadName::display($nameParts, $ext),
+                    'path_file'          => 'uploads/form_idp/' . $fileName,
+                    'status'             => 'pending',
+                    'approved_by'        => null,
+                    'approved_at'        => null,
+                    'rejection_reason'   => null,
+                    'rejected_by_role'   => null,
+                    'mentor_approved_by' => null,
+                    'mentor_approved_at' => null,
+                ]);
+            } else {
+                Dokumen::create([
+                    'nama_file' => UploadName::display($nameParts, $ext),
+                    'path_file' => 'uploads/form_idp/' . $fileName,
+                    'tipe'      => 'kader',
+                    'status'    => 'pending',
+                    'jenis'     => 'FORM_IDP',
+                    'kader_id'  => $user->id,
+                    'id_batch'  => $idBatch,
+                ]);
             }
-            $lastDoc->update([
-                'nama_file'          => $request->file('file')->getClientOriginalName(),
-                'path_file'          => 'uploads/form_idp/' . $fileName,
-                'status'             => 'pending',
-                'approved_by'        => null,
-                'approved_at'        => null,
-                'rejection_reason'   => null,
-                'rejected_by_role'   => null,
-                'mentor_approved_by' => null,
-                'mentor_approved_at' => null,
-            ]);
-        } else {
-            Dokumen::create([
-                'nama_file' => $request->file('file')->getClientOriginalName(),
-                'path_file' => 'uploads/form_idp/' . $fileName,
-                'tipe'      => 'kader',
-                'status'    => 'pending',
-                'jenis'     => 'FORM_IDP',
-                'kader_id'  => $user->id,
-                'id_batch'  => $idBatch,
-            ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Insert/update gagal (mis. double-submit kena unique index) —
+            // hapus file yang baru dipindah agar tidak jadi sampah di disk.
+            @unlink($folder . '/' . $fileName);
+            return back()->withErrors(['file' => 'Upload gagal diproses. Silakan muat ulang halaman dan coba lagi.']);
         }
 
         return back()->with('success', 'File IDP berhasil diupload.');
@@ -167,12 +177,12 @@ class FormIdpController extends Controller
                 @unlink($oldPath);
             }
             $existing->update([
-                'nama_file' => $request->file('file')->getClientOriginalName(),
+                'nama_file' => $fileName,
                 'path_file' => 'uploads/template_idp/' . $fileName,
             ]);
         } else {
             Dokumen::create([
-                'nama_file' => $request->file('file')->getClientOriginalName(),
+                'nama_file' => $fileName,
                 'path_file' => 'uploads/template_idp/' . $fileName,
                 'tipe'      => 'admin',
                 'status'    => 'approved',

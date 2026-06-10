@@ -92,12 +92,12 @@ class TemplateAdminController extends Controller
                 @unlink($oldPath);
             }
             $existing->update([
-                'nama_file' => $request->file('file')->getClientOriginalName(),
+                'nama_file' => $fileName,
                 'path_file' => $dir . '/' . $fileName,
             ]);
         } else {
             Dokumen::create([
-                'nama_file' => $request->file('file')->getClientOriginalName(),
+                'nama_file' => $fileName,
                 'path_file' => $dir . '/' . $fileName,
                 'tipe'      => 'admin',
                 'status'    => 'approved',

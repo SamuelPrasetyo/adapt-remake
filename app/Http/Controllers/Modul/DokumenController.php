@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Modul;
 
 use App\Http\Controllers\Controller;
+use App\Support\UploadName;
 use Illuminate\Http\Request;
 use App\Models\Dokumen;
 use Inertia\Inertia;
@@ -21,13 +22,15 @@ class DokumenController extends Controller
             'file' => 'required|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx|max:2048',
         ]);
 
-        $fileName = time() . '_' . uniqid() . '.' . $request->file->extension();
+        // Format nama: iduser_jenis_namauser
+        $user      = auth()->user();
+        $ext       = $request->file->extension();
+        $nameParts = [$user->id, $request->jenis ?: 'dokumen', $user->name];
+        $fileName  = UploadName::stored($nameParts, $ext);
         $request->file->move(public_path('uploads/dokumen'), $fileName);
 
-        $originalName = $request->file('file')->getClientOriginalName();
-
         Dokumen::create([
-            'nama_file' => $originalName,
+            'nama_file' => UploadName::display($nameParts, $ext),
             'path_file' => 'uploads/dokumen/' . $fileName,
             'tipe' => 'mentor',
             'status' => 'pending',
@@ -47,12 +50,15 @@ class DokumenController extends Controller
                 unlink(public_path($dokumen->path_file));
             }
 
-            $fileName = time() . '_' . uniqid() . '.' . $request->file->extension();
+            $user      = auth()->user();
+            $ext       = $request->file->extension();
+            $nameParts = [$user->id, $request->jenis ?: 'dokumen', $user->name];
+            $fileName  = UploadName::stored($nameParts, $ext);
             $request->file->move(public_path('uploads/dokumen'), $fileName);
 
             $dokumen->path_file = 'uploads/dokumen/' . $fileName;
 
-            $dokumen->nama_file = $request->file('file')->getClientOriginalName();
+            $dokumen->nama_file = UploadName::display($nameParts, $ext);
         }
 
         $dokumen->update([

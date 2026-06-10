@@ -7,6 +7,7 @@ use App\Models\ActivityLog;
 use App\Models\Dokumen;
 use App\Models\Kader;
 use App\Models\Week;
+use App\Support\UploadName;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -108,11 +109,11 @@ class WeeklyFeedbackController extends Controller
         $idBatch = $kader->id_batch;
 
         // Anti-fraud: week harus milik batch kader & sudah berjalan (tak bisa minggu depan).
-        $weekValid = Week::available()
+        $week = Week::available()
             ->where('id_week', $request->id_week)
             ->forBatch($idBatch)
-            ->exists();
-        if (!$weekValid) {
+            ->first();
+        if (!$week) {
             return back()->withErrors(['file' => 'Week tidak valid atau belum waktunya.']);
         }
 
@@ -134,38 +135,47 @@ class WeeklyFeedbackController extends Controller
             mkdir($folder, 0755, true);
         }
 
-        $ext      = $request->file('file')->extension();
-        $fileName = time() . '_' . uniqid() . '.' . $ext;
+        // Format nama: idkader_weekly_feedback_namakader_weekN
+        $ext       = $request->file('file')->extension();
+        $nameParts = [$user->id, 'weekly_feedback', $user->name, 'week' . $week->angka_week];
+        $fileName  = UploadName::stored($nameParts, $ext);
         $request->file('file')->move($folder, $fileName);
 
         $relPath = 'uploads/weekly_feedback/' . $user->id . '/' . $fileName;
 
-        if ($existing) {
-            // Re-upload setelah ditolak — perbarui baris yang sama, hapus file lama.
-            $oldPath = public_path($existing->path_file);
-            if ($existing->path_file && file_exists($oldPath)) {
-                @unlink($oldPath);
+        try {
+            if ($existing) {
+                // Re-upload setelah ditolak — perbarui baris yang sama, hapus file lama.
+                $oldPath = public_path($existing->path_file);
+                if ($existing->path_file && file_exists($oldPath)) {
+                    @unlink($oldPath);
+                }
+                $existing->update([
+                    'nama_file'        => UploadName::display($nameParts, $ext),
+                    'path_file'        => $relPath,
+                    'status'           => 'pending',
+                    'approved_by'      => null,
+                    'approved_at'      => null,
+                    'rejection_reason' => null,
+                    'rejected_by_role' => null,
+                ]);
+            } else {
+                Dokumen::create([
+                    'nama_file' => UploadName::display($nameParts, $ext),
+                    'path_file' => $relPath,
+                    'tipe'      => 'kader',
+                    'status'    => 'pending',
+                    'jenis'     => 'WEEKLY_FEEDBACK',
+                    'kader_id'  => $user->id,
+                    'id_batch'  => $idBatch,
+                    'id_week'   => $request->id_week,
+                ]);
             }
-            $existing->update([
-                'nama_file'        => $request->file('file')->getClientOriginalName(),
-                'path_file'        => $relPath,
-                'status'           => 'pending',
-                'approved_by'      => null,
-                'approved_at'      => null,
-                'rejection_reason' => null,
-                'rejected_by_role' => null,
-            ]);
-        } else {
-            Dokumen::create([
-                'nama_file' => $request->file('file')->getClientOriginalName(),
-                'path_file' => $relPath,
-                'tipe'      => 'kader',
-                'status'    => 'pending',
-                'jenis'     => 'WEEKLY_FEEDBACK',
-                'kader_id'  => $user->id,
-                'id_batch'  => $idBatch,
-                'id_week'   => $request->id_week,
-            ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Insert/update gagal (mis. double-submit kena unique index) —
+            // hapus file yang baru dipindah agar tidak jadi sampah di disk.
+            @unlink($folder . '/' . $fileName);
+            return back()->withErrors(['file' => 'Upload gagal diproses. Silakan muat ulang halaman dan coba lagi.']);
         }
 
         ActivityLog::activity_log('Upload Weekly Feedback (Week ID ' . $request->id_week . ')');
