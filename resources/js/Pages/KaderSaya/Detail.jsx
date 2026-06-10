@@ -75,6 +75,7 @@ export default function KaderSayaDetail({
     mentorFeedbackList = [],
     mentorName = "",
     perjanjianKerja = null,
+    templatePerjanjianKerja = null,
     canUpload = false,
     penilaianList = [],
     penilaianSkorMap = {},
@@ -241,6 +242,7 @@ export default function KaderSayaDetail({
                 <PerjanjianKerjaTab
                     kader={kader}
                     perjanjianKerja={perjanjianKerja}
+                    templatePerjanjianKerja={templatePerjanjianKerja}
                     canUpload={canUpload}
                     kaderId={kaderId}
                 />

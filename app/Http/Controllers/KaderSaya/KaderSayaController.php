@@ -453,7 +453,13 @@ class KaderSayaController extends Controller
             'refleksi'           => $refleksiList,
             'mentorFeedbackList' => $mentorFeedbackList,
             'mentorName'         => $user->name,
-            'perjanjianKerja'    => $perjanjianKerja,
+            'perjanjianKerja'         => $perjanjianKerja,
+            'templatePerjanjianKerja' => ($isAdmin021 || $isMentor)
+                ? optional(Dokumen::where('jenis', 'TEMPLATE_PERJANJIAN_KERJA')->latest()->first(), fn($t) => [
+                    'nama_file' => $t->nama_file,
+                    'path_file' => $t->path_file,
+                ])
+                : null,
             'canUpload'          => $isAdmin021 || $isMentor,
             'penilaianList'      => $penilaianData['penilaianList'],
             'penilaianSkorMap'   => $penilaianData['skorMap'],
