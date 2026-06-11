@@ -197,7 +197,7 @@ class KaderSayaController extends Controller
             }
 
             // Checkpoint hanya dihitung untuk komponen yang dimiliki modul (Materi selalu ada).
-            $needPre  = (bool) $modul->has_test && (int) $modul->fase !== 3;
+            $needPre  = (bool) $modul->has_test;
             $needPost = (bool) $modul->has_test;
             $needPA   = (bool) $modul->has_post_activity;
 
@@ -245,13 +245,11 @@ class KaderSayaController extends Controller
             if ($done >= $required) $faseGroups[$fase]['done']++;
         }
 
-        // Avg per fase & overall (FMC) memakai rumus tunggal ModulScore::average.
-        $allFaseScores = [];
+        // Avg per fase memakai rumus tunggal ModulScore::average.
         foreach ($faseGroups as &$fg) {
             $fg['progress']  = $fg['total'] > 0 ? (int) round(($fg['done'] / $fg['total']) * 100) : 0;
             $faseAvg         = ModulScore::average($fg['scores'], null);
             $fg['avg_score'] = $faseAvg !== null ? (int) round($faseAvg) : null;
-            if ($fg['avg_score'] !== null) $allFaseScores[] = $fg['avg_score'];
             unset($fg['scores']);
         }
         unset($fg);
@@ -261,8 +259,6 @@ class KaderSayaController extends Controller
         $totalModuls     = count($moduls);
         $totalCp         = $totalCheckpoints;
         $overallProgress = $totalCp > 0 ? (int) round(($doneCheckpoints / $totalCp) * 100) : 0;
-        $avgOverall      = ModulScore::average($allFaseScores, null);
-        $avgScoreOverall = $avgOverall !== null ? (int) round($avgOverall) : null;
         $status          = $overallProgress < 40 ? 'kritis' : ($overallProgress < 70 ? 'perlu_perhatian' : 'on_track');
 
         $weeklyData = [];
@@ -284,23 +280,6 @@ class KaderSayaController extends Controller
         // tiap minggu = (Routine Job + Assignment + Pemahaman SOP + Project) / 4, lalu dibagi jumlah minggu.
         $avgFeedbackRaw = ModulScore::feedbackAverage(array_map(fn ($w) => $w['score'], $weeklyData));
         $avgFeedback    = $avgFeedbackRaw !== null ? round($avgFeedbackRaw, 1) : null;
-
-        $cohortMap = [];
-        if ($kader->id_batch) {
-            $batchNiks  = Kader::where('id_batch', $kader->id_batch)->pluck('nik')->all();
-            $cohortRows = DB::table('jawaban')
-                ->join('weeks', 'jawaban.id_week', '=', 'weeks.id_week')
-                ->selectRaw('weeks.angka_week as week, AVG(jawaban.jawaban) as avg_s')
-                ->whereIn('jawaban.nik_kader', $batchNiks)
-                ->whereNotNull('jawaban.nama_mentor')
-                ->whereIn('jawaban.id_pertanyaan', ['1', '2', '3', '4'])
-                ->groupBy('weeks.angka_week')
-                ->orderBy('weeks.angka_week')
-                ->get();
-            foreach ($cohortRows as $r) {
-                $cohortMap['W' . $r->week] = round((float) $r->avg_s, 1);
-            }
-        }
 
         $currentWeek = count($weeklyData);
         $totalWeeks  = $kader->id_batch
@@ -429,6 +408,15 @@ class KaderSayaController extends Controller
 
         $penilaianData = PenilaianOjtController::getDataForKader($kader->id);
 
+        // Stat "FMC" di header = rata-rata Final Score Penilaian OJT, HANYA dari FMC yang
+        // sudah dinilai. FMC yang belum dinilai tidak ikut membagi — bila baru FMC-1 yang
+        // terisi, tampilkan nilai FMC-1 utuh (jangan dibagi 2/3 dulu).
+        $fmcScored = array_values(array_filter(
+            array_column($penilaianData['penilaianList'], 'final_score'),
+            fn ($v) => $v !== null
+        ));
+        $fmcScore = !empty($fmcScored) ? round(array_sum($fmcScored) / count($fmcScored), 1) : null;
+
         $allFases = Modul::distinct()
             ->whereNotNull('fase')
             ->pluck('fase')
@@ -441,12 +429,10 @@ class KaderSayaController extends Controller
             'kader'              => $kader,
             'faseGroups'         => $faseGroups,
             'overallProgress'    => $overallProgress,
-            'avgScore'           => $avgScoreOverall,
+            'fmcScore'           => $fmcScore,
             'status'             => $status,
             'totalModuls'        => $totalModuls,
-            'weeklyData'         => $weeklyData,
             'avgFeedback'        => $avgFeedback,
-            'cohortMap'          => $cohortMap,
             'currentWeek'        => $currentWeek,
             'totalWeeks'         => $totalWeeks,
             'weeks'              => $weeks,
