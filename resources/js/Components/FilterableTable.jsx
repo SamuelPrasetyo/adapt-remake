@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import DataTable from "@/Components/DataTable";
-import FilterDropdown from "@/Components/FilterDropdown";
+import FilterPanel from "@/Components/FilterPanel";
 
-// FilterableTable: DataTable (search + sort + pagination client-side) + satu/lebih
-// dropdown Filter terstruktur. Filter di-pre-filter sebelum diserahkan ke DataTable.
+// FilterableTable: DataTable (search + sort + pagination client-side) + panel filter gabungan.
+// Filter di-pre-filter sebelum diserahkan ke DataTable.
 //
 // Props tambahan dari DataTable:
 //   filters: [{ key, label, options?, labelFormat?(value), allLabel? }]
@@ -39,18 +39,12 @@ export default function FilterableTable({ columns, data = [], actions, filters =
     }, [data, values, resolvedFilters]);
 
     const searchPrefix = resolvedFilters.length > 0 ? (
-        <div className="flex items-center gap-2 flex-wrap">
-            {resolvedFilters.map((f) => (
-                <FilterDropdown
-                    key={f.key}
-                    label={f.label}
-                    allLabel={f.allLabel}
-                    value={values[f.key] ?? ""}
-                    options={f.options}
-                    onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))}
-                />
-            ))}
-        </div>
+        <FilterPanel
+            filters={resolvedFilters}
+            values={values}
+            onChange={(key, val) => setValues((s) => ({ ...s, [key]: val }))}
+            onReset={() => setValues({})}
+        />
     ) : null;
 
     return (

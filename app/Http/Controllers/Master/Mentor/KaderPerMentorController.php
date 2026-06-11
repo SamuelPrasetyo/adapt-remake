@@ -298,7 +298,7 @@ class KaderPerMentorController extends Controller
                 // Checkpoint hanya dihitung untuk komponen yang dimiliki modul (Materi selalu ada).
                 $hasTest  = (bool) (optional($modulFlags[$mid] ?? null)->has_test ?? true);
                 $hasPA    = (bool) (optional($modulFlags[$mid] ?? null)->has_post_activity ?? true);
-                $needPre  = $hasTest && (int) $modulFase[$mid] !== 3;
+                $needPre  = $hasTest;
                 $needPost = $hasTest;
                 $needPA   = $hasPA;
 

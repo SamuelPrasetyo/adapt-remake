@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Master\ArsipDokumenController;
 use App\Http\Controllers\Master\Mentor\KaderPerMentorController;
 use App\Http\Controllers\Master\Mentor\MentorController;
 use App\Http\Controllers\Modul\MentorModulController;
@@ -20,4 +21,7 @@ Route::middleware(['can:isAdmin021'])->group(function () {
 
     // Assign Kader ke Mentor
     Route::post('/mentor/assign-kader', [KaderPerMentorController::class, 'assignKader'])->name('mentor.assignKader');
+
+    // Arsip Dokumen — baca semua dokumen, read-only
+    Route::get('/arsip-dokumen', [ArsipDokumenController::class, 'index'])->name('arsip-dokumen.index');
 });

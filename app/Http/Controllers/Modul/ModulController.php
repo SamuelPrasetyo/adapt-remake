@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\Kader;
 use Illuminate\Http\Request;
 use App\Models\Modul;
+use App\Support\UploadName;
 use Illuminate\Support\Facades\DB;
 use RealRashid\SweetAlert\Facades\Alert;
 use Inertia\Inertia;
@@ -34,7 +35,8 @@ class ModulController extends Controller
             'has_post_activity' => 'boolean',
             'file_materi'       => 'required|mimes:pdf|max:10240'
         ]);
-        $fileName = time() . '_' . $request->file_materi->getClientOriginalName();
+        // Format nama: modul_kodemodul (materi PDF, diakses via URL publik)
+        $fileName = UploadName::stored(['modul', $request->kode_modul], $request->file_materi->extension());
         $request->file_materi->move(public_path('uploads/modul'), $fileName);
 
         $faseValue = $request->tipe === 'MENTOR' ? null : preg_replace('/[^0-9]/', '', (string) $request->fase);
@@ -75,7 +77,7 @@ class ModulController extends Controller
                 unlink(public_path($modul->file_materi));
             }
 
-            $fileName = time() . '_' . $request->file_materi->getClientOriginalName();
+            $fileName = UploadName::stored(['modul', $request->kode_modul], $request->file_materi->extension());
             $request->file_materi->move(public_path('uploads/modul'), $fileName);
 
             $modul->file_materi = 'uploads/modul/' . $fileName;

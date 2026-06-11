@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Modul;
 use App\Http\Controllers\Controller;
 use App\Models\Dokumen;
 use App\Models\Kader;
+use App\Support\UploadName;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -15,28 +16,25 @@ class FormIdpController extends Controller
         $user  = auth()->user();
         $kader = Kader::where('nik', $user->nik)->first();
 
+        // Batch diambil dari data kader (tabel kader), BUKAN batch periode yang sedang
+        // berjalan — pendampingan bisa 2-3 tahun melewati periode batch-nya.
         $idBatch = $kader ? $kader->id_batch : null;
 
-        $doc = Dokumen::where('kader_id', $user->id)
-            ->where('jenis', 'FORM_IDP')
-            ->where('id_batch', $idBatch)
-            ->latest()
-            ->first();
+        // Riwayat semua upload IDP kader ini (lintas batch), terbaru lebih dulu.
+        $riwayat = Dokumen::where('dokumen.kader_id', $user->id)
+            ->where('dokumen.jenis', 'FORM_IDP')
+            ->leftJoin('batch as b', 'dokumen.id_batch', '=', 'b.id_batch')
+            ->orderByDesc('dokumen.created_at')
+            ->get(['dokumen.nama_file', 'dokumen.path_file', 'dokumen.status',
+                   'dokumen.rejection_reason', 'dokumen.rejected_by_role',
+                   'dokumen.created_at', 'b.nama_batch', 'b.tahun_batch']);
 
         $template = Dokumen::where('jenis', 'TEMPLATE_IDP')
             ->latest()
             ->first();
 
         return Inertia::render('FormIdp/Index', [
-            'idp' => $doc ? [
-                'nama_file'        => $doc->nama_file,
-                'path_file'        => $doc->path_file,
-                'status'           => $doc->status,
-                'rejection_reason' => $doc->rejection_reason,
-                'rejected_by_role' => $doc->rejected_by_role,
-                'created_at'       => $doc->created_at,
-                'can_reupload'     => $doc->status === 'rejected',
-            ] : null,
+            'riwayat'     => $riwayat,
             'hasBatch'    => $idBatch !== null,
             'hasTemplate' => $template !== null,
             'template'    => $template ? [
@@ -48,8 +46,10 @@ class FormIdpController extends Controller
 
     public function store(Request $request)
     {
+        // Hanya PDF maks 2MB. Boleh diupload berkali-kali tanpa limit — tiap upload
+        // menjadi baris riwayat baru yang masing-masing melewati review Mentor/Admin MAI.
         $request->validate([
-            'file' => 'required|file|mimes:pdf,docx,xlsx|max:2048',
+            'file' => 'required|file|mimes:pdf|max:2048',
         ]);
 
         $user  = auth()->user();
@@ -63,62 +63,30 @@ class FormIdpController extends Controller
             return back()->withErrors(['file' => 'Template IDP belum tersedia. Hubungi Admin MAI untuk mengupload template terlebih dahulu.']);
         }
 
+        // Batch dicatat dari data kader (tabel kader), bukan batch periode yang sedang
+        // berjalan, agar dokumen tidak rancu saat pendampingan melewati periode batch.
         $idBatch = $kader->id_batch;
-
-        // Satu IDP per Kader per batch — blokir jika sudah ada yang pending/approved.
-        $lastDoc = Dokumen::where('kader_id', $user->id)
-            ->where('jenis', 'FORM_IDP')
-            ->where('id_batch', $idBatch)
-            ->latest()
-            ->first();
-
-        if ($lastDoc && in_array($lastDoc->status, ['pending', 'mentor_approved', 'approved'], true)) {
-            $msg = [
-                'approved'        => 'File IDP sudah disetujui Admin MAI dan tidak dapat diubah.',
-                'mentor_approved' => 'File IDP sudah disetujui Mentor dan sedang menunggu review Admin MAI.',
-                'pending'         => 'File IDP masih menunggu review Mentor.',
-            ][$lastDoc->status];
-            return back()->withErrors(['file' => $msg]);
-        }
 
         $folder = public_path('uploads/form_idp');
         if (!file_exists($folder)) {
             mkdir($folder, 0755, true);
         }
 
-        $ext      = $request->file('file')->extension();
-        $fileName = time() . '_' . uniqid() . '.' . $ext;
+        // Format nama: idkader_form_idp_namakader_batchN
+        $ext       = $request->file('file')->extension();
+        $nameParts = [$user->id, 'form_idp', $user->name, 'batch' . $idBatch];
+        $fileName  = UploadName::stored($nameParts, $ext);
         $request->file('file')->move($folder, $fileName);
 
-        if ($lastDoc) {
-            // Re-upload setelah ditolak — perbarui baris yang sama agar unique key terjaga.
-            // Hapus file lama dari storage agar tidak menumpuk file sampah.
-            $oldPath = public_path($lastDoc->path_file);
-            if ($lastDoc->path_file && file_exists($oldPath)) {
-                @unlink($oldPath);
-            }
-            $lastDoc->update([
-                'nama_file'          => $request->file('file')->getClientOriginalName(),
-                'path_file'          => 'uploads/form_idp/' . $fileName,
-                'status'             => 'pending',
-                'approved_by'        => null,
-                'approved_at'        => null,
-                'rejection_reason'   => null,
-                'rejected_by_role'   => null,
-                'mentor_approved_by' => null,
-                'mentor_approved_at' => null,
-            ]);
-        } else {
-            Dokumen::create([
-                'nama_file' => $request->file('file')->getClientOriginalName(),
-                'path_file' => 'uploads/form_idp/' . $fileName,
-                'tipe'      => 'kader',
-                'status'    => 'pending',
-                'jenis'     => 'FORM_IDP',
-                'kader_id'  => $user->id,
-                'id_batch'  => $idBatch,
-            ]);
-        }
+        Dokumen::create([
+            'nama_file' => UploadName::display($nameParts, $ext),
+            'path_file' => 'uploads/form_idp/' . $fileName,
+            'tipe'      => 'kader',
+            'status'    => 'pending',
+            'jenis'     => 'FORM_IDP',
+            'kader_id'  => $user->id,
+            'id_batch'  => $idBatch,
+        ]);
 
         return back()->with('success', 'File IDP berhasil diupload.');
     }
@@ -167,12 +135,12 @@ class FormIdpController extends Controller
                 @unlink($oldPath);
             }
             $existing->update([
-                'nama_file' => $request->file('file')->getClientOriginalName(),
+                'nama_file' => $fileName,
                 'path_file' => 'uploads/template_idp/' . $fileName,
             ]);
         } else {
             Dokumen::create([
-                'nama_file' => $request->file('file')->getClientOriginalName(),
+                'nama_file' => $fileName,
                 'path_file' => 'uploads/template_idp/' . $fileName,
                 'tipe'      => 'admin',
                 'status'    => 'approved',

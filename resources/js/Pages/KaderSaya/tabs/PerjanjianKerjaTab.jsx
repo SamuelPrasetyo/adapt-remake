@@ -63,7 +63,7 @@ function UploadZone({ hasDoc, uploading, onClick }) {
     );
 }
 
-export default function PerjanjianKerjaTab({ kader, perjanjianKerja, canUpload, kaderId }) {
+export default function PerjanjianKerjaTab({ kader, perjanjianKerja, canUpload, kaderId, templatePerjanjianKerja = null }) {
     const [uploading, setUploading] = useState(false);
     const [toast, setToast]         = useState({ open: false, type: "success", message: "" });
     const fileRef = useRef(null);
@@ -99,6 +99,28 @@ export default function PerjanjianKerjaTab({ kader, perjanjianKerja, canUpload, 
         <>
         <Toast open={toast.open} type={toast.type} message={toast.message} onClose={closeToast} />
         <div className="space-y-4">
+            {/* Template download */}
+            {templatePerjanjianKerja && (
+                <div className="flex items-center justify-between p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
+                    <div>
+                        <p className="text-sm font-semibold text-emerald-800">Template Perjanjian Kerja</p>
+                        <p className="text-xs text-emerald-600 mt-0.5">{templatePerjanjianKerja.nama_file}</p>
+                    </div>
+                    <a
+                        href={`/${templatePerjanjianKerja.path_file}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-white border border-emerald-300 rounded-lg hover:bg-emerald-100 transition"
+                    >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Unduh Template
+                    </a>
+                </div>
+            )}
+
             {/* Section header */}
             <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-slate-800">Perjanjian Kerja</h2>

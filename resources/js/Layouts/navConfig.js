@@ -19,7 +19,7 @@ export const ADMIN_NAV = [
     {
         type: "item",
         label: "All Kader",
-        icon: "people",
+        icon: "user_group",
         href: "/kader-saya",
         match: "/kader-saya",
         requires: "admin021",
@@ -77,7 +77,7 @@ export const ADMIN_NAV = [
     {
         type: "item",
         label: "Modul",
-        icon: "layers",
+        icon: "book",
         href: "/mentor-modul",
         match: "/mentor-modul",
         requires: "mentor_only",
@@ -139,7 +139,7 @@ export const ADMIN_NAV = [
     {
         type: "group",
         label: "Modul",
-        icon: "layers",
+        icon: "book",
         children: [
             {
                 label: "Activity Log",
@@ -174,6 +174,14 @@ export const ADMIN_NAV = [
                 match: "/soal-modul",
                 requires: "admin",
             },
+        ],
+    },
+    { type: "section", label: "Dokumen" },
+    {
+        type: "group",
+        label: "Upload",
+        icon: "upload_doc",
+        children: [
             {
                 label: "Dokumen",
                 href: "/dokumen",
@@ -181,12 +189,20 @@ export const ADMIN_NAV = [
                 requires: "admin",
             },
             {
-                label: "Template IDP",
-                href: "/form-idp/admin",
-                match: "/form-idp/admin",
+                label: "Template",
+                href: "/template",
+                match: "/template",
                 requires: "admin021",
             },
         ],
+    },
+    {
+        type: "item",
+        label: "Arsip Dokumen",
+        icon: "archive",
+        href: "/arsip-dokumen",
+        match: "/arsip-dokumen",
+        requires: "admin021",
     },
     { type: "section", label: "Report" },
     {
@@ -226,23 +242,30 @@ export const KADER_NAV = [
     {
         type: "item",
         label: "My Modul",
-        icon: "layers",
+        icon: "book",
         href: "/my-learning",
         match: "/my-learning",
     },
     { type: "section", label: "Dokumen" },
     {
-        type: "item",
-        label: "Upload File IDP",
-        icon: "file",
-        href: "/form-idp",
-        match: "/form-idp",
-    },
-    {
-        type: "item",
-        label: "Upload File Weekly Feedback",
-        icon: "file",
-        href: "/weekly-feedback",
-        match: "/weekly-feedback",
+        type: "group",
+        label: "Upload File",
+        icon: "upload_doc",
+        children: [
+            {
+                type: "item",
+                label: "IDP",
+                icon: "file",
+                href: "/form-idp",
+                match: "/form-idp",
+            },
+            {
+                type: "item",
+                label: "Weekly Feedback",
+                icon: "file",
+                href: "/weekly-feedback",
+                match: "/weekly-feedback",
+            },
+        ],
     },
 ];

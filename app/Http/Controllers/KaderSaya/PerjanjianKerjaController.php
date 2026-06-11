@@ -7,6 +7,7 @@ use App\Models\ActivityLog;
 use App\Models\Dokumen;
 use App\Models\Kader;
 use App\Models\ListKaderPerMentor;
+use App\Support\UploadName;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -41,10 +42,12 @@ class PerjanjianKerjaController extends Controller
             $old->delete();
         }
 
-        $file         = $request->file('file');
-        $originalName = $file->getClientOriginalName();
-        $storedName   = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-        $dir          = public_path('uploads/perjanjian_kerja/' . $kader_id);
+        // Format nama: idkader_perjanjian_kerja_namakader
+        $file       = $request->file('file');
+        $ext        = $file->getClientOriginalExtension();
+        $nameParts  = [$kader_id, 'perjanjian_kerja', $kader->nama];
+        $storedName = UploadName::stored($nameParts, $ext);
+        $dir        = public_path('uploads/perjanjian_kerja/' . $kader_id);
 
         if (!is_dir($dir)) {
             mkdir($dir, 0755, true);
@@ -55,7 +58,7 @@ class PerjanjianKerjaController extends Controller
         Dokumen::create([
             'kader_id'  => $kader_id,
             'mentor_id' => $user->id,
-            'nama_file' => $originalName,
+            'nama_file' => UploadName::display($nameParts, $ext),
             'path_file' => 'uploads/perjanjian_kerja/' . $kader_id . '/' . $storedName,
             'tipe'      => 'mentor',
             'status'    => 'pending',

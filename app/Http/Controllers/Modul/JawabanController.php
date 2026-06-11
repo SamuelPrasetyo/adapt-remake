@@ -13,6 +13,7 @@ use App\Models\Pertanyaan;
 use App\Models\User;
 use App\Models\Week;
 use App\Models\WeekKader;
+use App\Support\UploadName;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use RealRashid\SweetAlert\Facades\Alert;
@@ -242,11 +243,12 @@ class JawabanController extends Controller
         try {
             $bu = Company::where('company_code', $this->user->company_code)->first();
             $week = WeekKader::where('id_week', $request->id_week)->first();
-            $name = str_replace(' ', '_', $this->user->name);
-            $file = $request->file('jawaban_kader')[4]->getClientOriginalName();
-            $file = explode('.', $file);
-            $ext_name = end($file);
-            $nama_file =  $name . '_' . $bu->company_shortname . '_' . $week->angka_week . '.' . $ext_name;
+            // Format nama: nikkader_feedback_kader_namakader_company_weekN (+suffix unik)
+            $ext_name  = $request->file('jawaban_kader')[4]->getClientOriginalExtension();
+            $nama_file = UploadName::stored(
+                [$nikKader, 'feedback_kader', $this->user->name, $bu?->company_shortname, 'week' . $week->angka_week],
+                $ext_name
+            );
             $count_pertanyaan = Pertanyaan::where('type', 'Kader')->where('status', 'Aktif')->get()->count();
 
             for ($i = 1; $i <= $count_pertanyaan; $i++) {

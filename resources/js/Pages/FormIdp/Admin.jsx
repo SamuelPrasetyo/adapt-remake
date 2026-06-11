@@ -1,3 +1,4 @@
+import { useState, useMemo } from 'react';
 import { useForm } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 
@@ -7,6 +8,8 @@ const STATUS_CONFIG = {
     approved:        { label: 'Disetujui',         cls: 'bg-green-100 text-green-700'  },
     rejected:        { label: 'Ditolak',           cls: 'bg-red-100 text-red-700'      },
 };
+
+const PAGE_SIZE = 10;
 
 function StatusBadge({ status }) {
     const cfg = STATUS_CONFIG[status] ?? { label: status, cls: 'bg-slate-100 text-slate-600' };
@@ -20,6 +23,161 @@ function StatusBadge({ status }) {
 function fmtDate(s) {
     if (!s) return '—';
     return new Date(s).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+}
+
+function UploadsTable({ uploads }) {
+    const [search, setSearch] = useState('');
+    const [statusFilter, setStatusFilter] = useState('');
+    const [page, setPage] = useState(1);
+
+    const filtered = useMemo(() => {
+        const q = search.toLowerCase();
+        return uploads.filter((r) => {
+            const matchSearch =
+                !q ||
+                (r.kader_nama ?? '').toLowerCase().includes(q) ||
+                (r.nama_batch ?? '').toLowerCase().includes(q) ||
+                (r.nama_file ?? '').toLowerCase().includes(q);
+            const matchStatus = !statusFilter || r.status === statusFilter;
+            return matchSearch && matchStatus;
+        });
+    }, [uploads, search, statusFilter]);
+
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    const safePage = Math.min(page, totalPages);
+    const rows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+    const handleSearch = (e) => { setSearch(e.target.value); setPage(1); };
+    const handleStatus = (e) => { setStatusFilter(e.target.value); setPage(1); };
+
+    return (
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            {/* Header */}
+            <div className="px-5 py-3 border-b border-slate-100">
+                <h2 className="text-sm font-semibold text-slate-700">Daftar Upload IDP Kader</h2>
+            </div>
+
+            {/* Search & Filter */}
+            <div className="px-5 py-3 border-b border-slate-100 flex flex-col sm:flex-row gap-2">
+                <div className="relative flex-1">
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                    </svg>
+                    <input
+                        type="text"
+                        value={search}
+                        onChange={handleSearch}
+                        placeholder="Cari nama kader, batch, atau file..."
+                        className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                </div>
+                <select
+                    value={statusFilter}
+                    onChange={handleStatus}
+                    className="text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-600"
+                >
+                    <option value="">Semua Status</option>
+                    {Object.entries(STATUS_CONFIG).map(([key, { label }]) => (
+                        <option key={key} value={key}>{label}</option>
+                    ))}
+                </select>
+            </div>
+
+            {/* Table */}
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                    <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
+                        <tr>
+                            <th className="text-left px-4 py-3">Kader</th>
+                            <th className="text-left px-4 py-3">Batch</th>
+                            <th className="text-left px-4 py-3">File</th>
+                            <th className="text-left px-4 py-3">Status</th>
+                            <th className="text-left px-4 py-3">Diupload</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {rows.length === 0 ? (
+                            <tr>
+                                <td colSpan={5} className="px-4 py-8 text-center text-slate-400">
+                                    {uploads.length === 0
+                                        ? 'Belum ada Kader yang mengupload file IDP.'
+                                        : 'Tidak ada data yang sesuai dengan pencarian.'}
+                                </td>
+                            </tr>
+                        ) : (
+                            rows.map((r) => (
+                                <tr key={r.id} className="hover:bg-slate-50">
+                                    <td className="px-4 py-3 font-medium text-slate-700">{r.kader_nama ?? '—'}</td>
+                                    <td className="px-4 py-3 text-slate-500">{r.nama_batch ?? '—'}</td>
+                                    <td className="px-4 py-3">
+                                        {r.path_file ? (
+                                            <a href={`/${r.path_file}`} target="_blank" rel="noreferrer"
+                                                className="text-blue-600 hover:underline text-xs">
+                                                {r.nama_file ?? 'Unduh'}
+                                            </a>
+                                        ) : (
+                                            <span className="text-slate-400 text-xs">{r.nama_file ?? '—'}</span>
+                                        )}
+                                    </td>
+                                    <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
+                                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{fmtDate(r.created_at)}</td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+                <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
+                    <p className="text-xs text-slate-400">
+                        Menampilkan {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} dari {filtered.length} data
+                    </p>
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={() => setPage((p) => Math.max(1, p - 1))}
+                            disabled={safePage === 1}
+                            className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                            ‹ Prev
+                        </button>
+                        {Array.from({ length: totalPages }, (_, i) => i + 1)
+                            .filter((p) => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
+                            .reduce((acc, p, idx, arr) => {
+                                if (idx > 0 && p - arr[idx - 1] > 1) acc.push('...');
+                                acc.push(p);
+                                return acc;
+                            }, [])
+                            .map((p, idx) =>
+                                p === '...' ? (
+                                    <span key={`ellipsis-${idx}`} className="px-2 text-xs text-slate-400">…</span>
+                                ) : (
+                                    <button
+                                        key={p}
+                                        onClick={() => setPage(p)}
+                                        className={`px-2.5 py-1.5 text-xs rounded-lg border transition ${
+                                            p === safePage
+                                                ? 'bg-blue-600 text-white border-blue-600'
+                                                : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                                        }`}
+                                    >
+                                        {p}
+                                    </button>
+                                )
+                            )}
+                        <button
+                            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                            disabled={safePage === totalPages}
+                            className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                            Next ›
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
 }
 
 export default function FormIdpAdmin({ template, uploads = [] }) {
@@ -101,50 +259,8 @@ export default function FormIdpAdmin({ template, uploads = [] }) {
                     </form>
                 </div>
 
-                {/* Uploads List */}
-                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                    <div className="px-5 py-3 border-b border-slate-100">
-                        <h2 className="text-sm font-semibold text-slate-700">Daftar Upload IDP Kader</h2>
-                    </div>
-                    <table className="w-full text-sm">
-                        <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
-                            <tr>
-                                <th className="text-left px-4 py-3">Kader</th>
-                                <th className="text-left px-4 py-3">Batch</th>
-                                <th className="text-left px-4 py-3">File</th>
-                                <th className="text-left px-4 py-3">Status</th>
-                                <th className="text-left px-4 py-3">Diupload</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {uploads.length === 0 && (
-                                <tr>
-                                    <td colSpan={5} className="px-4 py-8 text-center text-slate-400">
-                                        Belum ada Kader yang mengupload file IDP.
-                                    </td>
-                                </tr>
-                            )}
-                            {uploads.map((r) => (
-                                <tr key={r.id} className="hover:bg-slate-50">
-                                    <td className="px-4 py-3 font-medium text-slate-700">{r.kader_nama ?? '—'}</td>
-                                    <td className="px-4 py-3 text-slate-500">{r.nama_batch ?? '—'}</td>
-                                    <td className="px-4 py-3">
-                                        {r.path_file ? (
-                                            <a href={`/${r.path_file}`} target="_blank" rel="noreferrer"
-                                                className="text-blue-600 hover:underline text-xs">
-                                                {r.nama_file ?? 'Unduh'}
-                                            </a>
-                                        ) : (
-                                            <span className="text-slate-400 text-xs">{r.nama_file ?? '—'}</span>
-                                        )}
-                                    </td>
-                                    <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
-                                    <td className="px-4 py-3 text-slate-500">{fmtDate(r.created_at)}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                <UploadsTable uploads={uploads} />
+
             </div>
         </AppLayout>
     );

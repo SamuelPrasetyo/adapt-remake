@@ -454,7 +454,7 @@ export default function ModulDetail({ modul, progress = {}, pretest = [], postte
     // Komponen modul dikustom per modul (default true untuk modul lama).
     const hasTest    = modul?.has_test ?? true;
     const hasPA      = modul?.has_post_activity ?? true;
-    const hasPre     = hasTest && modul?.fase != 3;
+    const hasPre     = hasTest;
     // Skor Akhir dihitung backend dari komponen yang dimiliki modul.
     const finalScore = progress.final_score;
 

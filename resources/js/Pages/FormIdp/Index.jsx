@@ -22,10 +22,8 @@ const REJECTED_BY_LABEL = {
     admin:  'Ditolak oleh Admin MAI',
 };
 
-export default function FormIdpIndex({ idp, hasBatch, hasTemplate, template }) {
+export default function FormIdpIndex({ riwayat = [], hasBatch, hasTemplate, template }) {
     const { data, setData, post, processing, errors, reset } = useForm({ file: null });
-
-    const canUpload = hasBatch && hasTemplate && (!idp || idp.can_reupload);
 
     const submit = (e) => {
         e.preventDefault();
@@ -37,7 +35,7 @@ export default function FormIdpIndex({ idp, hasBatch, hasTemplate, template }) {
 
     return (
         <AppLayout title="UPLOAD FILE IDP" breadcrumb="Dokumen / Upload File IDP">
-            <div className="max-w-2xl mx-auto space-y-6">
+            <div className="max-w-3xl mx-auto space-y-6">
 
                 {/* Download Template */}
                 {template ? (
@@ -67,63 +65,7 @@ export default function FormIdpIndex({ idp, hasBatch, hasTemplate, template }) {
                     </div>
                 )}
 
-                {/* Info Card */}
-                {idp ? (
-                    <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-3">
-                        <h2 className="text-sm font-semibold text-slate-700">File IDP Terakhir</h2>
-                        <div className="grid grid-cols-2 gap-y-2 text-sm">
-                            <span className="text-slate-500">Nama File</span>
-                            <span className="font-medium text-slate-800 break-all">{idp.nama_file}</span>
-                            <span className="text-slate-500">Status</span>
-                            <div className="space-y-1">
-                                <StatusBadge status={idp.status} />
-                                {idp.status === 'rejected' && idp.rejected_by_role && (
-                                    <p className="text-xs text-red-600 font-medium">
-                                        {REJECTED_BY_LABEL[idp.rejected_by_role] ?? 'Ditolak'}
-                                    </p>
-                                )}
-                            </div>
-                            <span className="text-slate-500">Diunggah</span>
-                            <span className="text-slate-600">
-                                {new Date(idp.created_at).toLocaleDateString('id-ID', {
-                                    day: '2-digit', month: 'long', year: 'numeric',
-                                })}
-                            </span>
-                        </div>
-
-                        {idp.status === 'rejected' && (
-                            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                                <p className="text-xs font-semibold text-red-700 mb-0.5">
-                                    {REJECTED_BY_LABEL[idp.rejected_by_role] ?? 'Ditolak'}
-                                </p>
-                                {idp.rejection_reason ? (
-                                    <p className="text-sm text-red-600">{idp.rejection_reason}</p>
-                                ) : (
-                                    <p className="text-sm text-red-400 italic">Tidak ada alasan penolakan.</p>
-                                )}
-                            </div>
-                        )}
-
-                        <a
-                            href={`/${idp.path_file}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:underline"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                            </svg>
-                            Unduh File
-                        </a>
-                    </div>
-                ) : (
-                    <div className="bg-white border border-slate-200 rounded-xl p-5 text-sm text-slate-500">
-                        Belum ada file IDP yang diunggah.
-                    </div>
-                )}
-
-                {/* Upload Form */}
+                {/* Upload Form — IDP boleh diupload berkali-kali tanpa limit */}
                 {!hasBatch ? (
                     <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700">
                         Batch Kader belum ditentukan. Hubungi Admin untuk mengatur batch Anda sebelum dapat mengunggah file IDP.
@@ -132,27 +74,20 @@ export default function FormIdpIndex({ idp, hasBatch, hasTemplate, template }) {
                     <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700">
                         Template IDP belum tersedia. Hubungi Admin MAI untuk mengupload template terlebih dahulu.
                     </div>
-                ) : idp && !idp.can_reupload ? (
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-500">
-                        {idp.status === 'approved'
-                            ? 'File IDP sudah disetujui Admin MAI dan tidak dapat diubah.'
-                            : idp.status === 'mentor_approved'
-                            ? 'File IDP sudah disetujui Mentor dan sedang menunggu review Admin MAI.'
-                            : 'File IDP masih menunggu review Mentor.'}
-                    </div>
                 ) : (
                     <div className="bg-white border border-slate-200 rounded-xl p-5">
-                        <h2 className="text-sm font-semibold text-slate-700 mb-4">
-                            {idp?.can_reupload ? 'Upload Ulang File IDP' : 'Upload File IDP'}
-                        </h2>
+                        <h2 className="text-sm font-semibold text-slate-700 mb-1">Upload File IDP</h2>
+                        <p className="text-xs text-slate-400 mb-4">
+                            File IDP dapat diupload berkali-kali; setiap upload tersimpan sebagai riwayat dan akan direview Mentor lalu Admin MAI.
+                        </p>
                         <form onSubmit={submit} className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                                    File <span className="text-slate-400 font-normal">(PDF, DOCX, XLSX — maks 2MB)</span>
+                                    File <span className="text-slate-400 font-normal">(PDF — maks 2MB)</span>
                                 </label>
                                 <input
                                     type="file"
-                                    accept=".pdf,.docx,.xlsx"
+                                    accept=".pdf,application/pdf"
                                     onChange={(e) => setData('file', e.target.files[0])}
                                     required
                                     className="w-full text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
@@ -182,6 +117,54 @@ export default function FormIdpIndex({ idp, hasBatch, hasTemplate, template }) {
                         </form>
                     </div>
                 )}
+
+                {/* Riwayat Upload */}
+                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                    <div className="px-5 py-4 border-b border-slate-100">
+                        <h2 className="text-sm font-semibold text-slate-700">Riwayat Upload File IDP</h2>
+                    </div>
+                    {riwayat.length === 0 ? (
+                        <div className="p-5 text-sm text-slate-500">Belum ada file IDP yang diunggah.</div>
+                    ) : (
+                        <ul className="divide-y divide-slate-100">
+                            {riwayat.map((doc, i) => (
+                                <li key={i} className="px-5 py-4 space-y-2">
+                                    <div className="flex flex-wrap items-start justify-between gap-2">
+                                        <div className="min-w-0">
+                                            <a
+                                                href={`/${doc.path_file}`}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="text-sm font-medium text-blue-600 hover:underline break-all"
+                                            >
+                                                {doc.nama_file}
+                                            </a>
+                                            <p className="text-xs text-slate-400 mt-0.5">
+                                                {doc.nama_batch ? `Batch ${doc.nama_batch}${doc.tahun_batch ? ' ' + doc.tahun_batch : ''} · ` : ''}
+                                                {new Date(doc.created_at).toLocaleDateString('id-ID', {
+                                                    day: '2-digit', month: 'long', year: 'numeric',
+                                                })}
+                                            </p>
+                                        </div>
+                                        <StatusBadge status={doc.status} />
+                                    </div>
+                                    {doc.status === 'rejected' && (
+                                        <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg">
+                                            <p className="text-xs font-semibold text-red-700 mb-0.5">
+                                                {REJECTED_BY_LABEL[doc.rejected_by_role] ?? 'Ditolak'}
+                                            </p>
+                                            {doc.rejection_reason ? (
+                                                <p className="text-xs text-red-600">{doc.rejection_reason}</p>
+                                            ) : (
+                                                <p className="text-xs text-red-400 italic">Tidak ada alasan penolakan.</p>
+                                            )}
+                                        </div>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
             </div>
         </AppLayout>
     );

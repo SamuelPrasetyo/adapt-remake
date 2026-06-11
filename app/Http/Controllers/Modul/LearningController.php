@@ -13,6 +13,7 @@ use App\Models\ModulReadingProgress;
 use App\Models\ModulTestResult;
 use App\Models\ModulUserAnswers;
 use App\Models\SoalModul;
+use App\Support\UploadName;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -392,13 +393,21 @@ class LearningController extends Controller
             mkdir($folder, 0755, true);
         }
 
+        // Format nama — Kader: idkader_post_activity_nama_kodemodul;
+        // Mentor: idmentor_post_activity_nama_kodemodul_sesiN (N = 1-10).
+        $kodeModul = Modul::find($request->modul_id)?->kode_modul ?? ('modul' . $request->modul_id);
+        $sessionNo = $approvedCount + 1;
+        $nameParts = [$user->id, 'post_activity', $user->name, $kodeModul];
+        if ($isMentor) {
+            $nameParts[] = 'sesi' . $sessionNo;
+        }
+
         $ext      = $request->file('file')->extension();
-        $fileName = time() . '_' . uniqid() . '.' . $ext;
-        $originalName = $request->file('file')->getClientOriginalName();
+        $fileName = UploadName::stored($nameParts, $ext);
         $request->file('file')->move($folder, $fileName);
 
         Dokumen::create([
-            'nama_file' => $originalName,
+            'nama_file' => UploadName::display($nameParts, $ext),
             'path_file' => 'uploads/post_activity/' . $fileName,
             'tipe'      => $isMentor ? 'mentor' : 'kader',
             'status'    => 'pending',
@@ -409,7 +418,6 @@ class LearningController extends Controller
             'mentor_master_id' => $isMentor ? $mentorMasterId : null,
         ]);
 
-        $sessionNo = $approvedCount + 1;
         $msg = $isMentor
             ? "Post Activity sesi {$sessionNo}/{$maxSessions} berhasil diupload."
             : 'File berhasil diupload.';
