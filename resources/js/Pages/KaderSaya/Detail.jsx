@@ -62,12 +62,10 @@ export default function KaderSayaDetail({
     kader,
     faseGroups = [],
     overallProgress = 0,
-    avgScore,
+    fmcScore = null,
     status = "kritis",
     totalModuls = 0,
-    weeklyData = [],
     avgFeedback = null,
-    cohortMap = {},
     currentWeek = 0,
     totalWeeks = 0,
     weeks = [],
@@ -179,9 +177,9 @@ export default function KaderSayaDetail({
                             </div>
                         );
                     })}
-                    <div className="text-center">
+                    <div className="text-center" title="Rata-rata Final Score Penilaian OJT dari FMC yang sudah dinilai">
                         <div className="text-2xl font-bold text-blue-600">
-                            {avgScore != null ? avgScore : "—"}
+                            {fmcScore != null ? fmcScore : "—"}
                         </div>
                         <div className="text-xs text-slate-500 mt-0.5">FMC</div>
                     </div>
@@ -213,7 +211,7 @@ export default function KaderSayaDetail({
 
             {/* Tab content */}
             {tab === "learning" && (
-                <LearningGrowthTab faseGroups={faseGroups} weeklyData={weeklyData} cohortMap={cohortMap} allFases={allFases} />
+                <LearningGrowthTab faseGroups={faseGroups} allFases={allFases} />
             )}
             {tab === "feedback" && (
                 <FeedbackTab
