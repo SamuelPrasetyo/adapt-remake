@@ -41,20 +41,77 @@ export function scoreColor(score) {
 const faseNum = getFaseNum;
 const faseLabel = getFaseLabel;
 
-export default function LearningGrowthTab({ faseGroups, weeklyData, cohortMap, allFases = [] }) {
+// Growth = selisih skor modul terakhir vs pertama yang sudah dinilai dalam satu rangkaian.
+function growthOf(points) {
+    const scored = points.filter((p) => p.score != null);
+    if (scored.length < 2) return null;
+    return scored[scored.length - 1].score - scored[0].score;
+}
+
+function GrowthCard({ title, subtitle, growth, color }) {
+    return (
+        <div className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <div className="text-xs font-medium text-slate-500">{title}</div>
+            <div className={`text-xl font-bold mt-0.5 ${
+                growth == null ? "text-slate-300" : growth >= 0 ? color : "text-rose-600"
+            }`}>
+                {growth == null ? "—" : `${growth >= 0 ? "+" : ""}${growth}`}
+            </div>
+            <div className="text-xs text-slate-400 mt-0.5">{subtitle}</div>
+        </div>
+    );
+}
+
+export default function LearningGrowthTab({ faseGroups, allFases = [] }) {
     const displayFases = allFases.length > 0 ? allFases : faseGroups.map((fg) => fg.fase);
     const fgByFase = (fase) => faseGroups.find((g) => faseNum(g.fase) === faseNum(fase));
 
     const chartRef      = useRef(null);
     const chartInstance = useRef(null);
 
+    // Titik grafik = Skor Akhir per modul (bukan rata-rata fase) agar naik-turunnya terlihat.
+    // In-Class = modul Foundation (F1..) disambung modul Monthly Training/Leadership (L1..)
+    // dalam SATU garis; Self-Learning (S1..) jadi garis terpisah.
+    const modulsOf = (n) => fgByFase(n)?.moduls ?? [];
+    const inClassPoints = [
+        ...modulsOf(1).map((m, i) => ({ label: `F${i + 1}`, nama: m.nama, score: m.score })),
+        ...modulsOf(3).map((m, i) => ({ label: `L${i + 1}`, nama: m.nama, score: m.score })),
+    ];
+    const selfPoints = modulsOf(2).map((m, i) => ({ label: `S${i + 1}`, nama: m.nama, score: m.score }));
+
+    const allPoints     = [...inClassPoints, ...selfPoints];
+    const inClassGrowth = growthOf(inClassPoints);
+    const selfGrowth    = growthOf(selfPoints);
+
     useEffect(() => {
-        if (!chartRef.current || weeklyData.length === 0) return;
+        if (!chartRef.current || allPoints.length === 0) return;
         if (chartInstance.current) chartInstance.current.destroy();
 
-        const labels = weeklyData.map((d) => d.week);
-        const scores = weeklyData.map((d) => d.score);
-        const cohort = labels.map((l) => cohortMap[l] ?? null);
+        const labels  = allPoints.map((p) => p.label);
+        const inClass = allPoints.map((p, i) => (i < inClassPoints.length ? p.score : null));
+        const selfL   = allPoints.map((p, i) => (i >= inClassPoints.length ? p.score : null));
+
+        // Garis pemisah putus-putus antara segmen In-Class dan Self-Learning (seperti mock).
+        const dividerPlugin = {
+            id: "segmentDivider",
+            afterDraw(chart) {
+                if (inClassPoints.length === 0 || selfPoints.length === 0) return;
+                const xScale = chart.scales.x;
+                const x = (xScale.getPixelForValue(inClassPoints.length - 1)
+                         + xScale.getPixelForValue(inClassPoints.length)) / 2;
+                const { top, bottom } = chart.chartArea;
+                const ctx = chart.ctx;
+                ctx.save();
+                ctx.strokeStyle = "#cbd5e1";
+                ctx.lineWidth = 1;
+                ctx.setLineDash([5, 4]);
+                ctx.beginPath();
+                ctx.moveTo(x, top);
+                ctx.lineTo(x, bottom);
+                ctx.stroke();
+                ctx.restore();
+            },
+        };
 
         chartInstance.current = new Chart(chartRef.current, {
             type: "line",
@@ -62,24 +119,23 @@ export default function LearningGrowthTab({ faseGroups, weeklyData, cohortMap, a
                 labels,
                 datasets: [
                     {
-                        label: "Kader ini",
-                        data: scores,
+                        label: "In-Class (Foundation + Leadership)",
+                        data: inClass,
                         borderColor: "#3b82f6",
-                        backgroundColor: "rgba(59,130,246,0.08)",
+                        backgroundColor: "#3b82f6",
                         borderWidth: 2.5,
-                        tension: 0.4,
-                        fill: true,
-                        pointRadius: 3,
+                        tension: 0.3,
+                        pointRadius: 4,
                         spanGaps: true,
                     },
                     {
-                        label: "Rata-rata Kohort",
-                        data: cohort,
-                        borderColor: "#94a3b8",
-                        borderWidth: 1.5,
-                        borderDash: [5, 4],
-                        tension: 0.4,
-                        pointRadius: 0,
+                        label: "Self-Learning",
+                        data: selfL,
+                        borderColor: "#10b981",
+                        backgroundColor: "#10b981",
+                        borderWidth: 2.5,
+                        tension: 0.3,
+                        pointRadius: 4,
                         spanGaps: true,
                     },
                 ],
@@ -89,17 +145,22 @@ export default function LearningGrowthTab({ faseGroups, weeklyData, cohortMap, a
                 maintainAspectRatio: false,
                 plugins: {
                     legend: { position: "top", labels: { boxWidth: 12, font: { size: 11 } } },
-                    tooltip: { mode: "index", intersect: false },
+                    tooltip: {
+                        callbacks: {
+                            title: (items) => items.map((it) => allPoints[it.dataIndex]?.nama ?? it.label),
+                        },
+                    },
                 },
                 scales: {
                     y: { min: 0, max: 100, grid: { color: "#f1f5f9" }, ticks: { font: { size: 11 } } },
                     x: { grid: { display: false }, ticks: { font: { size: 11 } } },
                 },
             },
+            plugins: [dividerPlugin],
         });
 
         return () => { if (chartInstance.current) chartInstance.current.destroy(); };
-    }, [weeklyData, cohortMap]);
+    }, [JSON.stringify(allPoints), inClassPoints.length]);
 
     return (
         <div className="space-y-6">
@@ -148,14 +209,28 @@ export default function LearningGrowthTab({ faseGroups, weeklyData, cohortMap, a
                 })}
             </div>
 
-            {/* Weekly score chart */}
-            {weeklyData.length > 0 && (
+            {/* Learning Growth per modul: In-Class (Foundation + Leadership) & Self-Learning */}
+            {allPoints.length > 0 && (
                 <div className="bg-white rounded-xl border border-slate-200 p-5">
                     <h3 className="text-sm font-semibold text-slate-800 mb-4">
-                        Learning Growth — Avg Score per Minggu
+                        Learning Growth — Skor Akhir per Modul
                     </h3>
-                    <div style={{ height: 220 }}>
+                    <div style={{ height: 240 }}>
                         <canvas ref={chartRef} />
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-3 mt-4">
+                        <GrowthCard
+                            title="In-Class Growth"
+                            subtitle="Foundation + Leadership"
+                            growth={inClassGrowth}
+                            color="text-blue-600"
+                        />
+                        <GrowthCard
+                            title="Self-Learning Growth"
+                            subtitle="Self Learning"
+                            growth={selfGrowth}
+                            color="text-emerald-600"
+                        />
                     </div>
                 </div>
             )}
