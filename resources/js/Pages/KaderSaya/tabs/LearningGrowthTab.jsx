@@ -48,16 +48,17 @@ function growthOf(points) {
     return scored[scored.length - 1].score - scored[0].score;
 }
 
-function GrowthCard({ title, subtitle, growth, color }) {
+function GrowthCard({ title, fases }) {
     return (
         <div className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-            <div className="text-xs font-medium text-slate-500">{title}</div>
-            <div className={`text-xl font-bold mt-0.5 ${
-                growth == null ? "text-slate-300" : growth >= 0 ? color : "text-rose-600"
-            }`}>
-                {growth == null ? "—" : `${growth >= 0 ? "+" : ""}${growth}`}
+            <div className="text-xs font-medium text-slate-500 mb-2">{title}</div>
+            <div className="flex flex-wrap gap-1.5">
+                {fases.map((f) => (
+                    <span key={f.label} className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${f.badge}`}>
+                        {f.label}
+                    </span>
+                ))}
             </div>
-            <div className="text-xs text-slate-400 mt-0.5">{subtitle}</div>
         </div>
     );
 }
@@ -79,9 +80,7 @@ export default function LearningGrowthTab({ faseGroups, allFases = [] }) {
     ];
     const selfPoints = modulsOf(2).map((m, i) => ({ label: `S${i + 1}`, nama: m.nama, score: m.score }));
 
-    const allPoints     = [...inClassPoints, ...selfPoints];
-    const inClassGrowth = growthOf(inClassPoints);
-    const selfGrowth    = growthOf(selfPoints);
+    const allPoints = [...inClassPoints, ...selfPoints];
 
     useEffect(() => {
         if (!chartRef.current || allPoints.length === 0) return;
@@ -144,13 +143,14 @@ export default function LearningGrowthTab({ faseGroups, allFases = [] }) {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { position: "top", labels: { boxWidth: 12, font: { size: 11 } } },
+                    legend: { position: "top", labels: { boxWidth: 12, font: { size: 13 } } },
                     tooltip: {
                         callbacks: {
                             title: (items) => items.map((it) => allPoints[it.dataIndex]?.nama ?? it.label),
                         },
                     },
                 },
+                layout: { padding: { top: 8, bottom: 0 } },
                 scales: {
                     y: { min: 0, max: 100, grid: { color: "#f1f5f9" }, ticks: { font: { size: 11 } } },
                     x: { grid: { display: false }, ticks: { font: { size: 11 } } },
@@ -218,20 +218,21 @@ export default function LearningGrowthTab({ faseGroups, allFases = [] }) {
                     <div style={{ height: 240 }}>
                         <canvas ref={chartRef} />
                     </div>
-                    <div className="flex flex-col sm:flex-row gap-3 mt-4">
+                    {/* <div className="flex flex-col sm:flex-row gap-3 mt-4">
                         <GrowthCard
-                            title="In-Class Growth"
-                            subtitle="Foundation + Leadership"
-                            growth={inClassGrowth}
-                            color="text-blue-600"
+                            title="In-Class"
+                            fases={[
+                                { label: "Foundation (Fase 1)", badge: "bg-purple-100 text-purple-700" },
+                                { label: "Leadership / Monthly Training (Fase 3)", badge: "bg-amber-100 text-amber-700" },
+                            ]}
                         />
                         <GrowthCard
-                            title="Self-Learning Growth"
-                            subtitle="Self Learning"
-                            growth={selfGrowth}
-                            color="text-emerald-600"
+                            title="Self-Learning"
+                            fases={[
+                                { label: "Self-Learning (Fase 2)", badge: "bg-blue-100 text-blue-700" },
+                            ]}
                         />
-                    </div>
+                    </div> */}
                 </div>
             )}
 
