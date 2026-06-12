@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['can:isAdmin021'])->group(function () {
     // All Mentor — monitoring progress semua Mentor (read-only)
     Route::get('/all-mentor', [MentorModulController::class, 'allMentor'])->name('mentor.all');
+    Route::get('/all-mentor/{id}', [MentorModulController::class, 'detail'])->name('mentor.all.detail');
 
     // CRUD Mentor master
     Route::controller(MentorController::class)->group(function () {

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { router } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 
 function StatusPill({ status }) {
@@ -133,7 +134,11 @@ export default function AllMentorIndex({ mentors = [], summary = {} }) {
                                 </tr>
                             )}
                             {filtered.map((m, idx) => (
-                                <tr key={m.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60 transition">
+                                <tr
+                                    key={m.id}
+                                    onClick={() => router.visit(`/all-mentor/${m.id}`)}
+                                    className="border-b border-slate-100 last:border-0 hover:bg-blue-50/50 cursor-pointer transition"
+                                >
                                     <td className="px-4 py-3 text-slate-500">{idx + 1}</td>
                                     <td className="px-4 py-3">
                                         <div className="flex items-center gap-2.5">

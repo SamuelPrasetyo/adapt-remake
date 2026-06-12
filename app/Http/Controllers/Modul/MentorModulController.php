@@ -416,4 +416,121 @@ class MentorModulController extends Controller
             'summary' => $summary,
         ]);
     }
+
+    /** Detail progress seorang Mentor — per-modul scoring (Admin MAI only). */
+    public function detail(string $id)
+    {
+        $mentor = Mentor::select('mentor.*', 'company.company_shortname as bu', 'company.company_name')
+            ->leftJoin('company', 'mentor.company_code', '=', 'company.company_code')
+            ->whereNull('mentor.deleted_at')
+            ->where('mentor.id', $id)
+            ->firstOrFail();
+
+        $mentorUsers = User::where('type', 'Mentor')->get();
+        $usersById   = $mentorUsers->keyBy('id');
+        $usersByName = $mentorUsers->keyBy(fn($u) => $u->company_code . '|' . $u->name);
+        $targetUser  = ($mentor->user_id ? $usersById->get($mentor->user_id) : null)
+            ?? $usersByName->get($mentor->company_code . '|' . $mentor->nama);
+
+        $modulIds = DB::table('modul_assignments')
+            ->where(function ($q) use ($mentor, $targetUser) {
+                $q->where(function ($x) use ($mentor) {
+                    $x->where('assignable_type', 'mentor_master')
+                      ->where('assignable_id', $mentor->id);
+                });
+                if ($targetUser) {
+                    $q->orWhere(function ($x) use ($targetUser) {
+                        $x->where('assignable_type', 'mentor')
+                          ->where('assignable_id', $targetUser->id);
+                    });
+                }
+            })
+            ->pluck('modul_id')
+            ->unique()
+            ->values();
+
+        $moduls = Modul::whereIn('id', $modulIds)
+            ->orderBy('kode_modul')
+            ->get(['id', 'kode_modul', 'nama_modul', 'has_test', 'has_post_activity']);
+
+        // Pre/Post test scores keyed per mentor record (mentor.id).
+        $testRows = ModulTestResult::where('mentor_id', $mentor->id)
+            ->whereIn('modul_id', $modulIds)
+            ->where('is_completed', 1)
+            ->get(['modul_id', 'tipe', 'score']);
+        $preMap  = $testRows->where('tipe', 'pre')->pluck('score', 'modul_id');
+        $postMap = $testRows->where('tipe', 'post')->pluck('score', 'modul_id');
+
+        // Post Activity approved sessions + average score per modul.
+        $paRows = Dokumen::whereIn('dokumen.modul_id', $modulIds->all())
+            ->where('dokumen.jenis', 'POST_ACTIVITY')
+            ->where('dokumen.mentor_master_id', $mentor->id)
+            ->where('dokumen.status', 'approved')
+            ->leftJoin('penilaian_post_activity', 'dokumen.id', '=', 'penilaian_post_activity.dokumen_id')
+            ->get(['dokumen.modul_id', 'penilaian_post_activity.nilai as pa_score']);
+
+        $paGrouped      = $paRows->groupBy('modul_id');
+        $paSessionsMap  = $paGrouped->map->count();
+        $paAvgScoreMap  = $paGrouped->map(function ($g) {
+            $scores = $g->pluck('pa_score')->filter()->values();
+            return $scores->isNotEmpty() ? round((float) $scores->avg(), 1) : null;
+        });
+
+        $completed = 0;
+        $scores    = [];
+
+        $modulList = $moduls->map(function ($mod) use ($preMap, $postMap, $paSessionsMap, $paAvgScoreMap, &$completed, &$scores) {
+            $hasTest = (bool) $mod->has_test;
+            $hasPA   = (bool) $mod->has_post_activity;
+
+            $preScore   = $hasTest ? ($preMap[$mod->id] ?? null) : null;
+            $postScore  = $hasTest ? ($postMap[$mod->id] ?? null) : null;
+            $paSessions = $hasPA   ? (int) ($paSessionsMap[$mod->id] ?? 0) : null;
+            $paScore    = $hasPA   ? ($paAvgScoreMap[$mod->id] ?? null) : null;
+
+            $isDone = ($hasTest && $postScore !== null)
+                   || (!$hasTest && $hasPA && $paSessions >= 10);
+            if ($isDone) $completed++;
+
+            $finalScore = ModulScore::finalScore($hasTest, $hasPA, $postScore, $paScore);
+            if ($finalScore !== null) $scores[] = $finalScore;
+
+            return [
+                'id'          => $mod->id,
+                'kode_modul'  => $mod->kode_modul,
+                'nama_modul'        => $mod->nama_modul,
+                'has_test'    => $hasTest,
+                'has_pa'      => $hasPA,
+                'pre_score'   => $preScore !== null ? round((float) $preScore, 1) : null,
+                'post_score'  => $postScore !== null ? round((float) $postScore, 1) : null,
+                'pa_sessions' => $paSessions,
+                'pa_score'    => $paScore,
+                'final_score' => $finalScore !== null ? (int) round($finalScore) : null,
+                'is_done'     => $isDone,
+            ];
+        });
+
+        $total    = $moduls->count();
+        $progress = $total > 0 ? (int) round(($completed / $total) * 100) : 0;
+        $avgScore = count($scores) > 0 ? (int) round(array_sum($scores) / count($scores)) : null;
+
+        return Inertia::render('AllMentor/Detail', [
+            'mentor'  => [
+                'id'           => $mentor->id,
+                'nama'         => $mentor->nama,
+                'jabatan'      => $mentor->jabatan,
+                'bu'           => $mentor->bu,
+                'company_name' => $mentor->company_name,
+                'foto'         => $mentor->foto,
+                'has_account'  => (bool) $targetUser,
+            ],
+            'moduls'  => $modulList->values(),
+            'summary' => [
+                'total'     => $total,
+                'completed' => $completed,
+                'progress'  => $progress,
+                'avg_score' => $avgScore,
+            ],
+        ]);
+    }
 }
