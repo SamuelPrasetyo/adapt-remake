@@ -387,6 +387,7 @@ class MentorModulController extends Controller
                 'id'           => $m->id,
                 'nama'         => $m->nama,
                 'jabatan'      => $m->jabatan,
+                'foto'         => $m->foto,
                 'bu'           => $m->bu,
                 'company_code' => $m->company_code,
                 'company_name' => $m->company_name,
