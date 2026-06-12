@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useForm, router } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import DataTable from '@/Components/DataTable';
@@ -60,31 +60,54 @@ export default function MentorIndex({ mentors, companys, kaders = [], assignment
     const [assignKaderIds, setAssignKaderIds] = useState([]);
     const [assignProcessing, setAssignProcessing] = useState(false);
 
-    const addForm  = useForm({ nama: '', jabatan: '', company_code: '', user_id: '' });
-    const editForm = useForm({ nama: '', jabatan: '', company_code: '', user_id: '' });
+    const [addPhotoPreview, setAddPhotoPreview]   = useState(null);
+    const [editPhotoPreview, setEditPhotoPreview] = useState(null);
+    const addFileRef  = useRef(null);
+    const editFileRef = useRef(null);
+
+    const addForm  = useForm({ nama: '', jabatan: '', company_code: '', user_id: '', foto: null });
+    const editForm = useForm({ _method: 'PUT', nama: '', jabatan: '', company_code: '', user_id: '', foto: null });
+
+    const closeTambah = () => {
+        setTambahOpen(false);
+        addForm.reset();
+        setAddPhotoPreview(null);
+        if (addFileRef.current) addFileRef.current.value = '';
+    };
 
     const submitAdd = (e) => {
         e.preventDefault();
         addForm.post('/mentor/store', {
-            onSuccess: () => { setTambahOpen(false); addForm.reset(); },
+            forceFormData: true,
+            onSuccess: () => closeTambah(),
         });
+    };
+
+    const closeEdit = () => {
+        setEditOpen(false);
+        setEditPhotoPreview(null);
+        if (editFileRef.current) editFileRef.current.value = '';
     };
 
     const openEdit = (row) => {
         setEditRow(row);
         editForm.setData({
+            _method:      'PUT',
             nama:         row.nama         ?? '',
             jabatan:      row.jabatan      ?? '',
             company_code: row.company_code ?? '',
             user_id:      row.user_id      ?? '',
+            foto:         null,
         });
+        setEditPhotoPreview(row.foto ? `/storage/${row.foto}` : null);
         setEditOpen(true);
     };
 
     const submitEdit = (e) => {
         e.preventDefault();
-        editForm.put(`/mentor/update/${editRow.id}`, {
-            onSuccess: () => setEditOpen(false),
+        editForm.post(`/mentor/update/${editRow.id}`, {
+            forceFormData: true,
+            onSuccess: () => closeEdit(),
         });
     };
 
@@ -176,12 +199,12 @@ export default function MentorIndex({ mentors, companys, kaders = [], assignment
             {/* Tambah Modal */}
             <Modal
                 open={tambahOpen}
-                onClose={() => { setTambahOpen(false); addForm.reset(); }}
+                onClose={closeTambah}
                 title="Tambah Mentor"
                 size="sm"
                 footer={
                     <>
-                        <button type="button" onClick={() => { setTambahOpen(false); addForm.reset(); }}
+                        <button type="button" onClick={closeTambah}
                             className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition">
                             Batal
                         </button>
@@ -193,6 +216,37 @@ export default function MentorIndex({ mentors, companys, kaders = [], assignment
                 }
             >
                 <form id="mentor-add-form" onSubmit={submitAdd}>
+                    <FormField label="Foto Mentor (Opsional)" error={addForm.errors.foto}>
+                        <div
+                            className="flex flex-col items-center gap-2 p-3 border-2 border-dashed border-slate-300 rounded-xl hover:border-blue-400 transition cursor-pointer"
+                            onClick={() => addFileRef.current?.click()}
+                        >
+                            {addPhotoPreview ? (
+                                <img src={addPhotoPreview} alt="Preview" className="w-20 h-20 rounded-xl object-cover shadow" />
+                            ) : (
+                                <div className="w-20 h-20 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400">
+                                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                </div>
+                            )}
+                            <span className="text-xs text-slate-500">{addPhotoPreview ? 'Klik untuk ganti foto' : 'Klik untuk pilih foto'}</span>
+                            <span className="text-xs text-slate-400">JPG, PNG, JPEG · Maks. 2MB</span>
+                        </div>
+                        <input
+                            ref={addFileRef}
+                            type="file"
+                            accept="image/jpeg,image/jpg,image/png"
+                            className="hidden"
+                            onChange={(e) => {
+                                const file = e.target.files[0];
+                                if (!file) return;
+                                addForm.setData('foto', file);
+                                setAddPhotoPreview(URL.createObjectURL(file));
+                            }}
+                        />
+                    </FormField>
                     <FormField label="Nama" error={addForm.errors.nama}>
                         <input type="text" required value={addForm.data.nama}
                             onChange={(e) => addForm.setData('nama', e.target.value)} className={inputCls} />
@@ -227,12 +281,12 @@ export default function MentorIndex({ mentors, companys, kaders = [], assignment
             {/* Edit Modal */}
             <Modal
                 open={editOpen}
-                onClose={() => setEditOpen(false)}
+                onClose={closeEdit}
                 title="Edit Mentor"
                 size="sm"
                 footer={
                     <>
-                        <button type="button" onClick={() => setEditOpen(false)}
+                        <button type="button" onClick={closeEdit}
                             className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition">
                             Batal
                         </button>
@@ -244,6 +298,37 @@ export default function MentorIndex({ mentors, companys, kaders = [], assignment
                 }
             >
                 <form id="mentor-edit-form" onSubmit={submitEdit}>
+                    <FormField label="Foto Mentor (Opsional)" error={editForm.errors.foto}>
+                        <div
+                            className="flex flex-col items-center gap-2 p-3 border-2 border-dashed border-slate-300 rounded-xl hover:border-blue-400 transition cursor-pointer"
+                            onClick={() => editFileRef.current?.click()}
+                        >
+                            {editPhotoPreview ? (
+                                <img src={editPhotoPreview} alt="Preview" className="w-20 h-20 rounded-xl object-cover shadow" />
+                            ) : (
+                                <div className="w-20 h-20 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400">
+                                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                </div>
+                            )}
+                            <span className="text-xs text-slate-500">{editPhotoPreview ? 'Klik untuk ganti foto' : 'Klik untuk pilih foto'}</span>
+                            <span className="text-xs text-slate-400">JPG, PNG, JPEG · Maks. 2MB</span>
+                        </div>
+                        <input
+                            ref={editFileRef}
+                            type="file"
+                            accept="image/jpeg,image/jpg,image/png"
+                            className="hidden"
+                            onChange={(e) => {
+                                const file = e.target.files[0];
+                                if (!file) return;
+                                editForm.setData('foto', file);
+                                setEditPhotoPreview(URL.createObjectURL(file));
+                            }}
+                        />
+                    </FormField>
                     <FormField label="Nama" error={editForm.errors.nama}>
                         <input type="text" required value={editForm.data.nama}
                             onChange={(e) => editForm.setData('nama', e.target.value)} className={inputCls} />
