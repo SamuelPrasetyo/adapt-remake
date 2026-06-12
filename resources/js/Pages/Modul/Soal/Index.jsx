@@ -14,12 +14,12 @@ const OPTION_LABELS = ['A', 'B', 'C', 'D'];
 
 const COLS = [
     { key: '_no',       label: 'No',    width: '60px', render: (_, __, i) => i + 1 },
-    { key: 'soal',      label: 'Soal',  sortable: true },
+    { key: 'soal',      label: 'Soal',  sortable: true, width: '55%' },
     { key: 'nama_modul',label: 'Modul', sortable: true },
     {
         key: 'tipe', label: 'Tipe',
         render: () => (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap bg-indigo-50 text-indigo-700 border border-indigo-200">
                 Pre/Post Test
             </span>
         ),

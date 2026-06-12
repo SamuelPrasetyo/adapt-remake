@@ -9,9 +9,11 @@ use App\Models\Kader;
 use App\Models\ListKaderPerMentor;
 use App\Models\Mentor;
 use App\Models\User;
+use App\Support\UploadName;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use RealRashid\SweetAlert\Facades\Alert;
@@ -77,7 +79,16 @@ class MentorController extends Controller
             'nama'         => 'required|string|max:255',
             'jabatan'      => 'required|string|max:255',
             'company_code' => 'required|string|max:255',
+            'foto'         => 'nullable|image|mimes:jpeg,jpg,png|max:2048',
         ]);
+
+        $fotoPath = null;
+        if ($request->hasFile('foto')) {
+            $file     = $request->file('foto');
+            $ext      = $file->getClientOriginalExtension();
+            $filename = UploadName::stored(['mentor', $request->nama], $ext);
+            $fotoPath = $file->storeAs('mentors', $filename, 'public');
+        }
 
         Mentor::insert([
             'id'           => Str::uuid(),
@@ -85,6 +96,7 @@ class MentorController extends Controller
             'jabatan'      => $request->jabatan,
             'company_code' => $request->company_code,
             'user_id'      => $request->user_id ?: null,
+            'foto'         => $fotoPath,
             'created_by'   => Auth::user()->id,
             'created_at'   => now(),
         ]);
@@ -100,18 +112,32 @@ class MentorController extends Controller
             'nama'         => 'required|string|max:255',
             'jabatan'      => 'required|string|max:255',
             'company_code' => 'required|string|max:255',
+            'foto'         => 'nullable|image|mimes:jpeg,jpg,png|max:2048',
         ]);
+
+        $updateData = [
+            'nama'         => $request->nama,
+            'jabatan'      => $request->jabatan,
+            'company_code' => $request->company_code,
+            'user_id'      => $request->user_id ?: null,
+            'updated_by'   => Auth::user()->id,
+            'updated_at'   => now(),
+        ];
+
+        if ($request->hasFile('foto')) {
+            $mentor = Mentor::where('id', $id)->whereNull('deleted_at')->first();
+            if ($mentor && $mentor->foto) {
+                Storage::disk('public')->delete($mentor->foto);
+            }
+            $file     = $request->file('foto');
+            $ext      = $file->getClientOriginalExtension();
+            $filename = UploadName::stored(['mentor', $request->nama], $ext);
+            $updateData['foto'] = $file->storeAs('mentors', $filename, 'public');
+        }
 
         Mentor::where('id', $id)
             ->whereNull('deleted_at')
-            ->update([
-                'nama'         => $request->nama,
-                'jabatan'      => $request->jabatan,
-                'company_code' => $request->company_code,
-                'user_id'      => $request->user_id ?: null,
-                'updated_by'   => Auth::user()->id,
-                'updated_at'   => now(),
-            ]);
+            ->update($updateData);
 
         ActivityLog::activity_log('Mengedit data Mentor');
         Alert::success('Success', 'Data berhasil diupdate!');
