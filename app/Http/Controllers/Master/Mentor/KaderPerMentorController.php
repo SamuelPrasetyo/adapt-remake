@@ -305,7 +305,7 @@ class KaderPerMentorController extends Controller
                 $pre  = $userId && isset($trMap[$userId][$mid]['pre']);
                 $mat  = $userId && (($rpMap[$userId][$mid] ?? 0) >= 100);
                 $post = $userId && isset($trMap[$userId][$mid]['post']);
-                $pa   = $userId && isset($docMap[$userId][$mid]);
+                $pa   = $userId && isset($paScoreMap[$userId][$mid]);
 
                 $required = 1 + (int) $needPre + (int) $needPost + (int) $needPA;
                 $modDone  = (int) $mat
@@ -336,13 +336,16 @@ class KaderPerMentorController extends Controller
             $progress = $totalCp > 0 ? (int) round(($doneCheckpoints / $totalCp) * 100) : 0;
 
             ksort($faseStats);
-            $faseAktif = null;
+            $faseAktifList = [];
             foreach ($faseStats as $fase => $info) {
-                if ($info['done'] < $info['total']) { $faseAktif = $fase; break; }
+                if ($info['done'] < $info['total']) {
+                    $faseAktifList[] = $fase;
+                }
             }
-            if (!$faseAktif && !empty($faseStats)) {
-                $faseAktif = array_key_last($faseStats);
+            if (empty($faseAktifList) && !empty($faseStats)) {
+                $faseAktifList[] = array_key_last($faseStats);
             }
+            $faseAktif = $faseAktifList[0] ?? null;
 
             $avgRaw   = ModulScore::average($scores, null);
             $avgScore = $avgRaw !== null ? (int) round($avgRaw) : null;
@@ -359,6 +362,7 @@ class KaderPerMentorController extends Controller
             elseif ($progress < 70)  $status = 'perlu_perhatian';
 
             $row->fase_aktif       = $faseAktif;
+            $row->fase_aktif_list  = $faseAktifList;
             $row->progress_overall = $progress;
             $row->avg_score        = $avgScore;
             $row->fase_scores      = $faseScoreMap;

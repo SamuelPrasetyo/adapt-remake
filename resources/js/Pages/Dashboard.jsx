@@ -252,6 +252,13 @@ function BatchFilter({ batches, value, onChange }) {
 
 const PAGE_SIZE = 10;
 
+const FASE_LABELS = { '1': 'Foundation', '2': 'Self Learning', '3': 'Monthly Training' };
+const FASE_COLORS = {
+    '1': 'bg-blue-50 text-blue-700 ring-1 ring-blue-200',
+    '2': 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
+    '3': 'bg-violet-50 text-violet-700 ring-1 ring-violet-200',
+};
+
 function KaderTable({ kaders, mentorFilter, mentors, onMentorFilter, batches, batchFilter, onBatchFilter, headerTitle, headerSubtitle, totalKaderInBatch }) {
     const list = kaders || [];
     const totalKader = list.length;
@@ -366,11 +373,15 @@ function KaderTable({ kaders, mentorFilter, mentors, onMentorFilter, batches, ba
                                                     <span className="text-slate-400 italic text-sm">Belum di-assign</span>
                                                 )}
                                             </td>
-                                            <td className="px-4 py-3 whitespace-nowrap">
-                                                {k.fase_aktif ? (
-                                                    <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-amber-50 text-amber-700 ring-1 ring-amber-200">
-                                                        {({1:'Foundation',2:'Self Learning',3:'Monthly Training (Leadership)'})[k.fase_aktif] ?? `Fase ${k.fase_aktif}`}
-                                                    </span>
+                                            <td className="px-4 py-3">
+                                                {k.fase_aktif_list?.length > 0 ? (
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {k.fase_aktif_list.map((fase) => (
+                                                            <span key={fase} className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap ${FASE_COLORS[fase] ?? 'bg-slate-50 text-slate-600 ring-1 ring-slate-200'}`}>
+                                                                {FASE_LABELS[fase] ?? `Fase ${fase}`}
+                                                            </span>
+                                                        ))}
+                                                    </div>
                                                 ) : (
                                                     <span className="text-slate-400 text-xs">—</span>
                                                 )}
