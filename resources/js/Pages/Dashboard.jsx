@@ -542,7 +542,8 @@ export default function Dashboard({
                 </div>
             </div> */}
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <StatsCard title="Jumlah Mentor" value={s.mentorCount} subtitle="Mentor terdaftar" color="blue" />
                 <StatsCard title="Kader Aktif" value={s.kaderAktif} subtitle={`${s.batchBerjalan} batch berjalan`} color="green" />
                 <StatsCard title="Feedback Belum Terisi" value={s.feedbackBelum} subtitle="Perlu diisi mentor" color="amber" />
                 <StatsCard title="IDP Belum Lengkap" value={s.idpBelum} subtitle="Menunggu approve mentor" color="red" />

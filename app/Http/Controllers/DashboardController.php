@@ -204,7 +204,15 @@ class DashboardController extends Controller
         }
         $idpBelum = $idpQuery->count();
 
+        // Jumlah mentor aktif (belum dihapus).
+        $mentorQuery = Mentor::whereNull('deleted_at');
+        if ($companyCode) {
+            $mentorQuery->where('company_code', $companyCode);
+        }
+        $mentorCount = $mentorQuery->count();
+
         return [
+            'mentorCount'   => $mentorCount,
             'kaderAktif'    => $activeKaders->count(),
             'batchBerjalan' => $runningBatchIds->count(),
             'feedbackBelum' => $feedbackBelum,
