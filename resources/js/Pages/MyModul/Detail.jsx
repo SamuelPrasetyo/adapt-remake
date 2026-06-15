@@ -308,7 +308,7 @@ function PostActivityUpload({ modulId, mentorId }) {
 }
 
 /* ── Materi PDF modal ─────────────────────────────────────── */
-function MateriModal({ open, onClose, modul, mentorId }) {
+function MateriModal({ open, onClose, modul, mentorId, posttestDone, hasTest }) {
     const [progress, setProgress] = useState(0);
     const [numPages, setNumPages] = useState(0);
     const [width, setWidth]       = useState(0);
@@ -379,35 +379,27 @@ function MateriModal({ open, onClose, modul, mentorId }) {
     // encodeURI agar nama file ber-spasi (mis. "Test Modul Mentor.pdf") bisa di-fetch pdf.js.
     const fileUrl = modul?.file_materi ? encodeURI(`/${modul.file_materi}`) : null;
 
+    if (!open) return null;
+
+    const canDownload = hasTest ? posttestDone : progress >= 100;
+
     return (
-        <Modal open={open} onClose={handleClose} title={modul?.nama_modul ?? 'Materi'} size="3xl"
-            footer={
-                <div className="flex items-center justify-between w-full">
-                    <div className="flex items-center gap-3 flex-1 mr-4">
-                        <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                            <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${progress}%` }} />
-                        </div>
-                        <span className="text-xs text-slate-500 shrink-0">{progress}%</span>
-                    </div>
-                    <div className="flex gap-2">
-                        <button type="button" onClick={handleClose}
-                            className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition">
-                            Tutup
-                        </button>
-                        {fileUrl && (
-                            <a href={fileUrl} download
-                                className={`px-4 py-2 text-sm font-medium rounded-lg transition
-                                    ${progress >= 100 ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-slate-200 text-slate-400 pointer-events-none'}`}>
-                                Download Materi
-                            </a>
-                        )}
-                    </div>
-                </div>
-            }>
-            {/* Satu-satunya scroll: container ini. PDF dirender sebagai halaman DOM
-                sehingga scroll-nya bisa dilacak untuk reading progress. */}
+        <div className="fixed inset-0 z-50 flex flex-col bg-white">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
+                <h3 className="text-lg font-semibold text-slate-900 truncate pr-4">{modul?.nama_modul ?? 'Materi'}</h3>
+                <button type="button" onClick={handleClose}
+                    className="w-8 h-8 inline-flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 transition shrink-0"
+                    aria-label="Tutup">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            {/* Konten PDF — satu-satunya scroll, dilacak untuk reading progress */}
             <div ref={containerRef} onScroll={handleScroll}
-                className="h-[calc(70vh-2.5rem)] overflow-y-auto rounded-lg border border-slate-200 bg-slate-100 px-3 py-3 flex flex-col items-center gap-3">
+                className="flex-1 overflow-y-auto bg-slate-100 px-3 py-3 flex flex-col items-center gap-3">
                 {!fileUrl && (
                     <p className="text-sm text-slate-500 text-center py-12">File materi tidak tersedia.</p>
                 )}
@@ -430,7 +422,45 @@ function MateriModal({ open, onClose, modul, mentorId }) {
                     </Document>
                 )}
             </div>
-        </Modal>
+
+            {/* Footer */}
+            <div className="shrink-0 px-6 py-4 border-t border-slate-200 bg-slate-50 flex flex-col gap-2">
+                {hasTest && !posttestDone && (
+                    <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+                        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Materi dapat diunduh setelah mengerjakan Post-Test.
+                    </div>
+                )}
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 flex-1 mr-4">
+                        <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
+                            <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${progress}%` }} />
+                        </div>
+                        <span className="text-xs text-slate-500 shrink-0">{progress}%</span>
+                    </div>
+                    <div className="flex gap-2">
+                        <button type="button" onClick={handleClose}
+                            className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition">
+                            Tutup
+                        </button>
+                        {fileUrl && (
+                            canDownload ? (
+                                <a href={fileUrl} download
+                                    className="px-4 py-2 text-sm font-medium rounded-lg transition bg-emerald-600 text-white hover:bg-emerald-700">
+                                    Download Materi
+                                </a>
+                            ) : (
+                                <span className="px-4 py-2 text-sm font-medium rounded-lg bg-slate-200 text-slate-400 cursor-not-allowed select-none">
+                                    Download Materi
+                                </span>
+                            )
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
     );
 }
 
@@ -685,7 +715,7 @@ export default function ModulDetail({ modul, progress = {}, pretest = [], postte
                 onSuccess={() => showToast('success', 'Jawaban berhasil disimpan!')}
                 onError={() => showToast('error', 'Gagal menyimpan jawaban. Coba lagi.')} />
 
-            <MateriModal open={showMateri} onClose={() => setShowMateri(false)} modul={modul} mentorId={mentorId} />
+            <MateriModal open={showMateri} onClose={() => setShowMateri(false)} modul={modul} mentorId={mentorId} posttestDone={!!progress.posttest} hasTest={hasTest} />
 
 
             <ReviewModal open={review !== null} onClose={() => setReview(null)}
