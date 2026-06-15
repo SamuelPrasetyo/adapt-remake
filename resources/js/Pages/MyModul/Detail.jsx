@@ -308,13 +308,18 @@ function PostActivityUpload({ modulId, mentorId }) {
 }
 
 /* ── Materi PDF modal ─────────────────────────────────────── */
+const ZOOM_STEP = 0.25;
+const ZOOM_MIN  = 0.5;
+const ZOOM_MAX  = 3.0;
+
 function MateriModal({ open, onClose, modul, mentorId, posttestDone, hasTest }) {
     const [progress, setProgress] = useState(0);
     const [numPages, setNumPages] = useState(0);
-    const [width, setWidth]       = useState(0);
-    const [error, setError]       = useState(false);
-    const progressRef = useRef(0);
-    const renderedRef = useRef(0);
+    const [baseWidth, setBaseWidth] = useState(0);
+    const [zoom, setZoom]           = useState(1.0);
+    const [error, setError]         = useState(false);
+    const progressRef  = useRef(0);
+    const renderedRef  = useRef(0);
     const containerRef = useRef(null);
 
     // Reset state tiap modal dibuka/ditutup.
@@ -322,27 +327,41 @@ function MateriModal({ open, onClose, modul, mentorId, posttestDone, hasTest }) 
         if (!open) {
             setProgress(0);
             setNumPages(0);
+            setZoom(1.0);
             setError(false);
             progressRef.current = 0;
             renderedRef.current = 0;
         }
     }, [open]);
 
-    // Lebar halaman mengikuti lebar container (responsif).
+    // Base width = lebar container (zoom 1.0 = fit width). Responsif terhadap resize.
     useEffect(() => {
         if (!open) return;
         const measure = () => {
-            if (containerRef.current) {
-                // -24px untuk padding horizontal container (px-3)
-                setWidth(Math.max(0, containerRef.current.clientWidth - 24));
-            }
+            if (containerRef.current)
+                setBaseWidth(Math.max(0, containerRef.current.clientWidth - 48));
         };
         measure();
         window.addEventListener('resize', measure);
         return () => window.removeEventListener('resize', measure);
     }, [open]);
 
-    // Progress = posisi scroll terhadap total tinggi konten (hanya naik, tak turun).
+    // Ctrl+scroll untuk zoom, seperti PDF viewer pada umumnya.
+    useEffect(() => {
+        if (!open) return;
+        const onWheel = (e) => {
+            if (!e.ctrlKey) return;
+            e.preventDefault();
+            setZoom(z => {
+                const next = e.deltaY < 0 ? z + ZOOM_STEP : z - ZOOM_STEP;
+                return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(next * 100) / 100));
+            });
+        };
+        window.addEventListener('wheel', onWheel, { passive: false });
+        return () => window.removeEventListener('wheel', onWheel);
+    }, [open]);
+
+    // Progress = posisi scroll vertikal terhadap total tinggi konten (hanya naik, tak turun).
     const handleScroll = () => {
         const el = containerRef.current;
         if (!el) return;
@@ -376,8 +395,12 @@ function MateriModal({ open, onClose, modul, mentorId, posttestDone, hasTest }) 
         onClose();
     };
 
-    // encodeURI agar nama file ber-spasi (mis. "Test Modul Mentor.pdf") bisa di-fetch pdf.js.
-    const fileUrl = modul?.file_materi ? encodeURI(`/${modul.file_materi}`) : null;
+    const zoomIn    = () => setZoom(z => Math.min(ZOOM_MAX, Math.round((z + ZOOM_STEP) * 100) / 100));
+    const zoomOut   = () => setZoom(z => Math.max(ZOOM_MIN, Math.round((z - ZOOM_STEP) * 100) / 100));
+    const fitWidth  = () => setZoom(1.0);
+
+    const fileUrl  = modul?.file_materi ? encodeURI(`/${modul.file_materi}`) : null;
+    const pageWidth = baseWidth ? Math.round(baseWidth * zoom) : undefined;
 
     if (!open) return null;
 
@@ -385,9 +408,42 @@ function MateriModal({ open, onClose, modul, mentorId, posttestDone, hasTest }) 
 
     return (
         <div className="fixed inset-0 z-50 flex flex-col bg-white">
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
-                <h3 className="text-lg font-semibold text-slate-900 truncate pr-4">{modul?.nama_modul ?? 'Materi'}</h3>
+            {/* ── Toolbar ── */}
+            <div className="shrink-0 flex items-center gap-3 px-4 py-3 border-b border-slate-200 bg-white">
+                {/* Judul */}
+                <h3 className="text-sm font-semibold text-slate-800 truncate flex-1 min-w-0">
+                    {modul?.nama_modul ?? 'Materi'}
+                </h3>
+
+                {/* Zoom controls */}
+                <div className="flex items-center gap-1 shrink-0">
+                    <button type="button" onClick={zoomOut} disabled={zoom <= ZOOM_MIN}
+                        title="Perkecil (Ctrl+Scroll↓)"
+                        className="w-8 h-8 inline-flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 12H4" />
+                        </svg>
+                    </button>
+                    <button type="button" onClick={fitWidth}
+                        title="Sesuaikan lebar layar"
+                        className="min-w-14 h-8 px-2 text-xs font-mono text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-100 transition">
+                        {Math.round(zoom * 100)}%
+                    </button>
+                    <button type="button" onClick={zoomIn} disabled={zoom >= ZOOM_MAX}
+                        title="Perbesar (Ctrl+Scroll↑)"
+                        className="w-8 h-8 inline-flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                    </button>
+                </div>
+
+                {/* Info halaman */}
+                {numPages > 0 && (
+                    <span className="text-xs text-slate-400 shrink-0">{numPages} halaman</span>
+                )}
+
+                {/* Tombol tutup */}
                 <button type="button" onClick={handleClose}
                     className="w-8 h-8 inline-flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 transition shrink-0"
                     aria-label="Tutup">
@@ -397,9 +453,9 @@ function MateriModal({ open, onClose, modul, mentorId, posttestDone, hasTest }) 
                 </button>
             </div>
 
-            {/* Konten PDF — satu-satunya scroll, dilacak untuk reading progress */}
+            {/* ── Konten PDF ── scroll dilacak untuk reading progress */}
             <div ref={containerRef} onScroll={handleScroll}
-                className="flex-1 overflow-y-auto bg-slate-100 px-3 py-3 flex flex-col items-center gap-3">
+                className="flex-1 overflow-auto bg-slate-100 px-6 py-4 flex flex-col items-center gap-3">
                 {!fileUrl && (
                     <p className="text-sm text-slate-500 text-center py-12">File materi tidak tersedia.</p>
                 )}
@@ -413,18 +469,18 @@ function MateriModal({ open, onClose, modul, mentorId, posttestDone, hasTest }) 
                         loading={<p className="text-sm text-slate-400 text-center py-12">Memuat materi...</p>}>
                         {Array.from({ length: numPages }, (_, i) => (
                             <Page key={i} pageNumber={i + 1}
-                                width={width || undefined}
+                                width={pageWidth || undefined}
                                 renderTextLayer={false}
                                 renderAnnotationLayer={false}
                                 onRenderSuccess={handlePageRender}
-                                className="shadow-sm mb-3 bg-white" />
+                                className="shadow-md mb-4 bg-white" />
                         ))}
                     </Document>
                 )}
             </div>
 
-            {/* Footer */}
-            <div className="shrink-0 px-6 py-4 border-t border-slate-200 bg-slate-50 flex flex-col gap-2">
+            {/* ── Footer ── progress bar + notif + download */}
+            <div className="shrink-0 px-6 py-3 border-t border-slate-200 bg-slate-50 flex flex-col gap-2">
                 {hasTest && !posttestDone && (
                     <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
                         <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -433,14 +489,14 @@ function MateriModal({ open, onClose, modul, mentorId, posttestDone, hasTest }) 
                         Materi dapat diunduh setelah mengerjakan Post-Test.
                     </div>
                 )}
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3 flex-1 mr-4">
+                <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 flex-1">
                         <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
                             <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${progress}%` }} />
                         </div>
                         <span className="text-xs text-slate-500 shrink-0">{progress}%</span>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 shrink-0">
                         <button type="button" onClick={handleClose}
                             className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition">
                             Tutup
