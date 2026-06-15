@@ -230,6 +230,11 @@ class DashboardController extends Controller
         //
     }
 
+    public function storeRefleksi(Request $request)
+    {
+        return app(KaderSayaController::class)->storeRefleksi($request);
+    }
+
     public function dashboard_kader()
     {
         // Dashboard Kader disamakan dengan tampilan "Kader Saya / Detail" yang

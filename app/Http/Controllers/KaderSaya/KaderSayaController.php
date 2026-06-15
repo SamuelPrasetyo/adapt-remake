@@ -19,6 +19,7 @@ use App\Models\ModulReadingProgress;
 use App\Models\ModulTestResult;
 use App\Models\User;
 use App\Models\Week;
+use App\Models\WeekKader;
 use App\Support\ModulScore;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -313,7 +314,7 @@ class KaderSayaController extends Controller
             ]);
 
         // Refleksi kader diisi terhadap jadwal weeks_kader (48 minggu), bukan weeks (jadwal feedback mentor).
-        $refleksiQuery = Jawaban::whereIn('jawaban.id_pertanyaan', [7, 8, 9])
+        $refleksiQuery = Jawaban::whereIn('jawaban.id_pertanyaan', [7, 8, 9, 10])
             ->where('jawaban.nik_kader', $kader->nik)
             ->whereNull('jawaban.nama_mentor')
             ->join('weeks_kader', 'jawaban.id_week', '=', 'weeks_kader.id_week')
@@ -343,12 +344,14 @@ class KaderSayaController extends Controller
                     'dipelajari' => null,
                     'tantangan'  => null,
                     'rencana'    => null,
+                    'relevansi'  => null,
                 ];
             }
             $idP = (int) $r->id_pertanyaan;
             if ($idP === 7)      $key = 'dipelajari';
             elseif ($idP === 8)  $key = 'tantangan';
             elseif ($idP === 9)  $key = 'rencana';
+            elseif ($idP === 10) $key = 'relevansi';
             else                 $key = null;
             if ($key && $refleksiByWeek[$wk][$key] === null) {
                 $refleksiByWeek[$wk][$key] = strip_tags($r->jawaban);
@@ -396,6 +399,28 @@ class KaderSayaController extends Controller
         }
         $mentorFeedbackList = array_values($feedbackByWeek);
 
+        // Jadwal weeks_kader untuk form isi refleksi kader — hanya relevan saat kaderView.
+        $weeksKader = collect();
+        if ($kader->id_batch) {
+            $filledWeeksKader = Jawaban::where('nik_kader', $kader->nik)
+                ->whereNull('nama_mentor')
+                ->whereIn('id_pertanyaan', [7, 8, 9])
+                ->distinct()
+                ->pluck('id_week')
+                ->all();
+            $weeksKader = WeekKader::forBatch($kader->id_batch)
+                ->orderBy('angka_week')
+                ->get(['id_week', 'angka_week', 'bulan', 'tahun', 'tanggal_mulai'])
+                ->map(fn ($w) => [
+                    'id_week'      => $w->id_week,
+                    'angka_week'   => $w->angka_week,
+                    'bulan'        => $w->bulan,
+                    'tahun'        => $w->tahun,
+                    'is_available' => $w->tanggal_mulai && $w->tanggal_mulai->toDateString() <= $today,
+                    'is_filled'    => in_array($w->id_week, $filledWeeksKader),
+                ]);
+        }
+
         $perjanjianKerja = Dokumen::where('kader_id', $kader_id)
             ->where('jenis', 'PERJANJIAN_KERJA')
             ->orderBy('created_at', 'desc')
@@ -436,6 +461,7 @@ class KaderSayaController extends Controller
             'currentWeek'        => $currentWeek,
             'totalWeeks'         => $totalWeeks,
             'weeks'              => $weeks,
+            'weeksKader'         => $weeksKader,
             'refleksi'           => $refleksiList,
             'mentorFeedbackList' => $mentorFeedbackList,
             'mentorName'         => $user->name,
@@ -517,5 +543,52 @@ class KaderSayaController extends Controller
         Log::info("[KaderSaya::storeFeedback] done — {$inserted} rows inserted");
 
         return back()->with('feedbackSuccess', true);
+    }
+
+    public function storeRefleksi(Request $request)
+    {
+        $user  = Auth::user();
+        $kader = Kader::where('nik', $user->nik)->first();
+        if (!$kader) abort(404, 'Data kader tidak ditemukan.');
+
+        $weekValid = WeekKader::available()
+            ->where('id_week', $request->id_week)
+            ->when($kader->id_batch, fn($q) => $q->forBatch($kader->id_batch))
+            ->exists();
+
+        $weekFilled = Jawaban::where('nik_kader', $kader->nik)
+            ->where('id_week', $request->id_week)
+            ->whereNull('nama_mentor')
+            ->whereIn('id_pertanyaan', [7, 8, 9])
+            ->exists();
+
+        abort_if(!$weekValid || $weekFilled, 422, 'Week tidak valid, belum berjalan, atau sudah terisi.');
+
+        $base = [
+            'id_week'     => $request->id_week,
+            'nama_mentor' => null,
+            'nik_kader'   => $kader->nik,
+            'created_at'  => now(),
+            'updated_at'  => now(),
+            'created_by'  => $user->id,
+        ];
+
+        $answers = [
+            7  => $request->p7,
+            8  => $request->p8,
+            9  => $request->p9,
+            10 => $request->p10,
+        ];
+
+        $inserted = 0;
+        foreach ($answers as $pertanyaan => $jawaban) {
+            if ($jawaban === null || $jawaban === '') continue;
+            Jawaban::create(array_merge($base, ['id_pertanyaan' => $pertanyaan, 'jawaban' => $jawaban]));
+            $inserted++;
+        }
+
+        Log::info("[KaderSaya::storeRefleksi] done — {$inserted} rows inserted for kader NIK {$kader->nik}");
+
+        return back()->with('success', 'Refleksi berhasil disimpan!');
     }
 }
