@@ -70,15 +70,32 @@ export default function LearningGrowthTab({ faseGroups, allFases = [] }) {
     const chartRef      = useRef(null);
     const chartInstance = useRef(null);
 
-    // Titik grafik = Skor Akhir per modul (bukan rata-rata fase) agar naik-turunnya terlihat.
+    // Titik grafik = LGS (Learning Growth Score) per modul — rumus Stakeholder berbasis
+    // KENAIKAN nilai (KG dari pre→post test, digabung AS nilai tugas), bukan skor mentah.
     // In-Class = modul Foundation (F1..) disambung modul Monthly Training/Leadership (L1..)
     // dalam SATU garis; Self-Learning (S1..) jadi garis terpisah.
+    // Urutan titik = kapan modul DISELESAIKAN peserta (completed_at), dihitung ulang per
+    // peserta (dokumentasi §10) — modul yang belum selesai ditaruh di akhir.
     const modulsOf = (n) => fgByFase(n)?.moduls ?? [];
+    const byCompletion = (arr) =>
+        [...arr].sort((a, b) => {
+            if (a.completed_at && b.completed_at) return new Date(a.completed_at) - new Date(b.completed_at);
+            if (a.completed_at) return -1;
+            if (b.completed_at) return 1;
+            return 0;
+        });
+    const toPoint = (prefix) => (m, i) => ({
+        label: `${prefix}${i + 1}`,
+        nama: m.nama,
+        score: m.growth_score,
+        kg: m.kg,
+        as: m.as,
+    });
     const inClassPoints = [
-        ...modulsOf(1).map((m, i) => ({ label: `F${i + 1}`, nama: m.nama, score: m.score })),
-        ...modulsOf(3).map((m, i) => ({ label: `L${i + 1}`, nama: m.nama, score: m.score })),
+        ...byCompletion(modulsOf(1)).map(toPoint("F")),
+        ...byCompletion(modulsOf(3)).map(toPoint("L")),
     ];
-    const selfPoints = modulsOf(2).map((m, i) => ({ label: `S${i + 1}`, nama: m.nama, score: m.score }));
+    const selfPoints = byCompletion(modulsOf(2)).map(toPoint("S"));
 
     const allPoints = [...inClassPoints, ...selfPoints];
 
@@ -151,6 +168,15 @@ export default function LearningGrowthTab({ faseGroups, allFases = [] }) {
                     tooltip: {
                         callbacks: {
                             title: (items) => items.map((it) => allPoints[it.dataIndex]?.nama ?? it.label),
+                            // Rincian LGS: KG selalu ada; AS hanya pada modul ber-tugas.
+                            afterBody: (items) => {
+                                const p = allPoints[items[0]?.dataIndex];
+                                if (!p) return [];
+                                const lines = [];
+                                if (p.kg != null) lines.push(`KG (kenaikan nilai): ${p.kg}`);
+                                if (p.as != null) lines.push(`AS (nilai tugas): ${p.as}`);
+                                return lines;
+                            },
                         },
                     },
                 },

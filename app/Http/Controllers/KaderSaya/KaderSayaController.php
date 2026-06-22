@@ -158,12 +158,16 @@ class KaderSayaController extends Controller
         $moduls = Modul::whereIn('id', $allModulIds)->orderBy('fase')->orderBy('nama_modul')->get(['id', 'nama_modul as nama', 'fase', 'has_test', 'has_post_activity']);
 
         $testResults = $userId
-            ? ModulTestResult::whereIn('modul_id', $allModulIds)->where('user_id', $userId)->where('is_completed', 1)->get(['modul_id', 'tipe', 'score'])
+            ? ModulTestResult::whereIn('modul_id', $allModulIds)->where('user_id', $userId)->where('is_completed', 1)->get(['modul_id', 'tipe', 'score', 'updated_at'])
             : collect();
 
-        $testMap = [];
+        // $postTimeMap = kapan Post Test diselesaikan → dipakai mengurutkan titik grafik
+        // Learning Growth berdasarkan urutan penyelesaian modul (lihat dokumentasi §10).
+        $testMap     = [];
+        $postTimeMap = [];
         foreach ($testResults as $t) {
             $testMap[$t->modul_id][$t->tipe] = (float) $t->score;
+            if ($t->tipe === 'post') $postTimeMap[$t->modul_id] = $t->updated_at;
         }
 
         $readMap = $userId
@@ -175,16 +179,18 @@ class KaderSayaController extends Controller
                 ->whereIn('dokumen.modul_id', $allModulIds)
                 ->where('dokumen.jenis', 'POST_ACTIVITY')
                 ->leftJoin('penilaian_post_activity', 'dokumen.id', '=', 'penilaian_post_activity.dokumen_id')
-                ->select('dokumen.modul_id', 'penilaian_post_activity.nilai as pa_score')
+                ->select('dokumen.modul_id', 'penilaian_post_activity.nilai as pa_score', 'penilaian_post_activity.dinilai_at as pa_time')
                 ->get()
             : collect();
 
         $docIds     = [];
         $paScoreMap = [];
+        $paTimeMap  = [];
         foreach ($paData as $d) {
             $docIds[$d->modul_id] = true;
             if ($d->pa_score !== null) {
                 $paScoreMap[$d->modul_id] = (float) $d->pa_score;
+                $paTimeMap[$d->modul_id]  = $d->pa_time;
             }
         }
 
@@ -225,6 +231,32 @@ class KaderSayaController extends Controller
             $modulScore = $modulScoreRaw !== null ? (int) round($modulScoreRaw) : null;
             if ($modulScore !== null) $faseGroups[$fase]['scores'][] = $modulScore;
 
+            // Learning Growth Score (LGS) — titik grafik Learning Growth (rumus Stakeholder,
+            // berbasis KENAIKAN nilai). KG dari pre→post test; AS dari nilai tugas; LGS
+            // menggabungkannya (60/40) untuk modul ber-tugas, atau = KG bila tanpa tugas.
+            $kgRaw = ModulScore::knowledgeGain(
+                $testMap[$modul->id]['pre']  ?? null,
+                $testMap[$modul->id]['post'] ?? null
+            );
+            $asRaw = $modul->has_post_activity
+                ? ModulScore::applicationScore($paScoreMap[$modul->id] ?? null)
+                : null;
+            $growthRaw   = ModulScore::learningGrowth((bool) $modul->has_post_activity, $kgRaw, $asRaw);
+            $growthScore = $growthRaw !== null ? (int) round($growthRaw) : null;
+
+            // completed_at = saat komponen penilai terakhir selesai → urutan titik di grafik.
+            $completedAt = null;
+            if ($growthScore !== null) {
+                $times = [];
+                if (isset($postTimeMap[$modul->id]))                                 $times[] = $postTimeMap[$modul->id];
+                if ($modul->has_post_activity && isset($paTimeMap[$modul->id]))       $times[] = $paTimeMap[$modul->id];
+                $times = array_filter(array_map(
+                    fn ($t) => $t ? \Illuminate\Support\Carbon::parse($t) : null,
+                    $times
+                ));
+                if (!empty($times)) $completedAt = collect($times)->max()->toIso8601String();
+            }
+
             $faseGroups[$fase]['moduls'][] = [
                 'id'                => $modul->id,
                 'nama'              => $modul->nama,
@@ -241,6 +273,11 @@ class KaderSayaController extends Controller
                 'done'              => $done,
                 'required'          => $required,
                 'score'             => $modulScore,
+                // Komponen grafik Learning Growth (rumus Stakeholder, berbasis kenaikan nilai).
+                'kg'                => $kgRaw    !== null ? (int) round($kgRaw)    : null,
+                'as'                => $asRaw    !== null ? (int) round($asRaw)    : null,
+                'growth_score'      => $growthScore,
+                'completed_at'      => $completedAt,
             ];
             $faseGroups[$fase]['total']++;
             if ($done >= $required) $faseGroups[$fase]['done']++;
