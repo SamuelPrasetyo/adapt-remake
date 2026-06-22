@@ -11,4 +11,5 @@ Route::middleware(['can:isAll'])->group(function () {
 
 Route::middleware(['can:isKader'])->group(function () {
     Route::get('/dashboard-kader', [DashboardController::class, 'dashboard_kader'])->name('dashboard.kader');
+    Route::post('/dashboard-kader/refleksi', [DashboardController::class, 'storeRefleksi'])->name('dashboard.kader.refleksi');
 });

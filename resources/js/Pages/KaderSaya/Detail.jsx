@@ -69,6 +69,7 @@ export default function KaderSayaDetail({
     currentWeek = 0,
     totalWeeks = 0,
     weeks = [],
+    weeksKader = [],
     refleksi = [],
     mentorFeedbackList = [],
     mentorName = "",
@@ -217,11 +218,13 @@ export default function KaderSayaDetail({
                 <FeedbackTab
                     kader={kader}
                     weeks={weeks}
+                    weeksKader={weeksKader}
                     refleksi={refleksi}
                     mentorFeedbackList={mentorFeedbackList}
                     mentorName={mentorName}
                     kaderId={kaderId}
                     showFeedbackForm={!kaderView}
+                    kaderView={kaderView}
                 />
             )}
             {tab === "penilaian" && (

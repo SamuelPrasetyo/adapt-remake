@@ -42,11 +42,15 @@ class ApprovalController extends Controller
         // Akun users Mentor dipakai bersama satu Business Unit; orang yang sebenarnya upload
         // ada di dokumen.mentor_master_id (record mentor terpilih). Ambil nama record mentor +
         // BU-nya (company_shortname), fallback ke nama akun users bila tak ada record terpilih.
+        // Untuk uploader Kader, BU diambil lewat ku.nik = kader.nik (dokumen.kader_id = users.id,
+        // bukan kader.id — sama seperti jembatan NIK di mentorKaderNiks()).
         $paBase = DB::table('dokumen as d')
             ->leftJoin('users as ku', DB::raw('CONVERT(d.kader_id USING utf8mb4) COLLATE utf8mb4_unicode_ci'), '=', 'ku.id')
             ->leftJoin('users as mu', DB::raw('CONVERT(d.mentor_id USING utf8mb4) COLLATE utf8mb4_unicode_ci'), '=', 'mu.id')
             ->leftJoin('mentor as mt', 'd.mentor_master_id', '=', 'mt.id')
             ->leftJoin('company as co', 'mt.company_code', '=', 'co.company_code')
+            ->leftJoin('kader as k', DB::raw('ku.nik COLLATE utf8mb4_unicode_ci'), '=', DB::raw('k.nik COLLATE utf8mb4_unicode_ci'))
+            ->leftJoin('company as co2', 'k.company_code', '=', 'co2.company_code')
             ->leftJoin('modul as m', 'd.modul_id', '=', 'm.id')
             ->leftJoin('penilaian_post_activity as pa', 'pa.dokumen_id', '=', 'd.id')
             ->where('d.jenis', 'POST_ACTIVITY');
@@ -54,14 +58,16 @@ class ApprovalController extends Controller
         $paPending = (clone $paBase)
             ->where('d.status', 'pending')
             ->orderBy('d.created_at', 'desc')
-            ->get(['d.id','d.nama_file','d.path_file','d.tipe','d.created_at','m.nama_modul','co.company_shortname as uploader_bu',
+            ->get(['d.id','d.nama_file','d.path_file','d.tipe','d.created_at','m.nama_modul',
+                   DB::raw('COALESCE(co.company_shortname, co2.company_shortname) as uploader_bu'),
                    'd.modul_id','d.mentor_id','d.mentor_master_id','d.kader_id',
                    DB::raw('COALESCE(ku.name, mt.nama, mu.name) as uploader_nama')]);
 
         $paApproved = (clone $paBase)
             ->where('d.status', 'approved')
             ->orderBy('d.approved_at', 'desc')
-            ->get(['d.id','d.nama_file','d.path_file','d.tipe','d.created_at','d.approved_at','m.nama_modul','pa.nilai','co.company_shortname as uploader_bu',
+            ->get(['d.id','d.nama_file','d.path_file','d.tipe','d.created_at','d.approved_at','m.nama_modul','pa.nilai',
+                   DB::raw('COALESCE(co.company_shortname, co2.company_shortname) as uploader_bu'),
                    DB::raw('COALESCE(ku.name, mt.nama, mu.name) as uploader_nama')]);
 
         // Post Activity Mentor = 10 sesi berurutan; sesi 1-9 cukup di-approve, sesi ke-10 (sesi terakhir)
