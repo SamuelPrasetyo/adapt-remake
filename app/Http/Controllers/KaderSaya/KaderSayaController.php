@@ -155,7 +155,7 @@ class KaderSayaController extends Controller
             : collect();
         $allModulIds = $userModulIds->merge($companyModulIds)->unique()->values()->all();
 
-        $moduls = Modul::whereIn('id', $allModulIds)->orderBy('fase')->orderBy('nama_modul')->get(['id', 'nama_modul as nama', 'fase', 'has_test', 'has_post_activity']);
+        $moduls = Modul::whereIn('id', $allModulIds)->orderBy('fase')->orderBy('nama_modul')->get(['id', 'kode_modul', 'nama_modul as nama', 'fase', 'has_test', 'has_post_activity']);
 
         $testResults = $userId
             ? ModulTestResult::whereIn('modul_id', $allModulIds)->where('user_id', $userId)->where('is_completed', 1)->get(['modul_id', 'tipe', 'score', 'updated_at'])
@@ -229,7 +229,6 @@ class KaderSayaController extends Controller
                 $paScoreMap[$modul->id] ?? null
             );
             $modulScore = $modulScoreRaw !== null ? (int) round($modulScoreRaw) : null;
-            if ($modulScore !== null) $faseGroups[$fase]['scores'][] = $modulScore;
 
             // Learning Growth Score (LGS) — titik grafik Learning Growth (rumus Stakeholder,
             // berbasis KENAIKAN nilai). KG dari pre→post test; AS dari nilai tugas; LGS
@@ -244,12 +243,18 @@ class KaderSayaController extends Controller
             $growthRaw   = ModulScore::learningGrowth((bool) $modul->has_post_activity, $kgRaw, $asRaw);
             $growthScore = $growthRaw !== null ? (int) round($growthRaw) : null;
 
+            // Avg per fase = rata-rata LGS (growth_score) modul yang sudah punya skor —
+            // konsisten dengan angka per modul di kartu & titik di grafik Learning Growth
+            // (sum LGS modul / jumlah modul ber-skor), bukan finalScore/Skor Akhir.
+            if ($growthScore !== null) $faseGroups[$fase]['scores'][] = $growthScore;
+
             // completed_at = saat komponen penilai terakhir selesai → urutan titik di grafik.
+            // Modul ber-tugas selesai saat Post Activity dinilai; tanpa tugas saat Post Test.
             $completedAt = null;
             if ($growthScore !== null) {
                 $times = [];
-                if (isset($postTimeMap[$modul->id]))                                 $times[] = $postTimeMap[$modul->id];
-                if ($modul->has_post_activity && isset($paTimeMap[$modul->id]))       $times[] = $paTimeMap[$modul->id];
+                if (isset($postTimeMap[$modul->id]))                           $times[] = $postTimeMap[$modul->id];
+                if ($modul->has_post_activity && isset($paTimeMap[$modul->id])) $times[] = $paTimeMap[$modul->id];
                 $times = array_filter(array_map(
                     fn ($t) => $t ? \Illuminate\Support\Carbon::parse($t) : null,
                     $times
@@ -259,6 +264,7 @@ class KaderSayaController extends Controller
 
             $faseGroups[$fase]['moduls'][] = [
                 'id'                => $modul->id,
+                'kode_modul'        => $modul->kode_modul,
                 'nama'              => $modul->nama,
                 'pre'               => $pre,
                 'mat'               => $mat,
@@ -283,7 +289,8 @@ class KaderSayaController extends Controller
             if ($done >= $required) $faseGroups[$fase]['done']++;
         }
 
-        // Avg per fase memakai rumus tunggal ModulScore::average.
+        // Avg per fase = rata-rata sederhana LGS modul (sum growth_score / jumlah modul ber-skor)
+        // via ModulScore::average — bukan finalScore, agar selaras dengan kartu & grafik.
         foreach ($faseGroups as &$fg) {
             $fg['progress']  = $fg['total'] > 0 ? (int) round(($fg['done'] / $fg['total']) * 100) : 0;
             $faseAvg         = ModulScore::average($fg['scores'], null);

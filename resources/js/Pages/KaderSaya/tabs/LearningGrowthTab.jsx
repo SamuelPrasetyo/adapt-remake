@@ -72,10 +72,10 @@ export default function LearningGrowthTab({ faseGroups, allFases = [] }) {
 
     // Titik grafik = LGS (Learning Growth Score) per modul — rumus Stakeholder berbasis
     // KENAIKAN nilai (KG dari pre→post test, digabung AS nilai tugas), bukan skor mentah.
-    // In-Class = modul Foundation (F1..) disambung modul Monthly Training/Leadership (L1..)
-    // dalam SATU garis; Self-Learning (S1..) jadi garis terpisah.
-    // Urutan titik = kapan modul DISELESAIKAN peserta (completed_at), dihitung ulang per
-    // peserta (dokumentasi §10) — modul yang belum selesai ditaruh di akhir.
+    // In-Class = modul Foundation disambung modul Monthly Training/Leadership dalam SATU
+    // garis; Self-Learning jadi garis terpisah. Label titik = kode_modul (field tabel modul).
+    // Urutan titik = kapan modul DISELESAIKAN peserta (completed_at) — modul ber-tugas saat
+    // Post Activity dinilai, tanpa tugas saat Post Test; yang belum selesai ditaruh di akhir.
     const modulsOf = (n) => fgByFase(n)?.moduls ?? [];
     const byCompletion = (arr) =>
         [...arr].sort((a, b) => {
@@ -84,18 +84,18 @@ export default function LearningGrowthTab({ faseGroups, allFases = [] }) {
             if (b.completed_at) return 1;
             return 0;
         });
-    const toPoint = (prefix) => (m, i) => ({
-        label: `${prefix}${i + 1}`,
+    const toPoint = (m) => ({
+        label: m.kode_modul || m.nama,
         nama: m.nama,
         score: m.growth_score,
         kg: m.kg,
         as: m.as,
     });
     const inClassPoints = [
-        ...byCompletion(modulsOf(1)).map(toPoint("F")),
-        ...byCompletion(modulsOf(3)).map(toPoint("L")),
+        ...byCompletion(modulsOf(1)).map(toPoint),
+        ...byCompletion(modulsOf(3)).map(toPoint),
     ];
-    const selfPoints = byCompletion(modulsOf(2)).map(toPoint("S"));
+    const selfPoints = byCompletion(modulsOf(2)).map(toPoint);
 
     const allPoints = [...inClassPoints, ...selfPoints];
 
@@ -312,12 +312,13 @@ export default function LearningGrowthTab({ faseGroups, allFases = [] }) {
                                                 {mi + 1}
                                             </span>
                                             <span className="text-sm text-slate-800 truncate flex-1 min-w-0">{m.nama}</span>
+                                            {/* Angka per modul = LGS (growth_score), rumus sama dengan titik grafik Learning Growth. */}
                                             <div className="flex items-center gap-2 shrink-0 w-24">
                                                 <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                                    <div className={`h-full rounded-full ${pal.bar}`} style={{ width: `${m.score ?? 0}%` }} />
+                                                    <div className={`h-full rounded-full ${pal.bar}`} style={{ width: `${m.growth_score ?? 0}%` }} />
                                                 </div>
-                                                {m.score != null ? (
-                                                    <span className={`text-sm font-bold w-7 text-right ${scoreColor(m.score)}`}>{m.score}</span>
+                                                {m.growth_score != null ? (
+                                                    <span className={`text-sm font-bold w-7 text-right ${scoreColor(m.growth_score)}`}>{m.growth_score}</span>
                                                 ) : (
                                                     <span className="text-sm text-slate-300 w-7 text-right">—</span>
                                                 )}
