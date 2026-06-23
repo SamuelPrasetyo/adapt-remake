@@ -75,6 +75,8 @@ class LearningController extends Controller
             }
         })
         ->orderBy('fase')
+        ->orderByRaw('urutan IS NULL, urutan')
+        ->orderBy('id')
         ->get();
 
         $grouped = $moduls->groupBy('fase');

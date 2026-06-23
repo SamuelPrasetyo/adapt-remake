@@ -16,11 +16,42 @@ class ModulController extends Controller
 {
     public function index()
     {
-        $moduls = Modul::get();
+        // Urut per fase lalu `urutan` (diatur admin) — fallback id agar stabil bila urutan null.
+        $moduls = Modul::orderByRaw('fase IS NULL, fase')
+            ->orderByRaw('urutan IS NULL, urutan')
+            ->orderBy('id')
+            ->get();
 
         return Inertia::render('Modul/Index', [
             'moduls' => $moduls,
         ]);
+    }
+
+    /**
+     * Simpan urutan baru modul dalam SATU fase (drag & drop di tab "Urutkan").
+     * Hanya mengubah kolom `urutan` — aman, tidak menyentuh id/relasi apa pun.
+     */
+    public function reorder(Request $request)
+    {
+        $data = $request->validate([
+            'ids'   => 'required|array|min:1',
+            'ids.*' => 'integer|exists:modul,id',
+        ]);
+
+        DB::transaction(function () use ($data) {
+            foreach ($data['ids'] as $i => $id) {
+                Modul::where('id', $id)->update(['urutan' => $i + 1]);
+            }
+        });
+
+        return back()->with('success', 'Urutan modul berhasil disimpan');
+    }
+
+    /** Urutan berikutnya (terakhir) dalam satu fase, untuk modul yang baru dibuat/pindah fase. */
+    private function nextUrutan($fase): int
+    {
+        $max = Modul::where('fase', $fase)->max('urutan');
+        return (int) $max + 1;
     }
 
     public function store(Request $request)
@@ -46,6 +77,7 @@ class ModulController extends Controller
             'nama_modul'        => $request->nama_modul,
             'tipe'              => $request->tipe,
             'fase'              => $faseValue,
+            'urutan'            => $this->nextUrutan($faseValue),
             'batch'             => $request->batch,
             'tag_kompetensi'    => $request->tag_kompetensi,
             'has_test'          => $request->boolean('has_test'),
@@ -85,11 +117,18 @@ class ModulController extends Controller
 
         $tipe = $request->tipe ?? $modul->tipe;
         $faseValue = $tipe === 'MENTOR' ? null : preg_replace('/[^0-9]/', '', (string) $request->fase);
+
+        // Pindah fase → taruh di urutan terakhir fase baru; fase sama → pertahankan urutan.
+        $urutan = (string) $modul->fase === (string) $faseValue
+            ? $modul->urutan
+            : $this->nextUrutan($faseValue);
+
         $modul->update([
             'kode_modul'        => $request->kode_modul,
             'nama_modul'        => $request->nama_modul,
             'tipe'              => $tipe,
             'fase'              => $faseValue,
+            'urutan'            => $urutan,
             'batch'             => $request->batch,
             'tag_kompetensi'    => $request->tag_kompetensi,
             'has_test'          => $request->boolean('has_test'),

@@ -155,7 +155,13 @@ class KaderSayaController extends Controller
             : collect();
         $allModulIds = $userModulIds->merge($companyModulIds)->unique()->values()->all();
 
-        $moduls = Modul::whereIn('id', $allModulIds)->orderBy('fase')->orderBy('nama_modul')->get(['id', 'kode_modul', 'nama_modul as nama', 'fase', 'has_test', 'has_post_activity']);
+        // Urut per fase lalu `urutan` (diatur admin di Modul Pembelajaran) → kartu per-modul
+        // Learning Growth tampil sesuai urutan itu. Titik grafik tetap urut penyelesaian.
+        $moduls = Modul::whereIn('id', $allModulIds)
+            ->orderBy('fase')
+            ->orderByRaw('urutan IS NULL, urutan')
+            ->orderBy('nama_modul')
+            ->get(['id', 'kode_modul', 'nama_modul as nama', 'fase', 'has_test', 'has_post_activity']);
 
         $testResults = $userId
             ? ModulTestResult::whereIn('modul_id', $allModulIds)->where('user_id', $userId)->where('is_completed', 1)->get(['modul_id', 'tipe', 'score', 'updated_at'])
