@@ -6,17 +6,21 @@ use App\Http\Controllers\Controller;
 use App\Exports\ReportFeedbackExport;
 use App\Exports\ReportFeedbackKaderExport;
 use App\Models\ActivityLog;
+use App\Models\Batch;
 use App\Models\cr;
 use App\Models\FeedbackMai;
 use App\Models\FmDetail;
 use App\Models\Jawaban;
 use App\Models\Kader;
+use App\Models\ListKaderPerMentor;
 use App\Models\PerformanceSum;
 use App\Models\Pertanyaan;
 use App\Models\User;
 use App\Models\Week;
 use App\Models\WeekKader;
+use App\Support\KaderReportData;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -398,6 +402,206 @@ class ReportController extends Controller
     public function feedback_index()
     {
         return Inertia::render('Report/Feedback');
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Report New — "Management Trainee Development Report" (batch ke-3 ke atas).
+    // Satu halaman gabungan per kader; reuse perhitungan LGS/Feedback/FMC dari
+    // App\Support\KaderReportData (sumber yang sama dengan Kader Saya/Detail).
+    // ──────────────────────────────────────────────────────────────────────────
+
+    public function report_new_index()
+    {
+        $user     = Auth::user();
+        $isMentor = $user->type === 'Mentor';
+
+        // Hanya kader batch ke-3 ke atas (nama_batch numerik). Batch <= 2 tetap pakai Report Old.
+        $kaders = Kader::select('kader.id', 'kader.nama', 'kader.nik', 'batch.nama_batch', 'batch.tahun_batch')
+            ->leftJoin('batch', 'kader.id_batch', '=', 'batch.id_batch')
+            ->whereRaw('CAST(batch.nama_batch AS UNSIGNED) >= 3')
+            ->when($isMentor, fn ($q) => $q->where('kader.company_code', $user->company_code))
+            ->orderBy('batch.nama_batch', 'desc')
+            ->orderBy('kader.nama', 'asc')
+            ->get();
+
+        return Inertia::render('Report/DevelopmentIndex', [
+            'kaders' => $kaders,
+        ]);
+    }
+
+    public function report_new($kader_id)
+    {
+        $user     = Auth::user();
+        $isMentor = $user->type === 'Mentor';
+
+        $kader = Kader::select(
+                'kader.*',
+                'company.company_name as bu',
+                'divisis.nama as divisi_name',
+                'departemens.nama as dept_name',
+                'batch.nama_batch as batch_name',
+                'batch.tahun_batch as batch_year',
+                'batch.tanggal_mulai as batch_start',
+                'lkpm.mentor_id',
+                'mentor.nama as mentor_name'
+            )
+            ->leftJoin('company', 'kader.company_code', '=', 'company.company_code')
+            ->leftJoin('divisis', 'kader.id_divisi', '=', 'divisis.id')
+            ->leftJoin('departemens', 'kader.id_departemen', '=', 'departemens.id')
+            ->leftJoin('batch', 'kader.id_batch', '=', 'batch.id_batch')
+            ->leftJoin(DB::raw('list_kader_per_mentor lkpm'), function ($j) {
+                $j->on('lkpm.kader_id', '=', 'kader.id')->whereNull('lkpm.deleted_at');
+            })
+            ->leftJoin('mentor', 'lkpm.mentor_id', '=', 'mentor.id')
+            ->where('kader.id', $kader_id)
+            ->first();
+
+        if (!$kader) abort(404);
+
+        // Mentor hanya boleh membuka kader di BU-nya (selaras dengan KaderSaya::show).
+        if ($isMentor) {
+            $hasAccess = ListKaderPerMentor::where('list_kader_per_mentor.kader_id', $kader->id)
+                ->whereNull('list_kader_per_mentor.deleted_at')
+                ->join('mentor', 'list_kader_per_mentor.mentor_id', '=', 'mentor.id')
+                ->whereNull('mentor.deleted_at')
+                ->where('mentor.company_code', $user->company_code)
+                ->exists();
+            if (!$hasAccess) abort(403);
+        }
+
+        $report = KaderReportData::build($kader);
+
+        // Jendela tanggal tiap FMC (3 × 4 bulan) diturunkan dari tanggal mulai batch.
+        $windows = $this->fmcWindows($kader->batch_start, $kader->batch_year);
+
+        // Development Progress (section B) di-bucket per FMC = rata-rata 4 aspek mentor pada
+        // minggu yang tanggalnya jatuh di rentang FMC tsb (+ bucket 'all' utk view Final Score).
+        // Aspek id_pertanyaan: 1 Routine Job, 2 Assignment, 3 SOP, 4 Project.
+        $aspectRows = Jawaban::selectRaw('jawaban.id_pertanyaan as idp, jawaban.jawaban as val, weeks.tanggal_mulai as wdate')
+            ->join('weeks', 'jawaban.id_week', '=', 'weeks.id_week')
+            ->where('jawaban.nik_kader', $kader->nik)
+            ->whereNotNull('jawaban.nama_mentor')
+            ->whereIn('jawaban.id_pertanyaan', [1, 2, 3, 4])
+            ->get();
+
+        $acc = ['all' => [], 1 => [], 2 => [], 3 => []]; // [bucket][idp] => [sum, count]
+        foreach ($aspectRows as $r) {
+            if (!is_numeric($r->val)) continue;
+            $val     = (float) $r->val;
+            $buckets = ['all'];
+            if ($r->wdate) {
+                $d = \Carbon\Carbon::parse($r->wdate);
+                foreach ($windows as $w) {
+                    if ($d->between($w['start'], $w['end'])) { $buckets[] = $w['fmc']; break; }
+                }
+            }
+            foreach ($buckets as $b) {
+                $acc[$b][$r->idp] ??= [0, 0];
+                $acc[$b][$r->idp][0] += $val;
+                $acc[$b][$r->idp][1] += 1;
+            }
+        }
+
+        $aspectLabels = [1 => 'Routine Job', 2 => 'Assignment', 3 => 'SOP Understanding', 4 => 'Project Execution'];
+        $devByFmc     = [];
+        foreach (['all', 1, 2, 3] as $b) {
+            $list = [];
+            foreach ([1, 3, 2, 4] as $idp) { // urutan tampil sesuai mockup
+                $list[] = [
+                    'label' => $aspectLabels[$idp],
+                    'score' => isset($acc[$b][$idp]) && $acc[$b][$idp][1] > 0
+                        ? round($acc[$b][$idp][0] / $acc[$b][$idp][1], 1)
+                        : null,
+                ];
+            }
+            $devByFmc[$b] = $list;
+        }
+
+        // Final score & status approval tiap FMC. Grand Score (rata-rata FMC 1-3) hanya
+        // valid bila KETIGA FMC sudah di-APPROVE — nilai sebelum approve belum final.
+        $fmcFinalScores = [];
+        $fmcApproved    = [];
+        foreach ($report['penilaianList'] as $p) {
+            $fmcFinalScores[$p['fmc']] = $p['final_score'];
+            $fmcApproved[$p['fmc']]    = ($p['approval_status'] ?? null) === 'approved';
+        }
+        $allApproved = !empty($fmcApproved[1]) && !empty($fmcApproved[2]) && !empty($fmcApproved[3])
+            && ($fmcFinalScores[1] ?? null) !== null
+            && ($fmcFinalScores[2] ?? null) !== null
+            && ($fmcFinalScores[3] ?? null) !== null;
+        $grandScore = $allApproved
+            ? round(($fmcFinalScores[1] + $fmcFinalScores[2] + $fmcFinalScores[3]) / 3, 1)
+            : null;
+
+        return Inertia::render('Report/Development', [
+            'kader' => [
+                'nama'        => $kader->nama,
+                'nik'         => $kader->nik,
+                'batch_name'  => $kader->batch_name,
+                'batch_roman' => $kader->batch_name !== null ? $this->ToRomawi((int) $kader->batch_name) : null,
+                'batch_year'  => $kader->batch_year,
+                'bu'          => $kader->bu,
+                'divisi'      => $kader->divisi_name,
+                'departemen'  => $kader->dept_name,
+                'mentor'      => $kader->mentor_name,
+            ],
+            'faseGroups'       => $report['faseGroups'],
+            'allFases'         => $report['allFases'],
+            'penilaianList'    => $report['penilaianList'],
+            'fmcScore'         => $report['fmcScore'],
+            'developmentByFmc' => $devByFmc,
+            'fmcFinalScores'   => $fmcFinalScores,
+            'fmcApproved'      => $fmcApproved,
+            'grandScore'       => $grandScore,
+            'fmcWindows'       => array_map(fn ($w) => [
+                'fmc'            => $w['fmc'],
+                'label'          => $w['label'],
+                'penilaianLabel' => $w['penilaianLabel'],
+                'start'          => $w['start']->toIso8601String(),
+                'end'            => $w['end']->toIso8601String(),
+            ], $windows),
+            'currentFmc'       => $this->currentFmc($kader->batch_start, $kader->batch_year),
+        ]);
+    }
+
+    // Nama bulan Indonesia (penuh & singkat) untuk label periode report.
+    private const BULAN = [1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April', 5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus', 9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'];
+    private const BULAN_SINGKAT = [1 => 'Jan', 2 => 'Feb', 3 => 'Mar', 4 => 'Apr', 5 => 'Mei', 6 => 'Jun', 7 => 'Jul', 8 => 'Agu', 9 => 'Sep', 10 => 'Okt', 11 => 'Nov', 12 => 'Des'];
+
+    private function reportStartDate($batchStart, $batchYear): \Carbon\Carbon
+    {
+        if ($batchStart) return \Carbon\Carbon::parse($batchStart)->startOfMonth();
+        if ($batchYear)  return \Carbon\Carbon::create((int) $batchYear, 1, 1);
+        return now()->startOfMonth();
+    }
+
+    // 3 jendela FMC (masing-masing 4 bulan) diturunkan dari tanggal mulai batch.
+    // start/end dipakai untuk: (a) memfilter titik grafik per completed_at, (b) bucket
+    // skor mentor per FMC. label = rentang "Mei – Agu 2026"; penilaianLabel = bulan ke-4.
+    private function fmcWindows($batchStart, $batchYear): array
+    {
+        $start   = $this->reportStartDate($batchStart, $batchYear);
+        $windows = [];
+        for ($f = 1; $f <= 3; $f++) {
+            $fs = (clone $start)->addMonths(($f - 1) * 4)->startOfMonth();
+            $fe = (clone $start)->addMonths($f * 4 - 1)->endOfMonth();
+            $windows[] = [
+                'fmc'            => $f,
+                'start'          => $fs,
+                'end'            => $fe,
+                'label'          => self::BULAN_SINGKAT[$fs->month] . ' – ' . self::BULAN_SINGKAT[$fe->month] . ' ' . $fe->year,
+                'penilaianLabel' => self::BULAN[$fe->month] . ' ' . $fe->year,
+            ];
+        }
+        return $windows;
+    }
+
+    // FMC berjalan = relatif tanggal mulai batch (clamp 1..3).
+    private function currentFmc($batchStart, $batchYear): int
+    {
+        $start = $this->reportStartDate($batchStart, $batchYear);
+        $diff  = (int) $start->diffInMonths(now()->startOfMonth(), false);
+        return max(1, min(intdiv(max(0, $diff), 4) + 1, 3));
     }
 
     public function report_feedback(Request $request)

@@ -207,7 +207,7 @@ export const ADMIN_NAV = [
     { type: "section", label: "Report" },
     {
         type: "group",
-        label: "Report",
+        label: "Report Old",
         icon: "file",
         children: [
             {
@@ -226,6 +226,13 @@ export const ADMIN_NAV = [
                 match: "/reportfeedback-index",
             },
         ],
+    },
+    {
+        type: "item",
+        label: "Report New",
+        icon: "file",
+        href: "/report-new",
+        match: "/report-new",
     },
 ];
 
