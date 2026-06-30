@@ -27,7 +27,6 @@ function band(v) {
 }
 
 const fmt = (v, d = 1) => (v == null ? "—" : Number(v).toFixed(d));
-const signed = (v) => (v == null ? "—" : `${v >= 0 ? "+" : ""}${v.toFixed(1)}`);
 
 // Rentang sumbu-Y adaptif (selalu memuat KKM & semua titik), dikunci ke skala 0–10.
 const yRange = (vals) => {
@@ -42,11 +41,6 @@ const avgOf = (pts) => {
     const s = pts.filter((p) => p != null);
     return s.length ? s.reduce((a, b) => a + b, 0) / s.length : null;
 };
-const growthOf = (pts) => {
-    const s = pts.filter((p) => p != null);
-    return s.length >= 2 ? s[s.length - 1] - s[0] : null;
-};
-
 function SectionTitle({ code, children }) {
     return (
         <div className="text-[11px] font-semibold uppercase tracking-widest text-blue-700 mb-3">
@@ -106,8 +100,6 @@ export default function Development({
     const avgInClass = avgOf(inClassPoints.map((p) => p.score));
     const avgSelf = avgOf(selfPoints.map((p) => p.score));
     const lgScore = avgOf(allPoints.map((p) => p.score));
-    const inClassGrowth = growthOf(inClassPoints.map((p) => p.score));
-    const selfGrowth = growthOf(selfPoints.map((p) => p.score));
 
     // ── Section B · Development Progress (skor mentor pada FMC terpilih) ──────
     const dp = (isFinal ? developmentByFmc.all : developmentByFmc[view]) ?? [];
@@ -270,27 +262,7 @@ export default function Development({
 
                     {/* FMC timeline */}
                     <div className="px-6 py-4 border-b border-slate-100">
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            {fmcWindows.map((f) => {
-                                const st = isFinal || f.fmc < selFmc ? "selesai" : f.fmc === selFmc ? "berjalan" : "belum";
-                                const stMap = {
-                                    berjalan: { t: "Berjalan", c: "bg-amber-100 text-amber-700" },
-                                    selesai: { t: "Selesai", c: "bg-emerald-100 text-emerald-700" },
-                                    belum: { t: "Belum Dimulai", c: "bg-slate-100 text-slate-500" },
-                                };
-                                const active = !isFinal && f.fmc === selFmc;
-                                return (
-                                    <div key={f.fmc} className={`rounded-lg border px-4 py-2.5 flex items-center justify-between ${active ? "border-amber-200 bg-amber-50/40" : "border-slate-200"}`}>
-                                        <div>
-                                            <div className="text-xs font-semibold text-slate-700">FMC {f.fmc}</div>
-                                            <div className="text-[11px] text-slate-400">{f.label}</div>
-                                        </div>
-                                        <span className={`text-[11px] font-medium px-2 py-0.5 rounded ${stMap[st].c}`}>{stMap[st].t}</span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                        <div className="flex items-center justify-between mt-3">
+                        <div className="flex items-center justify-between">
                             <div className="flex items-center gap-1.5">
                                 {fmcWindows.map((f) => (
                                     <span key={f.fmc} className={`h-1.5 w-12 rounded-full ${isFinal || f.fmc < selFmc ? "bg-slate-700" : f.fmc === selFmc ? "bg-amber-500" : "bg-slate-200"}`} />
@@ -314,18 +286,6 @@ export default function Development({
                             </div>
                             <div style={{ height: 150 }}>
                                 {allPoints.length ? <canvas ref={lgChartRef} /> : <div className="h-full flex items-center justify-center text-xs text-slate-400">Belum ada modul selesai pada periode ini</div>}
-                            </div>
-                            <div className="flex gap-2 mt-3">
-                                <div className="flex-1 rounded-lg bg-slate-50 border border-slate-200 px-3 py-2">
-                                    <div className="text-[11px] text-slate-500">In-Class Growth</div>
-                                    <div className="text-base font-bold text-blue-600">{signed(inClassGrowth)}</div>
-                                    <div className="text-[10px] text-slate-400">Foundation + Leadership</div>
-                                </div>
-                                <div className="flex-1 rounded-lg bg-slate-50 border border-slate-200 px-3 py-2">
-                                    <div className="text-[11px] text-slate-500">Self-Learning Growth</div>
-                                    <div className="text-base font-bold text-emerald-600">{signed(selfGrowth)}</div>
-                                    <div className="text-[10px] text-slate-400">Sub-Functional OJT</div>
-                                </div>
                             </div>
                             <div className="mt-3 space-y-1.5 text-sm">
                                 <div className="flex items-center justify-between">
@@ -361,10 +321,6 @@ export default function Development({
                                 <div className="flex items-center justify-between">
                                     <span className="text-slate-500">Terendah</span>
                                     <span className="font-semibold text-slate-800">{dpLow ? `${dpLow.label} — ${fmt(dpLow.score)}` : "—"}</span>
-                                </div>
-                                <div className="flex items-center justify-between border-t border-slate-100 pt-2">
-                                    <span className="text-slate-500">Rata-rata</span>
-                                    <span className="font-semibold text-slate-800">{fmt(dpAvg)}</span>
                                 </div>
                             </div>
                         </div>

@@ -273,13 +273,15 @@ class KaderReportData
 
         $penilaianData = PenilaianOjtController::getDataForKader($kader->id);
 
-        // Stat "FMC" = rata-rata Final Score Penilaian OJT, HANYA dari FMC yang sudah dinilai.
-        // FMC yang belum dinilai tidak ikut membagi (bila baru FMC-1 terisi, tampilkan utuh).
-        $fmcScored = array_values(array_filter(
-            array_column($penilaianData['penilaianList'], 'final_score'),
-            fn ($v) => $v !== null
-        ));
-        $fmcScore = !empty($fmcScored) ? round(array_sum($fmcScored) / count($fmcScored), 1) : null;
+        // Stat "FMC" = Final Score dari FMC TERAKHIR yang sudah dinilai DAN sudah di-approve.
+        // FMC yang masih menunggu approval (pending/rejected) tidak dipakai; jadi bila FMC-2
+        // sudah diisi tapi belum di-approve, yang tampil tetap FMC-1. penilaianList urut fmc asc.
+        $fmcScore = null;
+        foreach ($penilaianData['penilaianList'] as $p) {
+            if ($p['final_score'] !== null && ($p['approval_status'] ?? null) === 'approved') {
+                $fmcScore = round((float) $p['final_score'], 1);
+            }
+        }
 
         return [
             'faseGroups'           => $faseGroups,
