@@ -15,26 +15,26 @@ import {
 
 Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Filler, Legend, Tooltip);
 
-const KKM = 7.0;
+const KKM = 70;
 
-// Band penilaian pada skala 0–10 (KKM 7.0).
+// Band penilaian pada skala 0–100 (KKM 70).
 function band(v) {
     if (v == null) return { label: "—", cls: "bg-slate-100 text-slate-500" };
-    if (v >= 8.5) return { label: "Excellent", cls: "bg-emerald-100 text-emerald-700" };
-    if (v >= 7) return { label: "Good", cls: "bg-blue-100 text-blue-700" };
-    if (v >= 6) return { label: "Cukup", cls: "bg-amber-100 text-amber-700" };
+    if (v >= 85) return { label: "Excellent", cls: "bg-emerald-100 text-emerald-700" };
+    if (v >= 70) return { label: "Good", cls: "bg-blue-100 text-blue-700" };
+    if (v >= 60) return { label: "Cukup", cls: "bg-amber-100 text-amber-700" };
     return { label: "Perlu Perhatian", cls: "bg-rose-100 text-rose-700" };
 }
 
 const fmt = (v, d = 1) => (v == null ? "—" : Number(v).toFixed(d));
 
-// Rentang sumbu-Y adaptif (selalu memuat KKM & semua titik), dikunci ke skala 0–10.
+// Rentang sumbu-Y adaptif (selalu memuat KKM & semua titik), dikunci ke skala 0–100.
 const yRange = (vals) => {
     const v = vals.filter((x) => x != null);
-    if (!v.length) return { min: 5, max: 9 };
+    if (!v.length) return { min: 50, max: 90 };
     const lo = Math.min(...v, KKM);
     const hi = Math.max(...v, KKM);
-    return { min: Math.max(0, Math.floor(lo - 0.5)), max: Math.min(10, Math.ceil(hi + 0.5)) };
+    return { min: Math.max(0, Math.floor(lo - 5)), max: Math.min(100, Math.ceil(hi + 5)) };
 };
 
 const avgOf = (pts) => {
@@ -88,7 +88,7 @@ export default function Development({
     const toPoint = (prefix) => (m, i) => ({
         label: `${prefix}${i + 1}`,
         nama: m.nama,
-        score: m.growth_score != null ? m.growth_score / 10 : null,
+        score: m.growth_score != null ? m.growth_score : null,
     });
     const inClassPoints = useMemo(
         () => [...byCompletion(modulsOf(1)).map(toPoint("F")), ...byCompletion(modulsOf(3)).map(toPoint("L"))],
@@ -102,7 +102,9 @@ export default function Development({
     const lgScore = avgOf(allPoints.map((p) => p.score));
 
     // ── Section B · Development Progress (skor mentor pada FMC terpilih) ──────
-    const dp = (isFinal ? developmentByFmc.all : developmentByFmc[view]) ?? [];
+    // Skor feedback mentor disimpan skala 1–10; ditampilkan per-100 agar seragam dgn LGS & OJT.
+    const dpRaw = (isFinal ? developmentByFmc.all : developmentByFmc[view]) ?? [];
+    const dp = dpRaw.map((d) => ({ ...d, score: d.score != null ? d.score * 10 : null }));
     const dpScores = dp.map((d) => d.score);
     const dpAvg = avgOf(dpScores);
     const dpScored = dp.filter((d) => d.score != null);
@@ -160,7 +162,7 @@ export default function Development({
                     tooltip: { callbacks: { title: (it) => allPoints[it[0]?.dataIndex]?.nama ?? it[0]?.label } },
                 },
                 scales: {
-                    y: { ...yRange(allPoints.map((p) => p.score)), grid: { color: "#f1f5f9" }, ticks: { stepSize: 1, font: { size: 10 } } },
+                    y: { ...yRange(allPoints.map((p) => p.score)), grid: { color: "#f1f5f9" }, ticks: { stepSize: 10, font: { size: 10 } } },
                     x: { grid: { display: false }, ticks: { font: { size: 10 } } },
                 },
             },
@@ -186,7 +188,7 @@ export default function Development({
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: {
-                    y: { ...yRange(dpScores), grid: { color: "#f1f5f9" }, ticks: { stepSize: 1, font: { size: 10 } } },
+                    y: { ...yRange(dpScores), grid: { color: "#f1f5f9" }, ticks: { stepSize: 10, font: { size: 10 } } },
                     x: { grid: { display: false }, ticks: { font: { size: 10 } } },
                 },
             },
@@ -298,7 +300,7 @@ export default function Development({
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span className="flex items-center gap-2 text-slate-600"><span className="w-4 border-t border-dashed border-orange-500 inline-block" /> KKM</span>
-                                    <span className="font-semibold text-slate-800">{KKM.toFixed(1)}</span>
+                                    <span className="font-semibold text-slate-800">{KKM}</span>
                                 </div>
                             </div>
                         </div>
