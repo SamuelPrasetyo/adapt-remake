@@ -266,13 +266,6 @@ export const KADER_NAV = [
                 href: "/form-idp",
                 match: "/form-idp",
             },
-            {
-                type: "item",
-                label: "Weekly Feedback",
-                icon: "file",
-                href: "/weekly-feedback",
-                match: "/weekly-feedback",
-            },
         ],
     },
 ];

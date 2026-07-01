@@ -83,6 +83,7 @@ export default function KaderSayaDetail({
     canEditPenilaian = false,
     allFases = [],
     kaderView = false,
+    weeklyFeedback = null,
 }) {
     const hashTab = typeof window !== "undefined" ? window.location.hash.replace("#", "") : "";
     const [tab, setTab] = useState(VALID_TABS.includes(hashTab) ? hashTab : "learning");
@@ -225,6 +226,7 @@ export default function KaderSayaDetail({
                     kaderId={kaderId}
                     showFeedbackForm={!kaderView}
                     kaderView={kaderView}
+                    weeklyFeedback={weeklyFeedback}
                 />
             )}
             {tab === "penilaian" && (

@@ -14,8 +14,8 @@ Route::middleware(['can:isKader'])->group(function () {
     Route::get('/form-idp', [FormIdpController::class, 'index'])->name('form.idp.index');
     Route::post('/form-idp/upload', [FormIdpController::class, 'store'])->name('form.idp.store');
 
-    // Upload File Weekly Feedback (terikat ke jadwal weeks; approval Mentor saja)
-    Route::get('/weekly-feedback', [WeeklyFeedbackController::class, 'index'])->name('weekly.feedback.index');
+    // Upload File Weekly Feedback (terikat ke jadwal weeks; approval Mentor saja).
+    // Form-nya menyatu di tab Feedback Dashboard Kader — hanya endpoint submit yang tersisa.
     Route::post('/weekly-feedback/upload', [WeeklyFeedbackController::class, 'store'])->name('weekly.feedback.store');
 
     // Feedback MAI (Kader mengisi untuk Mentor)

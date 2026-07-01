@@ -6,6 +6,7 @@ use App\Constants\PenilaianOjtStructure;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\KaderSaya\PenilaianOjtController;
 use App\Http\Controllers\Master\Mentor\KaderPerMentorController;
+use App\Http\Controllers\Modul\WeeklyFeedbackController;
 use App\Models\Batch;
 use App\Models\Company;
 use App\Models\Dokumen;
@@ -289,6 +290,8 @@ class KaderSayaController extends Controller
             'canEditPenilaian'   => $isMentor,
             'allFases'           => $report['allFases'],
             'kaderView'          => $isKader,
+            // Upload Weekly Feedback hanya untuk Kader yang melihat dashboard-nya sendiri.
+            'weeklyFeedback'     => $isKader ? WeeklyFeedbackController::dataFor($user) : null,
         ]);
     }
 
