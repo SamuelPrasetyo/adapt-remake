@@ -213,11 +213,19 @@ export default function Development({
         <AppLayout
             title="REPORT NEW"
             breadcrumb="Report / Report New"
-            headerActions={<a href="/report-new" className="text-sm text-slate-500 hover:text-slate-800 transition">← Pilih kader lain</a>}
         >
             <div className="max-w-5xl mx-auto space-y-4">
                 {/* MODE LAPORAN — per FMC + Final Score */}
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                    <a
+                        href="/report-new"
+                        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition shrink-0"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        </svg>
+                        Pilih kader lain
+                    </a>
                     <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">Filter Report</span>
                     <select
                         value={view}
