@@ -15,6 +15,10 @@ Route::middleware(['can:isAdmin&Mentor'])->group(function () {
         Route::get('/learning-growth/export-pdf/{nik}', 'exportLearningGrowthPdf')->name('learning.export_pdf');
         Route::post('/export-pdf', 'exportPdf')->name('exportPdf');
 
+        // Report New — Management Trainee Development Report (batch ke-3 ke atas)
+        Route::get('/report-new', 'report_new_index')->name('report.new.index');
+        Route::get('/report-new/{kader}', 'report_new')->name('report.new.show');
+
         Route::get('/reportfeedback-index', 'feedback_index')->name('reportfeedback.index');
         Route::match(['get', 'post'], '/reportfeedback', 'report_feedback')->name('report.feedback');
         Route::match(['get', 'post'], '/reportfeedback-back/{ojt}', 'report_feedback_back')->name('report.feedback.back');

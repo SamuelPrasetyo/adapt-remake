@@ -3,6 +3,7 @@ import { useForm, router } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import DataTable from '@/Components/DataTable';
 import Modal from '@/Components/Modal';
+import ModulReorder from './ModulReorder';
 import { FASE_LABELS } from '@/constants/fase';
 
 const FASE_OPTIONS = [
@@ -191,6 +192,7 @@ function BtnRow({ onCancel, formId, processing }) {
 }
 
 export default function ModulIndex({ moduls }) {
+    const [tab, setTab]               = useState('list'); // 'list' | 'reorder'
     const [tambahOpen, setTambahOpen] = useState(false);
     const [editOpen, setEditOpen]     = useState(false);
     const [editRow, setEditRow]       = useState(null);
@@ -234,8 +236,25 @@ export default function ModulIndex({ moduls }) {
         router.delete(`/modul/delete/${row.id}`);
     };
 
+    const TabBtn = ({ id, children }) => (
+        <button type="button" onClick={() => setTab(id)}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition ${
+                tab === id ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'
+            }`}>
+            {children}
+        </button>
+    );
+
     return (
         <AppLayout title="MODUL PEMBELAJARAN" breadcrumb="Modul / Modul Pembelajaran">
+            <div className="mb-4 inline-flex items-center gap-1 p-1 bg-white border border-slate-200 rounded-xl">
+                <TabBtn id="list">Daftar Modul</TabBtn>
+                <TabBtn id="reorder">Urutkan Modul</TabBtn>
+            </div>
+
+            {tab === 'reorder' ? (
+                <ModulReorder moduls={moduls} />
+            ) : (
             <DataTable
                 columns={COLS}
                 data={moduls}
@@ -263,6 +282,7 @@ export default function ModulIndex({ moduls }) {
                     </button>
                 }
             />
+            )}
 
             {/* ===== TAMBAH MODAL ===== */}
             <Modal open={tambahOpen} onClose={() => { setTambahOpen(false); addForm.reset(); }}

@@ -16,7 +16,7 @@ const STATUS_META = {
 const TABS = [
     {
         id: "learning",
-        label: "Learning Growth",
+        label: "Overview",
         icon: (
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
@@ -178,15 +178,15 @@ export default function KaderSayaDetail({
                             </div>
                         );
                     })}
-                    <div className="text-center" title="Rata-rata Final Score Penilaian OJT dari FMC yang sudah dinilai">
+                    <div className="text-center" title="Final Score Penilaian OJT dari FMC terakhir yang sudah dinilai & di-approve">
                         <div className="text-2xl font-bold text-blue-600">
                             {fmcScore != null ? fmcScore : "—"}
                         </div>
                         <div className="text-xs text-slate-500 mt-0.5">FMC</div>
                     </div>
-                    <div className="text-center">
+                    <div className="text-center" title="Rata-rata skor feedback mingguan, dinormalisasi ke skala 100">
                         <div className="text-2xl font-bold text-rose-600">
-                            {avgFeedback != null ? avgFeedback : "—"}
+                            {avgFeedback != null ? Math.round(avgFeedback * 10) : "—"}
                         </div>
                         <div className="text-xs text-slate-500 mt-0.5">Avg Feedback</div>
                     </div>

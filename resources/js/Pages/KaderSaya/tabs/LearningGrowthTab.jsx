@@ -1,27 +1,4 @@
-import { useEffect, useRef } from "react";
 import { getFaseLabel, getFaseNum } from "@/constants/fase";
-import {
-    Chart,
-    LineController,
-    LineElement,
-    PointElement,
-    LinearScale,
-    CategoryScale,
-    Filler,
-    Legend,
-    Tooltip,
-} from "chart.js";
-
-Chart.register(
-    LineController,
-    LineElement,
-    PointElement,
-    LinearScale,
-    CategoryScale,
-    Filler,
-    Legend,
-    Tooltip
-);
 
 export const FASE_PALETTE = [
     { bg: "bg-purple-50", border: "border-purple-200", text: "text-purple-700", bar: "bg-purple-500", badge: "bg-purple-100 text-purple-700" },
@@ -41,156 +18,9 @@ export function scoreColor(score) {
 const faseNum = getFaseNum;
 const faseLabel = getFaseLabel;
 
-// Growth = selisih skor modul terakhir vs pertama yang sudah dinilai dalam satu rangkaian.
-function growthOf(points) {
-    const scored = points.filter((p) => p.score != null);
-    if (scored.length < 2) return null;
-    return scored[scored.length - 1].score - scored[0].score;
-}
-
-function GrowthCard({ title, fases }) {
-    return (
-        <div className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-            <div className="text-xs font-medium text-slate-500 mb-2">{title}</div>
-            <div className="flex flex-wrap gap-1.5">
-                {fases.map((f) => (
-                    <span key={f.label} className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${f.badge}`}>
-                        {f.label}
-                    </span>
-                ))}
-            </div>
-        </div>
-    );
-}
-
 export default function LearningGrowthTab({ faseGroups, allFases = [] }) {
     const displayFases = allFases.length > 0 ? allFases : faseGroups.map((fg) => fg.fase);
     const fgByFase = (fase) => faseGroups.find((g) => faseNum(g.fase) === faseNum(fase));
-
-    const chartRef      = useRef(null);
-    const chartInstance = useRef(null);
-
-    // Titik grafik = LGS (Learning Growth Score) per modul — rumus Stakeholder berbasis
-    // KENAIKAN nilai (KG dari pre→post test, digabung AS nilai tugas), bukan skor mentah.
-    // In-Class = modul Foundation (F1..) disambung modul Monthly Training/Leadership (L1..)
-    // dalam SATU garis; Self-Learning (S1..) jadi garis terpisah.
-    // Urutan titik = kapan modul DISELESAIKAN peserta (completed_at), dihitung ulang per
-    // peserta (dokumentasi §10) — modul yang belum selesai ditaruh di akhir.
-    const modulsOf = (n) => fgByFase(n)?.moduls ?? [];
-    const byCompletion = (arr) =>
-        [...arr].sort((a, b) => {
-            if (a.completed_at && b.completed_at) return new Date(a.completed_at) - new Date(b.completed_at);
-            if (a.completed_at) return -1;
-            if (b.completed_at) return 1;
-            return 0;
-        });
-    const toPoint = (prefix) => (m, i) => ({
-        label: `${prefix}${i + 1}`,
-        nama: m.nama,
-        score: m.growth_score,
-        kg: m.kg,
-        as: m.as,
-    });
-    const inClassPoints = [
-        ...byCompletion(modulsOf(1)).map(toPoint("F")),
-        ...byCompletion(modulsOf(3)).map(toPoint("L")),
-    ];
-    const selfPoints = byCompletion(modulsOf(2)).map(toPoint("S"));
-
-    const allPoints = [...inClassPoints, ...selfPoints];
-
-    useEffect(() => {
-        if (!chartRef.current || allPoints.length === 0) return;
-        if (chartInstance.current) chartInstance.current.destroy();
-
-        const labels  = allPoints.map((p) => p.label);
-        const inClass = allPoints.map((p, i) => (i < inClassPoints.length ? p.score : null));
-        const selfL   = allPoints.map((p, i) => (i >= inClassPoints.length ? p.score : null));
-
-        // Garis pemisah putus-putus antara segmen In-Class dan Self-Learning (seperti mock).
-        const dividerPlugin = {
-            id: "segmentDivider",
-            afterDraw(chart) {
-                if (inClassPoints.length === 0 || selfPoints.length === 0) return;
-                const xScale = chart.scales.x;
-                const x = (xScale.getPixelForValue(inClassPoints.length - 1)
-                         + xScale.getPixelForValue(inClassPoints.length)) / 2;
-                const { top, bottom } = chart.chartArea;
-                const ctx = chart.ctx;
-                ctx.save();
-                ctx.strokeStyle = "#cbd5e1";
-                ctx.lineWidth = 1;
-                ctx.setLineDash([5, 4]);
-                ctx.beginPath();
-                ctx.moveTo(x, top);
-                ctx.lineTo(x, bottom);
-                ctx.stroke();
-                ctx.restore();
-            },
-        };
-
-        chartInstance.current = new Chart(chartRef.current, {
-            type: "line",
-            data: {
-                labels,
-                datasets: [
-                    {
-                        label: "In-Class (Foundation + Leadership)",
-                        data: inClass,
-                        borderColor: "#3b82f6",
-                        backgroundColor: "#3b82f6",
-                        borderWidth: 2.5,
-                        tension: 0.3,
-                        pointRadius: 5,
-                        pointHoverRadius: 7,
-                        spanGaps: true,
-                        clip: false,
-                    },
-                    {
-                        label: "Self-Learning",
-                        data: selfL,
-                        borderColor: "#10b981",
-                        backgroundColor: "#10b981",
-                        borderWidth: 2.5,
-                        tension: 0.3,
-                        pointRadius: 5,
-                        pointHoverRadius: 7,
-                        spanGaps: true,
-                        clip: false,
-                    },
-                ],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: "top", labels: { boxWidth: 12, font: { size: 13 } } },
-                    tooltip: {
-                        callbacks: {
-                            title: (items) => items.map((it) => allPoints[it.dataIndex]?.nama ?? it.label),
-                            // Rincian LGS: KG selalu ada; AS hanya pada modul ber-tugas.
-                            afterBody: (items) => {
-                                const p = allPoints[items[0]?.dataIndex];
-                                if (!p) return [];
-                                const lines = [];
-                                if (p.kg != null) lines.push(`KG (kenaikan nilai): ${p.kg}`);
-                                if (p.as != null) lines.push(`AS (nilai tugas): ${p.as}`);
-                                return lines;
-                            },
-                        },
-                    },
-                },
-                layout: { padding: { top: 8, bottom: 0 } },
-                scales: {
-                    y: { min: 0, max: 100, grid: { color: "#f1f5f9" }, ticks: { font: { size: 11 } } },
-                    x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-                },
-            },
-            plugins: [dividerPlugin],
-        });
-
-        return () => { if (chartInstance.current) chartInstance.current.destroy(); };
-    }, [JSON.stringify(allPoints), inClassPoints.length]);
 
     return (
         <div className="space-y-6">
@@ -239,33 +69,6 @@ export default function LearningGrowthTab({ faseGroups, allFases = [] }) {
                 })}
             </div>
 
-            {/* Learning Growth per modul: In-Class (Foundation + Leadership) & Self-Learning */}
-            {allPoints.length > 0 && (
-                <div className="bg-white rounded-xl border border-slate-200 p-5">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-4">
-                        Learning Growth — Skor Akhir per Modul
-                    </h3>
-                    <div style={{ height: 240 }}>
-                        <canvas ref={chartRef} />
-                    </div>
-                    {/* <div className="flex flex-col sm:flex-row gap-3 mt-4">
-                        <GrowthCard
-                            title="In-Class"
-                            fases={[
-                                { label: "Foundation (Fase 1)", badge: "bg-purple-100 text-purple-700" },
-                                { label: "Leadership / Monthly Training (Fase 3)", badge: "bg-amber-100 text-amber-700" },
-                            ]}
-                        />
-                        <GrowthCard
-                            title="Self-Learning"
-                            fases={[
-                                { label: "Self-Learning (Fase 2)", badge: "bg-blue-100 text-blue-700" },
-                            ]}
-                        />
-                    </div> */}
-                </div>
-            )}
-
             {/* Per-modul detail by fase */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {displayFases.map((fase, idx) => {
@@ -312,12 +115,13 @@ export default function LearningGrowthTab({ faseGroups, allFases = [] }) {
                                                 {mi + 1}
                                             </span>
                                             <span className="text-sm text-slate-800 truncate flex-1 min-w-0">{m.nama}</span>
+                                            {/* Angka per modul = LGS (growth_score), rumus sama dengan titik grafik Learning Growth. */}
                                             <div className="flex items-center gap-2 shrink-0 w-24">
                                                 <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                                    <div className={`h-full rounded-full ${pal.bar}`} style={{ width: `${m.score ?? 0}%` }} />
+                                                    <div className={`h-full rounded-full ${pal.bar}`} style={{ width: `${m.growth_score ?? 0}%` }} />
                                                 </div>
-                                                {m.score != null ? (
-                                                    <span className={`text-sm font-bold w-7 text-right ${scoreColor(m.score)}`}>{m.score}</span>
+                                                {m.growth_score != null ? (
+                                                    <span className={`text-sm font-bold w-7 text-right ${scoreColor(m.growth_score)}`}>{m.growth_score}</span>
                                                 ) : (
                                                     <span className="text-sm text-slate-300 w-7 text-right">—</span>
                                                 )}

@@ -118,6 +118,7 @@ Route::middleware(['can:isAdmin'])->group(function () {
         Route::get('/modul/assign/locked', 'getLockedModuls')->name('modul.locked');
         Route::post('/modul/assign/update', 'updateAssign')->name('modul.updateAssign');
         Route::post('/modul/store', 'store')->name('modul.store');
+        Route::post('/modul/reorder', 'reorder')->name('modul.reorder');
         Route::post('/modul/update/{id}', 'update')->name('modul.update');
         Route::delete('/modul/delete/{id}', 'destroy')->name('modul.destroy');
     });

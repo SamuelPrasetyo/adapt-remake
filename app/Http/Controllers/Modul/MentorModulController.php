@@ -81,7 +81,7 @@ class MentorModulController extends Controller
     {
         [$mentors, $selectedMentor] = $this->mentorSelectorData($request);
 
-        $moduls = Modul::orderBy('fase')->orderBy('kode_modul')->get();
+        $moduls = Modul::orderBy('fase')->orderByRaw('urutan IS NULL, urutan')->orderBy('kode_modul')->get();
 
         return Inertia::render('MentorModul/Index', [
             'moduls'         => $moduls,
@@ -128,7 +128,7 @@ class MentorModulController extends Controller
                         });
                     }
                 });
-            })->orderBy('fase')->orderBy('kode_modul')->get();
+            })->orderBy('fase')->orderByRaw('urutan IS NULL, urutan')->orderBy('kode_modul')->get();
         }
 
         $total = $moduls->count();
