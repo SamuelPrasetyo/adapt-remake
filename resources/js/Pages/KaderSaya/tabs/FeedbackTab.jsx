@@ -307,7 +307,7 @@ function KirimFeedbackForm({ kader, weeks, mentorName, kaderId }) {
                                         : (!w.is_available ? ' — belum waktunya' : '');
                                     return (
                                         <option key={w.id_week} value={w.id_week} disabled={disabled}>
-                                            {BULAN_ID[w.bulan]} W{w.angka_week}{suffix}
+                                            Week {w.angka_week}{suffix}
                                         </option>
                                     );
                                 })}
