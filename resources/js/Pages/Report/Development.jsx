@@ -402,16 +402,11 @@ export default function Development({
                     <div className="px-6 py-5 border-t border-slate-100">
                         <SectionTitle code="D">Catatan Perkembangan</SectionTitle>
                         <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
-                            <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-2">Catatan Mentor / HR People Development</div>
+                            <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-2">Catatan Mentor</div>
                             <p className="text-sm text-slate-600 leading-relaxed">
                                 {pen?.overview || pen?.mentor_comments ||
                                     "Belum ada catatan perkembangan untuk periode ini. Catatan akan terisi mengikuti hasil Penilaian OJT dan feedback mentor."}
                             </p>
-                            <div className="flex flex-wrap gap-2 mt-3">
-                                {["Konsistensi Belajar", "Self-Directed Learning", "Komunikasi Mentor"].map((t) => (
-                                    <span key={t} className="text-xs font-medium px-2.5 py-1 rounded-full bg-blue-50 text-blue-700">{t}</span>
-                                ))}
-                            </div>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-6">
                             {["Mentor", "HR / People Development", "Division Head"].map((role) => (
