@@ -120,7 +120,9 @@ export const ADMIN_NAV = [
                 match: "/pertanyaan",
                 requires: "admin",
             },
-            { label: "Week", href: "/week", match: "/week", requires: "admin" },
+            // "Week" sengaja disembunyikan dari menu — jadwal minggu kini di-generate
+            // otomatis per-batch (WeekGenerator). Route /week & halaman Master/Week
+            // tetap ada (bisa diakses langsung bila perlu).
             {
                 label: "Kader",
                 href: "/kader",
