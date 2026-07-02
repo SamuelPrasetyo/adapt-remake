@@ -16,6 +16,7 @@ use App\Models\ListKaderPerMentor;
 use App\Models\Mentor;
 use App\Models\Modul;
 use App\Models\ModulAssignment;
+use App\Models\Pertanyaan;
 use App\Models\ModulReadingProgress;
 use App\Models\ModulTestResult;
 use App\Models\User;
@@ -250,6 +251,11 @@ class KaderSayaController extends Controller
                 ]);
         }
 
+        // Monthly Feedback mentor (pertanyaan 13-15) — sebulan sekali, difilter "Bulan Tahun".
+        // Periode bulan diturunkan dari jadwal weeks batch; tiap bulan di-anchor ke minggu
+        // pertamanya (angka_week terkecil) sebagai id_week penyimpanan jawaban.
+        [$monthlyPeriods, $monthlyFeedbackList] = $this->buildMonthlyFeedback($kader, $today);
+
         $perjanjianKerja = Dokumen::where('kader_id', $kader_id)
             ->where('jenis', 'PERJANJIAN_KERJA')
             ->orderBy('created_at', 'desc')
@@ -274,6 +280,8 @@ class KaderSayaController extends Controller
             'weeksKader'         => $weeksKader,
             'refleksi'           => $refleksiList,
             'mentorFeedbackList' => $report['mentorFeedbackList'],
+            'monthlyPeriods'     => $monthlyPeriods,
+            'monthlyFeedbackList'=> $monthlyFeedbackList,
             'mentorName'         => $user->name,
             'perjanjianKerja'         => $perjanjianKerja,
             'templatePerjanjianKerja' => ($isAdmin021 || $isMentor)
@@ -355,6 +363,155 @@ class KaderSayaController extends Controller
         Log::info("[KaderSaya::storeFeedback] done — {$inserted} rows inserted");
 
         return back()->with('feedbackSuccess', true);
+    }
+
+    /**
+     * ID pertanyaan Monthly Feedback mentor (kualitatif, sebulan sekali) — diambil dinamis
+     * dari master Pertanyaan lewat type, BUKAN di-hardcode. Ini menjaga fitur tetap benar
+     * walau ID di produksi berbeda (id_pertanyaan AUTO_INCREMENT). Urutan ascending
+     * id_pertanyaan = urutan pertanyaan m1, m2, m3 sesuai saat di-seed.
+     *
+     * @return int[]
+     */
+    private function monthlyQuestionIds(): array
+    {
+        return Pertanyaan::where('type', 'Mentor Monthly')
+            ->orderBy('id_pertanyaan')
+            ->pluck('id_pertanyaan')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
+    /**
+     * Bangun daftar periode bulan (untuk dropdown "Bulan Tahun") dan riwayat Monthly Feedback.
+     *
+     * @return array{0: array, 1: array} [$monthlyPeriods, $monthlyFeedbackList]
+     */
+    private function buildMonthlyFeedback($kader, string $today): array
+    {
+        $questionIds = $this->monthlyQuestionIds();
+        // Peta id_pertanyaan → posisi (0,1,2) untuk memetakan ke q1/q2/q3 tanpa berpatok ID tetap.
+        $posOf = array_flip($questionIds);
+
+        // Periode bulan diambil dari jadwal weeks batch (yang punya bulan & tahun terisi).
+        $weeks = Week::query()
+            ->when($kader->id_batch, fn ($q) => $q->forBatch($kader->id_batch))
+            ->whereNotNull('bulan')
+            ->whereNotNull('tahun')
+            ->orderBy('tahun')
+            ->orderBy('bulan')
+            ->orderBy('angka_week')
+            ->get(['id_week', 'angka_week', 'bulan', 'tahun', 'tanggal_mulai']);
+
+        // Bulan yang sudah diisi Monthly Feedback (set "tahun-bulan").
+        $filledMonths = Jawaban::where('jawaban.nik_kader', $kader->nik)
+            ->whereNotNull('jawaban.nama_mentor')
+            ->whereIn('jawaban.id_pertanyaan', $questionIds)
+            ->join('weeks', 'jawaban.id_week', '=', 'weeks.id_week')
+            ->select('weeks.bulan', 'weeks.tahun')
+            ->distinct()
+            ->get()
+            ->map(fn ($r) => $r->tahun . '-' . $r->bulan)
+            ->all();
+
+        $periods = [];
+        foreach ($weeks as $w) {
+            $monthKey = $w->tahun . '-' . $w->bulan;
+            if (isset($periods[$monthKey])) continue; // minggu pertama bulan itu jadi anchor
+            $periods[$monthKey] = [
+                'anchor_week_id' => $w->id_week,
+                'bulan'          => (int) $w->bulan,
+                'tahun'          => (int) $w->tahun,
+                'is_available'   => $w->tanggal_mulai && $w->tanggal_mulai->toDateString() <= $today,
+                'is_filled'      => in_array($monthKey, $filledMonths, true),
+            ];
+        }
+        $monthlyPeriods = array_values($periods);
+
+        // Riwayat jawaban Monthly Feedback dikelompokkan per bulan.
+        $monthlyRaw = Jawaban::whereIn('jawaban.id_pertanyaan', $questionIds)
+            ->where('jawaban.nik_kader', $kader->nik)
+            ->whereNotNull('jawaban.nama_mentor')
+            ->join('weeks', 'jawaban.id_week', '=', 'weeks.id_week')
+            ->select('weeks.bulan', 'weeks.tahun', 'jawaban.id_pertanyaan',
+                     'jawaban.jawaban', 'jawaban.nama_mentor', 'jawaban.created_at')
+            ->orderBy('weeks.tahun', 'desc')
+            ->orderBy('weeks.bulan', 'desc')
+            ->get();
+
+        $byMonth = [];
+        foreach ($monthlyRaw as $r) {
+            $monthKey = $r->tahun . '-' . $r->bulan;
+            if (!isset($byMonth[$monthKey])) {
+                $byMonth[$monthKey] = [
+                    'key'         => $monthKey,
+                    'bulan'       => (int) $r->bulan,
+                    'tahun'       => (int) $r->tahun,
+                    'nama_mentor' => $r->nama_mentor,
+                    'q1'          => null,
+                    'q2'          => null,
+                    'q3'          => null,
+                ];
+            }
+            $val = strip_tags($r->jawaban ?? '');
+            $pos = $posOf[(int) $r->id_pertanyaan] ?? null;
+            if ($pos === 0)     $byMonth[$monthKey]['q1'] = $val;
+            elseif ($pos === 1) $byMonth[$monthKey]['q2'] = $val;
+            elseif ($pos === 2) $byMonth[$monthKey]['q3'] = $val;
+        }
+
+        return [$monthlyPeriods, array_values($byMonth)];
+    }
+
+    public function storeMonthlyFeedback(Request $request, $kader_id)
+    {
+        $user  = Auth::user();
+        $kader = Kader::where('id', $kader_id)->first();
+        if (!$kader) abort(404);
+
+        // Anchor week harus milik batch kader & sudah berjalan.
+        $week = Week::where('id_week', $request->id_week)
+            ->when($kader->id_batch, fn ($q) => $q->forBatch($kader->id_batch))
+            ->whereNotNull('tanggal_mulai')
+            ->whereDate('tanggal_mulai', '<=', now()->toDateString())
+            ->first();
+        abort_if(!$week, 422, 'Periode bulan tidak valid atau belum berjalan.');
+
+        $questionIds = $this->monthlyQuestionIds();
+
+        // Satu Monthly Feedback per bulan per kader.
+        $monthFilled = Jawaban::where('jawaban.nik_kader', $kader->nik)
+            ->whereNotNull('jawaban.nama_mentor')
+            ->whereIn('jawaban.id_pertanyaan', $questionIds)
+            ->join('weeks', 'jawaban.id_week', '=', 'weeks.id_week')
+            ->where('weeks.bulan', $week->bulan)
+            ->where('weeks.tahun', $week->tahun)
+            ->exists();
+        abort_if($monthFilled, 422, 'Feedback bulanan untuk periode ini sudah diisi.');
+
+        $base = [
+            'id_week'     => $week->id_week,
+            'nama_mentor' => $user->name,
+            'nik_kader'   => $kader->nik,
+            'created_at'  => now(),
+            'updated_at'  => now(),
+            'created_by'  => $user->id,
+        ];
+
+        // Input m1/m2/m3 dipasangkan ke id_pertanyaan sesuai urutan (posisi), bukan ID tetap.
+        $inputs = [$request->m1, $request->m2, $request->m3];
+
+        $inserted = 0;
+        foreach ($questionIds as $i => $pertanyaan) {
+            $jawaban = $inputs[$i] ?? null;
+            if ($jawaban === null || $jawaban === '') continue;
+            Jawaban::create(array_merge($base, ['id_pertanyaan' => $pertanyaan, 'jawaban' => $jawaban]));
+            $inserted++;
+        }
+
+        Log::info("[KaderSaya::storeMonthlyFeedback] done — {$inserted} rows inserted for kader NIK {$kader->nik} ({$week->bulan}/{$week->tahun})");
+
+        return back()->with('monthlyFeedbackSuccess', true);
     }
 
     public function storeRefleksi(Request $request)

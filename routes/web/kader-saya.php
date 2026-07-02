@@ -13,6 +13,7 @@ Route::middleware(['can:canMentorDashboard'])->group(function () {
     Route::get('/kader-saya', [KaderSayaController::class, 'index'])->name('kader.saya.index');
     Route::get('/kader-saya/{kader_id}', [KaderSayaController::class, 'show'])->name('kader.saya.show');
     Route::post('/kader-saya/{kader_id}/feedback', [KaderSayaController::class, 'storeFeedback'])->name('kader.saya.storeFeedback');
+    Route::post('/kader-saya/{kader_id}/monthly-feedback', [KaderSayaController::class, 'storeMonthlyFeedback'])->name('kader.saya.storeMonthlyFeedback');
 
     Route::post('/kader-saya/{kader_id}/perjanjian-kerja', [PerjanjianKerjaController::class, 'store'])->name('perjanjian.store');
     Route::delete('/perjanjian-kerja/{id}', [PerjanjianKerjaController::class, 'destroy'])->name('perjanjian.destroy');

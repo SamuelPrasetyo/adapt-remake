@@ -72,6 +72,8 @@ export default function KaderSayaDetail({
     weeksKader = [],
     refleksi = [],
     mentorFeedbackList = [],
+    monthlyPeriods = [],
+    monthlyFeedbackList = [],
     mentorName = "",
     perjanjianKerja = null,
     templatePerjanjianKerja = null,
@@ -119,7 +121,7 @@ export default function KaderSayaDetail({
             {/* Kader header card */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-6">
                 <div className="flex flex-wrap items-start gap-4">
-                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-xl font-bold text-white shrink-0">
+                    <div className="w-14 h-14 rounded-xl bg-linear-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-xl font-bold text-white shrink-0">
                         {initials}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -222,6 +224,8 @@ export default function KaderSayaDetail({
                     weeksKader={weeksKader}
                     refleksi={refleksi}
                     mentorFeedbackList={mentorFeedbackList}
+                    monthlyPeriods={monthlyPeriods}
+                    monthlyFeedbackList={monthlyFeedbackList}
                     mentorName={mentorName}
                     kaderId={kaderId}
                     showFeedbackForm={!kaderView}
