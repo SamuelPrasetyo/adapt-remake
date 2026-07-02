@@ -430,7 +430,7 @@ function IsiRefleksiForm({ weeksKader }) {
                                     const suffix = w.is_filled ? ' — sudah diisi' : (!w.is_available ? ' — belum waktunya' : '');
                                     return (
                                         <option key={w.id_week} value={w.id_week} disabled={disabled}>
-                                            Week {w.angka_week}{suffix}
+                                            {BULAN_ID[w.bulan]} W{w.angka_week}{suffix}
                                         </option>
                                     );
                                 })}
