@@ -187,6 +187,7 @@ export default function AppLayout({
                                         if (c.requires === "admin021") return isAdmin021;
                                         if (c.requires === "admin") return isAdmin;
                                         if (c.requires === "mentor_only") return isMentor;
+                                        if (c.requires === "mentor_or_admin021") return isMentor || isAdmin021;
                                         return true;
                                     });
                                 }

@@ -188,7 +188,7 @@ export const ADMIN_NAV = [
                 label: "Dokumen",
                 href: "/dokumen",
                 match: "/dokumen",
-                requires: "admin",
+                requires: "mentor_or_admin021",
             },
             {
                 label: "Template",
