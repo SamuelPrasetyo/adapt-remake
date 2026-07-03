@@ -58,7 +58,9 @@ export default function DokumenIndex({ dokumens }) {
     const [editRow, setEditRow]       = useState(null);
 
     const addForm  = useForm({ file: null, nama: '', jenis: '' });
-    const editForm = useForm({ file: null, nama: '', jenis: '' });
+    // _method: 'put' = method spoofing. Update mengirim POST multipart (PHP tak mem-parse body
+    // PUT), lalu Laravel memperlakukannya sebagai PUT via field _method di body form.
+    const editForm = useForm({ _method: 'put', file: null, nama: '', jenis: '' });
 
     const submitAdd = (e) => {
         e.preventDefault();
@@ -70,13 +72,14 @@ export default function DokumenIndex({ dokumens }) {
 
     const openEdit = (row) => {
         setEditRow(row);
-        editForm.setData({ file: null, nama: stripExt(row.nama_file), jenis: row.jenis ?? '' });
+        // setData(obj) mengganti data secara utuh — _method wajib ikut disertakan.
+        editForm.setData({ _method: 'put', file: null, nama: stripExt(row.nama_file), jenis: row.jenis ?? '' });
         setEditOpen(true);
     };
 
     const submitEdit = (e) => {
         e.preventDefault();
-        editForm.put(`/dokumen/update/${editRow.id}`, {
+        editForm.post(`/dokumen/update/${editRow.id}`, {
             forceFormData: true,
             onSuccess: () => setEditOpen(false),
         });
