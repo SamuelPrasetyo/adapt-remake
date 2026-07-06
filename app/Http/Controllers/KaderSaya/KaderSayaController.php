@@ -118,22 +118,29 @@ class KaderSayaController extends Controller
                 'divisis.nama as divisi_name',
                 'departemens.nama as dept_name',
                 'batch.nama_batch as batch_name',
-                'batch.tahun_batch as batch_year',
-                'lkpm.mentor_id',
-                'mentor.nama as mentor_name'
+                'batch.tahun_batch as batch_year'
             )
             ->leftJoin('company', 'kader.company_code', '=', 'company.company_code')
             ->leftJoin('divisis', 'kader.id_divisi', '=', 'divisis.id')
             ->leftJoin('departemens', 'kader.id_departemen', '=', 'departemens.id')
             ->leftJoin('batch', 'kader.id_batch', '=', 'batch.id_batch')
-            ->leftJoin(DB::raw('list_kader_per_mentor lkpm'), function ($j) {
-                $j->on('lkpm.kader_id', '=', 'kader.id')->whereNull('lkpm.deleted_at');
-            })
-            ->leftJoin('mentor', 'lkpm.mentor_id', '=', 'mentor.id')
             ->where('kader.id', $kader_id)
             ->first();
 
         if (!$kader) abort(404);
+
+        // Semua mentor aktif kader ini (bisa lebih dari satu).
+        $assignedMentors = ListKaderPerMentor::join('mentor', 'list_kader_per_mentor.mentor_id', '=', 'mentor.id')
+            ->where('list_kader_per_mentor.kader_id', $kader->id)
+            ->whereNull('list_kader_per_mentor.deleted_at')
+            ->whereNull('mentor.deleted_at')
+            ->orderBy('mentor.nama', 'asc')
+            ->pluck('mentor.nama')
+            ->unique()
+            ->values();
+        $kader->mentor_id   = null;
+        $kader->mentor_name = $assignedMentors->isNotEmpty() ? $assignedMentors->implode(', ') : null;
+        $kader->mentors     = $assignedMentors;
 
         if ($isMentor) {
             $hasAccess = ListKaderPerMentor::where('list_kader_per_mentor.kader_id', $kader->id)

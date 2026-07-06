@@ -56,9 +56,17 @@ class MentorController extends Controller
             ->orderBy('kader.nama', 'asc')
             ->get();
 
-        $assignments = ListKaderPerMentor::whereIn('mentor_id', $mentorIds)
-            ->whereNull('deleted_at')
-            ->get(['mentor_id', 'kader_id']);
+        // Assignment aktif + nama mentor, dipakai UI untuk menampilkan kader ini
+        // sudah dibina mentor siapa saja & badge jumlah mentornya.
+        $assignments = ListKaderPerMentor::select(
+                'list_kader_per_mentor.mentor_id',
+                'list_kader_per_mentor.kader_id',
+                'mentor.nama as mentor_name'
+            )
+            ->join('mentor', 'list_kader_per_mentor.mentor_id', '=', 'mentor.id')
+            ->whereNull('list_kader_per_mentor.deleted_at')
+            ->whereNull('mentor.deleted_at')
+            ->get();
 
         $mentorUsers = User::where('type', 'Mentor')
             ->orderBy('name')
