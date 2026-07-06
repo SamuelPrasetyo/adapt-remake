@@ -361,13 +361,19 @@ function KaderTable({ kaders, mentorFilter, mentors, onMentorFilter, batches, ba
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-3 whitespace-nowrap">
-                                                {k.mentor_name ? (
-                                                    <div>
-                                                        <div className="text-sm font-medium text-slate-700">{k.mentor_name}</div>
-                                                        {k.mentor_jabatan && (
-                                                            <div className="text-[11px] text-slate-400 truncate max-w-36">{k.mentor_jabatan}</div>
-                                                        )}
+                                            <td className="px-4 py-3">
+                                                {k.mentors?.length > 0 ? (
+                                                    <div className="space-y-2.5 max-w-56">
+                                                        {k.mentors.map((m) => (
+                                                            <div key={m.id} className="min-w-0">
+                                                                <div className="text-sm font-medium text-slate-700 truncate">{m.nama}</div>
+                                                                {m.jabatan && (
+                                                                    <span className="inline-flex items-center mt-0.5 px-2 py-0.5 rounded-full text-[11px] font-medium ring-1 ring-inset max-w-full truncate bg-blue-50 text-blue-700 ring-blue-200">
+                                                                        <span className="truncate">{m.jabatan}</span>
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        ))}
                                                     </div>
                                                 ) : (
                                                     <span className="text-slate-400 italic text-sm">Belum di-assign</span>
