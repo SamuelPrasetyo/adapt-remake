@@ -59,6 +59,7 @@ export default function Development({
     grandScore = null,
     fmcWindows = [],
     currentFmc = 1,
+    signatures = {},
 }) {
     // view: 1 | 2 | 3 (per FMC) atau "final" (Grand Score).
     const [view, setView] = useState(currentFmc);
@@ -409,10 +410,14 @@ export default function Development({
                             </p>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-6">
-                            {["Mentor", "HR / People Development", "Division Head"].map((role) => (
+                            {[
+                                { role: "Mentor", name: signatures?.mentorByFmc?.[isFinal ? "final" : selFmc] },
+                                { role: "HR / People Development", name: signatures?.hr },
+                                { role: "Division Head", name: signatures?.divisionHead },
+                            ].map(({ role, name }) => (
                                 <div key={role} className="text-center">
                                     <div className="text-sm text-slate-400 mb-10">{role}</div>
-                                    <div className="border-t border-slate-300 pt-1 text-xs text-slate-400">(&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)</div>
+                                    <div className="border-t border-slate-300 pt-1 text-xs text-slate-600">({name || "         "})</div>
                                 </div>
                             ))}
                         </div>

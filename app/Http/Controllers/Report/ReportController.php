@@ -441,22 +441,26 @@ class ReportController extends Controller
                 'departemens.nama as dept_name',
                 'batch.nama_batch as batch_name',
                 'batch.tahun_batch as batch_year',
-                'batch.tanggal_mulai as batch_start',
-                'lkpm.mentor_id',
-                'mentor.nama as mentor_name'
+                'batch.tanggal_mulai as batch_start'
             )
             ->leftJoin('company', 'kader.company_code', '=', 'company.company_code')
             ->leftJoin('divisis', 'kader.id_divisi', '=', 'divisis.id')
             ->leftJoin('departemens', 'kader.id_departemen', '=', 'departemens.id')
             ->leftJoin('batch', 'kader.id_batch', '=', 'batch.id_batch')
-            ->leftJoin(DB::raw('list_kader_per_mentor lkpm'), function ($j) {
-                $j->on('lkpm.kader_id', '=', 'kader.id')->whereNull('lkpm.deleted_at');
-            })
-            ->leftJoin('mentor', 'lkpm.mentor_id', '=', 'mentor.id')
             ->where('kader.id', $kader_id)
             ->first();
 
         if (!$kader) abort(404);
+
+        // Semua mentor aktif yang di-assign ke kader ini (bisa lebih dari satu).
+        $assignedMentors = ListKaderPerMentor::join('mentor', 'list_kader_per_mentor.mentor_id', '=', 'mentor.id')
+            ->where('list_kader_per_mentor.kader_id', $kader->id)
+            ->whereNull('list_kader_per_mentor.deleted_at')
+            ->whereNull('mentor.deleted_at')
+            ->orderBy('mentor.nama', 'asc')
+            ->pluck('mentor.nama')
+            ->unique()
+            ->values();
 
         // Mentor hanya boleh membuka kader di BU-nya (selaras dengan KaderSaya::show).
         if ($isMentor) {
@@ -477,7 +481,7 @@ class ReportController extends Controller
         // Development Progress (section B) di-bucket per FMC = rata-rata 4 aspek mentor pada
         // minggu yang tanggalnya jatuh di rentang FMC tsb (+ bucket 'all' utk view Final Score).
         // Aspek id_pertanyaan: 1 Routine Job, 2 Assignment, 3 SOP, 4 Project.
-        $aspectRows = Jawaban::selectRaw('jawaban.id_pertanyaan as idp, jawaban.jawaban as val, weeks.tanggal_mulai as wdate')
+        $aspectRows = Jawaban::selectRaw('jawaban.id_pertanyaan as idp, jawaban.jawaban as val, jawaban.nama_mentor as nama_mentor, weeks.tanggal_mulai as wdate, weeks.id_week as id_week')
             ->join('weeks', 'jawaban.id_week', '=', 'weeks.id_week')
             ->where('jawaban.nik_kader', $kader->nik)
             ->whereNotNull('jawaban.nama_mentor')
@@ -485,9 +489,11 @@ class ReportController extends Controller
             ->get();
 
         $acc = ['all' => [], 1 => [], 2 => [], 3 => []]; // [bucket][idp] => [sum, count]
+        // Nama mentor untuk TTD "Mentor" = nama_mentor dari feedback mingguan TERAKHIR
+        // (id_week tertinggi) dalam rentang FMC yang dipilih.
+        $lastMentorWeek = ['all' => null, 1 => null, 2 => null, 3 => null];
+        $lastMentorName = ['all' => null, 1 => null, 2 => null, 3 => null];
         foreach ($aspectRows as $r) {
-            if (!is_numeric($r->val)) continue;
-            $val     = (float) $r->val;
             $buckets = ['all'];
             if ($r->wdate) {
                 $d = \Carbon\Carbon::parse($r->wdate);
@@ -495,6 +501,14 @@ class ReportController extends Controller
                     if ($d->between($w['start'], $w['end'])) { $buckets[] = $w['fmc']; break; }
                 }
             }
+            foreach ($buckets as $b) {
+                if ($lastMentorWeek[$b] === null || $r->id_week > $lastMentorWeek[$b]) {
+                    $lastMentorWeek[$b] = $r->id_week;
+                    $lastMentorName[$b] = $r->nama_mentor;
+                }
+            }
+            if (!is_numeric($r->val)) continue;
+            $val = (float) $r->val;
             foreach ($buckets as $b) {
                 $acc[$b][$r->idp] ??= [0, 0];
                 $acc[$b][$r->idp][0] += $val;
@@ -543,7 +557,8 @@ class ReportController extends Controller
                 'bu'          => $kader->bu,
                 'divisi'      => $kader->divisi_name,
                 'departemen'  => $kader->dept_name,
-                'mentor'      => $kader->mentor_name,
+                'mentor'      => $assignedMentors->isNotEmpty() ? $assignedMentors->implode(', ') : null,
+                'mentors'     => $assignedMentors,
             ],
             'faseGroups'       => $report['faseGroups'],
             'allFases'         => $report['allFases'],
@@ -553,6 +568,16 @@ class ReportController extends Controller
             'fmcFinalScores'   => $fmcFinalScores,
             'fmcApproved'      => $fmcApproved,
             'grandScore'       => $grandScore,
+            'signatures'       => [
+                'mentorByFmc'  => [
+                    1       => $lastMentorName[1],
+                    2       => $lastMentorName[2],
+                    3       => $lastMentorName[3],
+                    'final' => $lastMentorName['all'],
+                ],
+                'hr'           => 'HR Business Unit',
+                'divisionHead' => 'MAI',
+            ],
             'fmcWindows'       => array_map(fn ($w) => [
                 'fmc'            => $w['fmc'],
                 'label'          => $w['label'],
