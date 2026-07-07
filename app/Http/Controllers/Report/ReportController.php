@@ -13,6 +13,7 @@ use App\Models\FmDetail;
 use App\Models\Jawaban;
 use App\Models\Kader;
 use App\Models\ListKaderPerMentor;
+use App\Models\MonthlyFeedbackSummary;
 use App\Models\PerformanceSum;
 use App\Models\Pertanyaan;
 use App\Models\User;
@@ -452,14 +453,14 @@ class ReportController extends Controller
 
         if (!$kader) abort(404);
 
-        // Semua mentor aktif yang di-assign ke kader ini (bisa lebih dari satu).
+        // Semua mentor aktif yang di-assign ke kader ini (bisa lebih dari satu) — nama + jabatan.
         $assignedMentors = ListKaderPerMentor::join('mentor', 'list_kader_per_mentor.mentor_id', '=', 'mentor.id')
             ->where('list_kader_per_mentor.kader_id', $kader->id)
             ->whereNull('list_kader_per_mentor.deleted_at')
             ->whereNull('mentor.deleted_at')
             ->orderBy('mentor.nama', 'asc')
-            ->pluck('mentor.nama')
-            ->unique()
+            ->get(['mentor.nama', 'mentor.jabatan'])
+            ->unique('nama')
             ->values();
 
         // Mentor hanya boleh membuka kader di BU-nya (selaras dengan KaderSaya::show).
@@ -547,6 +548,32 @@ class ReportController extends Controller
             ? round(($fmcFinalScores[1] + $fmcFinalScores[2] + $fmcFinalScores[3]) / 3, 1)
             : null;
 
+        // Section D · Catatan Perkembangan — Summary Monthly Feedback (ditulis Admin MAI atas
+        // Monthly Feedback mentor). Di-bucket per FMC berdasarkan bulan/tahun yang jatuh di
+        // rentang jendela FMC; bucket 'all' dipakai view Final Score.
+        $summaries = MonthlyFeedbackSummary::where('kader_id', $kader->id)
+            ->orderBy('tahun')
+            ->orderBy('bulan')
+            ->get(['bulan', 'tahun', 'summary']);
+
+        $summariesByFmc = ['all' => [], 1 => [], 2 => [], 3 => []];
+        foreach ($summaries as $s) {
+            $item = [
+                'bulan'   => (int) $s->bulan,
+                'tahun'   => (int) $s->tahun,
+                'label'   => (self::BULAN[(int) $s->bulan] ?? $s->bulan) . ' ' . $s->tahun,
+                'summary' => $s->summary,
+            ];
+            $summariesByFmc['all'][] = $item;
+            $mDate = \Carbon\Carbon::create((int) $s->tahun, (int) $s->bulan, 1);
+            foreach ($windows as $w) {
+                if ($mDate->between($w['start'], $w['end'])) {
+                    $summariesByFmc[$w['fmc']][] = $item;
+                    break;
+                }
+            }
+        }
+
         return Inertia::render('Report/Development', [
             'kader' => [
                 'nama'        => $kader->nama,
@@ -557,14 +584,18 @@ class ReportController extends Controller
                 'bu'          => $kader->bu,
                 'divisi'      => $kader->divisi_name,
                 'departemen'  => $kader->dept_name,
-                'mentor'      => $assignedMentors->isNotEmpty() ? $assignedMentors->implode(', ') : null,
-                'mentors'     => $assignedMentors,
+                'mentor'      => $assignedMentors->isNotEmpty() ? $assignedMentors->pluck('nama')->implode(', ') : null,
+                'mentors'     => $assignedMentors->map(fn ($m) => [
+                    'nama'    => $m->nama,
+                    'jabatan' => $m->jabatan,
+                ])->values(),
             ],
             'faseGroups'       => $report['faseGroups'],
             'allFases'         => $report['allFases'],
             'penilaianList'    => $report['penilaianList'],
             'fmcScore'         => $report['fmcScore'],
             'developmentByFmc' => $devByFmc,
+            'monthlySummariesByFmc' => $summariesByFmc,
             'fmcFinalScores'   => $fmcFinalScores,
             'fmcApproved'      => $fmcApproved,
             'grandScore'       => $grandScore,
@@ -614,7 +645,7 @@ class ReportController extends Controller
                 'fmc'            => $f,
                 'start'          => $fs,
                 'end'            => $fe,
-                'label'          => self::BULAN_SINGKAT[$fs->month] . ' – ' . self::BULAN_SINGKAT[$fe->month] . ' ' . $fe->year,
+                'label'          => self::BULAN[$fs->month] . ' – ' . self::BULAN[$fe->month] . ' ' . $fe->year,
                 'penilaianLabel' => self::BULAN[$fe->month] . ' ' . $fe->year,
             ];
         }

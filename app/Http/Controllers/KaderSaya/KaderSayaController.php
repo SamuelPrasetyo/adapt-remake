@@ -16,6 +16,7 @@ use App\Models\ListKaderPerMentor;
 use App\Models\Mentor;
 use App\Models\Modul;
 use App\Models\ModulAssignment;
+use App\Models\MonthlyFeedbackSummary;
 use App\Models\Pertanyaan;
 use App\Models\ModulReadingProgress;
 use App\Models\ModulTestResult;
@@ -263,6 +264,15 @@ class KaderSayaController extends Controller
         // pertamanya (angka_week terkecil) sebagai id_week penyimpanan jawaban.
         [$monthlyPeriods, $monthlyFeedbackList] = $this->buildMonthlyFeedback($kader, $today);
 
+        // Summary Monthly Feedback — hanya Admin MAI (021) yang boleh melihat/menulis.
+        // Dikirim sebagai map "tahun-bulan" => summary agar tiap kartu Riwayat bisa prefill.
+        $monthlyFeedbackSummaries = $isAdmin021
+            ? MonthlyFeedbackSummary::where('kader_id', $kader->id)
+                ->get(['bulan', 'tahun', 'summary'])
+                ->keyBy(fn ($s) => $s->tahun . '-' . $s->bulan)
+                ->map(fn ($s) => $s->summary)
+            : [];
+
         $perjanjianKerja = Dokumen::where('kader_id', $kader_id)
             ->where('jenis', 'PERJANJIAN_KERJA')
             ->orderBy('created_at', 'desc')
@@ -289,6 +299,8 @@ class KaderSayaController extends Controller
             'mentorFeedbackList' => $report['mentorFeedbackList'],
             'monthlyPeriods'     => $monthlyPeriods,
             'monthlyFeedbackList'=> $monthlyFeedbackList,
+            'monthlyFeedbackSummaries' => $monthlyFeedbackSummaries,
+            'canSummarizeMonthly'      => $isAdmin021,
             'mentorName'         => $user->name,
             'perjanjianKerja'         => $perjanjianKerja,
             'templatePerjanjianKerja' => ($isAdmin021 || $isMentor)
@@ -519,6 +531,52 @@ class KaderSayaController extends Controller
         Log::info("[KaderSaya::storeMonthlyFeedback] done — {$inserted} rows inserted for kader NIK {$kader->nik} ({$week->bulan}/{$week->tahun})");
 
         return back()->with('monthlyFeedbackSuccess', true);
+    }
+
+    /**
+     * Simpan/ubah ringkasan Monthly Feedback (Summary) — HANYA Admin MAI (021).
+     * Satu ringkasan per kader per (bulan, tahun); updateOrCreate aman karena
+     * ada UNIQUE(kader_id, bulan, tahun) di tabel. Maks 500 karakter.
+     */
+    public function storeMonthlyFeedbackSummary(Request $request, $kader_id)
+    {
+        $user = Auth::user();
+        abort_unless($user->type === 'Admin' && $user->company_code === '021', 403);
+
+        $kader = Kader::where('id', $kader_id)->first();
+        if (!$kader) abort(404);
+
+        $data = $request->validate([
+            'bulan'   => ['required', 'integer', 'between:1,12'],
+            'tahun'   => ['required', 'integer', 'between:2000,2100'],
+            'summary' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $summary = trim($data['summary'] ?? '');
+
+        if ($summary === '') {
+            // Kosongkan = hapus ringkasan bulan tsb.
+            MonthlyFeedbackSummary::where('kader_id', $kader->id)
+                ->where('bulan', $data['bulan'])
+                ->where('tahun', $data['tahun'])
+                ->delete();
+
+            return back()->with('summaryFeedbackSuccess', true);
+        }
+
+        $row = MonthlyFeedbackSummary::firstOrNew([
+            'kader_id' => $kader->id,
+            'bulan'    => $data['bulan'],
+            'tahun'    => $data['tahun'],
+        ]);
+        if (!$row->exists) $row->created_by = $user->id;
+        $row->summary    = $summary;
+        $row->updated_by = $user->id;
+        $row->save();
+
+        Log::info("[KaderSaya::storeMonthlyFeedbackSummary] saved for kader {$kader->id} ({$data['bulan']}/{$data['tahun']}) by {$user->name}");
+
+        return back()->with('summaryFeedbackSuccess', true);
     }
 
     public function storeRefleksi(Request $request)
