@@ -74,6 +74,36 @@ class TemplateAdminController extends Controller
         return back()->with('success', 'Template Weekly Feedback berhasil diupload.');
     }
 
+    // Peta slug URL → jenis Dokumen. Dipakai endpoint hapus generik.
+    private const TEMPLATE_JENIS = [
+        'perjanjian-kerja' => 'TEMPLATE_PERJANJIAN_KERJA',
+        'weekly-feedback'  => 'TEMPLATE_WEEKLY_FEEDBACK',
+        'idp'              => 'TEMPLATE_IDP',
+    ];
+
+    // Hapus template aktif (file fisik + record Dokumen) untuk satu jenis.
+    // Setelah dihapus, halaman kader/mentor kembali menampilkan notif "belum tersedia".
+    public function deleteTemplate(string $jenis)
+    {
+        $dokJenis = self::TEMPLATE_JENIS[$jenis] ?? null;
+        abort_unless($dokJenis, 404);
+
+        $templates = Dokumen::where('jenis', $dokJenis)->get();
+        if ($templates->isEmpty()) {
+            return back()->with('error', 'Template tidak ditemukan atau sudah dihapus.');
+        }
+
+        foreach ($templates as $template) {
+            $filePath = public_path($template->path_file);
+            if ($template->path_file && file_exists($filePath)) {
+                @unlink($filePath);
+            }
+            $template->delete();
+        }
+
+        return back()->with('success', 'Template berhasil dihapus.');
+    }
+
     private function replaceTemplate(Request $request, string $jenis, string $dir, string $prefix): void
     {
         $folder = public_path($dir);
