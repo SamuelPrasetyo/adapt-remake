@@ -263,8 +263,8 @@ export default function Development({
 
     return (
         <AppLayout
-            title="REPORT NEW"
-            breadcrumb="Report / Report New"
+            title="REPORT"
+            breadcrumb="Report"
         >
             <div className="max-w-5xl mx-auto space-y-4">
                 {/* MODE LAPORAN — per FMC + Final Score */}
