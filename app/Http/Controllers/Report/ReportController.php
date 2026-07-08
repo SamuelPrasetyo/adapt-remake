@@ -459,8 +459,17 @@ class ReportController extends Controller
         $user     = Auth::user();
         $isMentor = $user->type === 'Mentor';
 
+        $cols = [
+            'kader.id', 'kader.nik', 'kader.nama', 'kader.jenis_kelamin',
+            'company.company_name as bu', 'divisis.nama as divisi_name', 'departemens.nama as dept_name',
+            'batch.nama_batch', 'batch.tahun_batch',
+        ];
+
         $base = fn () => Kader::query()
             ->leftJoin('batch', 'kader.id_batch', '=', 'batch.id_batch')
+            ->leftJoin('company', 'kader.company_code', '=', 'company.company_code')
+            ->leftJoin('divisis', 'kader.id_divisi', '=', 'divisis.id')
+            ->leftJoin('departemens', 'kader.id_departemen', '=', 'departemens.id')
             ->whereNotNull('batch.nama_batch')
             ->when($isMentor, fn ($q) => $q->where('kader.company_code', $user->company_code));
 
@@ -469,8 +478,12 @@ class ReportController extends Controller
             ->whereRaw('CAST(batch.nama_batch AS UNSIGNED) >= 3')
             ->orderByRaw('CAST(batch.nama_batch AS UNSIGNED) DESC')
             ->orderBy('kader.nama', 'asc')
-            ->get(['kader.id', 'kader.nama', 'batch.nama_batch', 'batch.tahun_batch'])
-            ->map(fn ($k) => ['id' => $k->id, 'nama' => $k->nama, 'nama_batch' => $k->nama_batch, 'tahun_batch' => $k->tahun_batch, 'group' => 'system']);
+            ->get($cols)
+            ->map(fn ($k) => [
+                'id' => $k->id, 'nik' => $k->nik, 'nama' => $k->nama, 'jenis_kelamin' => $k->jenis_kelamin,
+                'bu' => $k->bu, 'divisi_name' => $k->divisi_name, 'dept_name' => $k->dept_name,
+                'nama_batch' => $k->nama_batch, 'tahun_batch' => $k->tahun_batch, 'group' => 'system',
+            ]);
 
         // Batch 1-2 : hanya kader yang punya baris arsip (report_arsip).
         $arsip = $base()
@@ -478,8 +491,12 @@ class ReportController extends Controller
             ->whereRaw('CAST(batch.nama_batch AS UNSIGNED) <= 2')
             ->orderByRaw('CAST(batch.nama_batch AS UNSIGNED) DESC')
             ->orderBy('kader.nama', 'asc')
-            ->get(['kader.id', 'kader.nama', 'batch.nama_batch', 'batch.tahun_batch'])
-            ->map(fn ($k) => ['id' => $k->id, 'nama' => $k->nama, 'nama_batch' => $k->nama_batch, 'tahun_batch' => $k->tahun_batch, 'group' => 'arsip']);
+            ->get($cols)
+            ->map(fn ($k) => [
+                'id' => $k->id, 'nik' => $k->nik, 'nama' => $k->nama, 'jenis_kelamin' => $k->jenis_kelamin,
+                'bu' => $k->bu, 'divisi_name' => $k->divisi_name, 'dept_name' => $k->dept_name,
+                'nama_batch' => $k->nama_batch, 'tahun_batch' => $k->tahun_batch, 'group' => 'arsip',
+            ]);
 
         return Inertia::render('Report/DevelopmentIndex', [
             'kaders' => $system->concat($arsip)->values(),
