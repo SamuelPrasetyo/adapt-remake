@@ -12,12 +12,19 @@ const toRoman = (n) => {
 };
 
 export default function DevelopmentIndex({ kaders = [] }) {
+    // Kelompok batch: 'system' = Batch 3+, 'arsip' = Batch 1-2. Default ke kelompok
+    // yang datanya ada (utamakan sistem bila ada, jika tidak ke arsip).
+    const hasSystem = kaders.some((k) => k.group === "system");
+    const hasArsip = kaders.some((k) => k.group === "arsip");
+    const [group, setGroup] = useState(hasSystem ? "system" : "arsip");
     const [kaderId, setKaderId] = useState("");
+
+    const filtered = useMemo(() => kaders.filter((k) => k.group === group), [kaders, group]);
 
     // Kelompokkan kader per batch agar dropdown lebih mudah dibaca.
     const grouped = useMemo(() => {
         const map = new Map();
-        for (const k of kaders) {
+        for (const k of filtered) {
             const key = `${k.nama_batch ?? "-"}|${k.tahun_batch ?? ""}`;
             if (!map.has(key)) {
                 map.set(key, {
@@ -28,27 +35,58 @@ export default function DevelopmentIndex({ kaders = [] }) {
             map.get(key).items.push(k);
         }
         return [...map.values()];
-    }, [kaders]);
+    }, [filtered]);
 
     const submit = (e) => {
         e.preventDefault();
-        if (kaderId) router.visit(`/report-new/${kaderId}`);
+        if (!kaderId) return;
+        const base = group === "arsip" ? "/report-arsip/" : "/report-new/";
+        router.visit(base + kaderId);
+    };
+
+    const TabBtn = ({ value, label, sub }) => {
+        const active = group === value;
+        return (
+            <button
+                type="button"
+                onClick={() => {
+                    setGroup(value);
+                    setKaderId("");
+                }}
+                className={`flex-1 rounded-xl border px-4 py-3 text-left transition ${
+                    active
+                        ? "border-blue-500 bg-blue-50 ring-2 ring-blue-500/20"
+                        : "border-slate-200 bg-white hover:border-slate-300"
+                }`}
+            >
+                <div className={`text-sm font-semibold ${active ? "text-blue-700" : "text-slate-700"}`}>{label}</div>
+                <div className="text-[11px] text-slate-400 mt-0.5">{sub}</div>
+            </button>
+        );
     };
 
     return (
-        <AppLayout title="REPORT NEW" breadcrumb="Report / Report New">
+        <AppLayout title="REPORT" breadcrumb="Report">
             <div className="max-w-lg">
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
                     <h2 className="text-base font-semibold text-slate-800 mb-1">
                         Management Trainee Development Report
                     </h2>
                     <p className="text-sm text-slate-500 mb-5">
-                        Pilih kader (Batch III ke atas) untuk melihat laporan perkembangan.
+                        Pilih kelompok batch lalu pilih kader untuk melihat laporannya.
                     </p>
 
-                    {kaders.length === 0 ? (
+                    {/* Filter kelompok batch */}
+                    <div className="flex gap-3 mb-5">
+                        <TabBtn value="system" label="Batch 3+" sub="Report sistem lengkap" />
+                        <TabBtn value="arsip" label="Batch 1 & 2" sub="Arsip skor (historis)" />
+                    </div>
+
+                    {filtered.length === 0 ? (
                         <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-                            Belum ada kader Batch III ke atas.
+                            {group === "arsip"
+                                ? "Belum ada data arsip Batch 1 & 2. Impor dulu via menu “Import Arsip B1–2”."
+                                : "Belum ada kader Batch 3 ke atas."}
                         </div>
                     ) : (
                         <form onSubmit={submit}>
