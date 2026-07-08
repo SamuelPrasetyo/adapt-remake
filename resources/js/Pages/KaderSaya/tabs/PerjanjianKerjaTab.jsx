@@ -99,8 +99,8 @@ export default function PerjanjianKerjaTab({ kader, perjanjianKerja, canUpload, 
         <>
         <Toast open={toast.open} type={toast.type} message={toast.message} onClose={closeToast} />
         <div className="space-y-4">
-            {/* Template download */}
-            {templatePerjanjianKerja && (
+            {/* Template download / notif belum tersedia (hanya untuk Mentor/Admin) */}
+            {templatePerjanjianKerja ? (
                 <div className="flex items-center justify-between p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
                     <div>
                         <p className="text-sm font-semibold text-emerald-800">Template Perjanjian Kerja</p>
@@ -118,6 +118,20 @@ export default function PerjanjianKerjaTab({ kader, perjanjianKerja, canUpload, 
                         </svg>
                         Unduh Template
                     </a>
+                </div>
+            ) : canUpload && (
+                <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                    <svg className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                            d="M12 9v2m0 4h.01M5.07 19h13.86a2 2 0 001.75-2.98l-6.93-12a2 2 0 00-3.5 0l-6.93 12A2 2 0 005.07 19z" />
+                    </svg>
+                    <div>
+                        <p className="text-sm font-semibold text-amber-800">Template Perjanjian Kerja belum tersedia</p>
+                        <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
+                            Admin MAI belum mengunggah template Perjanjian Kerja. Anda tetap bisa mengupload
+                            dokumen, namun disarankan menunggu template resmi sebagai acuan pengisian.
+                        </p>
+                    </div>
                 </div>
             )}
 

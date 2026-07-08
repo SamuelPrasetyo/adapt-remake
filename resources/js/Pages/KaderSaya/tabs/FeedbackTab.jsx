@@ -568,8 +568,8 @@ function WeeklyFeedbackUpload({ data }) {
                 </p>
             </div>
 
-            {/* Template download */}
-            {template && (
+            {/* Template download / notif belum tersedia */}
+            {template ? (
                 <div className="flex items-center justify-between gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
                     <div className="min-w-0">
                         <p className="text-xs font-semibold text-emerald-800">Template Weekly Feedback</p>
@@ -583,6 +583,20 @@ function WeeklyFeedbackUpload({ data }) {
                         </svg>
                         Unduh Template
                     </a>
+                </div>
+            ) : (
+                <div className="flex items-start gap-2.5 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <svg className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                            d="M12 9v2m0 4h.01M5.07 19h13.86a2 2 0 001.75-2.98l-6.93-12a2 2 0 00-3.5 0l-6.93 12A2 2 0 005.07 19z" />
+                    </svg>
+                    <div>
+                        <p className="text-xs font-semibold text-amber-800">Template Weekly Feedback belum tersedia</p>
+                        <p className="text-[11px] text-amber-700 mt-0.5 leading-relaxed">
+                            Admin MAI belum mengunggah template Weekly Feedback. Anda tetap bisa mengupload file,
+                            namun sebaiknya menunggu template resmi agar format laporan sesuai.
+                        </p>
+                    </div>
                 </div>
             )}
 
