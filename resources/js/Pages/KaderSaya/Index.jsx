@@ -267,8 +267,13 @@ function KaderCard({ kader }) {
 
             {/* Footer */}
             <div className="px-5 py-3 bg-slate-50 rounded-b-2xl border-t border-slate-100 flex items-center justify-between">
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-slate-500 min-w-0 truncate">
                     Mentor: <span className="font-medium text-slate-700">{kader.mentor_name || '—'}</span>
+                    {kader.mentor_count > 1 && (
+                        <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-semibold ring-1 ring-inset ring-indigo-200">
+                            {kader.mentor_count} mentor
+                        </span>
+                    )}
                 </span>
                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ring-1 shrink-0 ${meta.cls}`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />

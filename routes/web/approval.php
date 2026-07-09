@@ -27,4 +27,6 @@ Route::middleware(['can:isAdmin021'])->group(function () {
     Route::post('/template-dokumen/perjanjian-kerja', [TemplateAdminController::class, 'uploadPerjanjianKerja'])->name('template.pk.upload');
     Route::post('/template-dokumen/weekly-feedback', [TemplateAdminController::class, 'uploadWeeklyFeedback'])->name('template.wf.upload');
     Route::post('/form-idp/admin/upload-template', [FormIdpController::class, 'uploadTemplate'])->name('form.idp.template.upload');
+    // Hapus template aktif (perjanjian-kerja | weekly-feedback | idp)
+    Route::delete('/template-dokumen/{jenis}', [TemplateAdminController::class, 'deleteTemplate'])->name('template.delete');
 });

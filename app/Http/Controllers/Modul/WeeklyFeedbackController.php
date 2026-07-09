@@ -6,10 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\Dokumen;
 use App\Models\Kader;
+use App\Models\User;
 use App\Models\Week;
 use App\Support\UploadName;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 
 /**
  * Weekly Feedback — file laporan mingguan yang diupload Kader (docx/xlsx/pdf, maks 2MB),
@@ -18,6 +18,10 @@ use Inertia\Inertia;
  * Satu baris per (kader, week). Setelah upload, slot terkunci sampai Mentor bereaksi:
  * Approved = selesai, Reject = minta upload ulang (re-upload menimpa baris yang sama).
  * Pola dokumen mengikuti Modul\FormIdpController.
+ *
+ * Halaman/menu standalone sudah dihapus — fitur upload kini menyatu di tab Feedback
+ * Dashboard Kader (KaderSaya/Detail). Controller ini menyisakan store() untuk submit
+ * dan dataFor() sebagai sumber data yang dipakai KaderSayaController::show().
  */
 class WeeklyFeedbackController extends Controller
 {
@@ -26,9 +30,12 @@ class WeeklyFeedbackController extends Controller
         $this->middleware('auth');
     }
 
-    public function index()
+    /**
+     * Data upload weekly feedback milik seorang Kader (dropdown week + status,
+     * riwayat per week, dan template). Dipakai tab Feedback di Dashboard Kader.
+     */
+    public static function dataFor(User $user): array
     {
-        $user    = auth()->user();
         $kader   = Kader::where('nik', $user->nik)->first();
         $idBatch = $kader ? $kader->id_batch : null;
 
@@ -82,7 +89,7 @@ class WeeklyFeedbackController extends Controller
 
         $template = Dokumen::where('jenis', 'TEMPLATE_WEEKLY_FEEDBACK')->latest()->first();
 
-        return Inertia::render('WeeklyFeedback/Index', [
+        return [
             'weeks'    => $weeks,
             'history'  => $history,
             'hasBatch' => $idBatch !== null,
@@ -90,7 +97,7 @@ class WeeklyFeedbackController extends Controller
                 'nama_file' => $template->nama_file,
                 'path_file' => $template->path_file,
             ] : null,
-        ]);
+        ];
     }
 
     public function store(Request $request)

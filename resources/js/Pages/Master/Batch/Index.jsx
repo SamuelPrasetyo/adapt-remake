@@ -26,7 +26,7 @@ const COLS = [
     ) },
 ];
 
-function TextField({ label, value, onChange, error, type = 'text', required = true, digitsOnly = false, placeholder, helperText }) {
+function TextField({ label, value, onChange, error, type = 'text', required = true, digitsOnly = false, placeholder, helperText, disabled = false, min }) {
     const handleChange = (e) => {
         if (digitsOnly) e = { ...e, target: { ...e.target, value: e.target.value.replace(/\D/g, '') } };
         onChange(e);
@@ -34,11 +34,13 @@ function TextField({ label, value, onChange, error, type = 'text', required = tr
     return (
         <div className="mb-4">
             <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
-            <input type={type} value={value} onChange={handleChange} required={required}
+            <input type={type} value={value} onChange={handleChange} required={required && !disabled}
                 placeholder={placeholder}
+                disabled={disabled}
+                min={min}
                 inputMode={digitsOnly ? 'numeric' : undefined}
                 pattern={digitsOnly ? '[0-9]*' : undefined}
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500" />
+                className={`w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 ${disabled ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''}`} />
             {helperText && !error && <p className="text-xs text-slate-400 mt-1">{helperText}</p>}
             {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
         </div>
@@ -57,6 +59,12 @@ export default function BatchIndex({ batchs }) {
     const [tambahOpen, setTambahOpen] = useState(false);
     const [editOpen, setEditOpen]     = useState(false);
     const [editRow, setEditRow]       = useState(null);
+
+    const today       = new Date().toISOString().slice(0, 10);
+    const startLocked = !!dateOnly(editRow?.tanggal_mulai);
+    // Batasi picker ke >= hari ini hanya bila tgl selesai lama belum lewat, supaya
+    // batch lama yang sudah selesai tidak jadi "invalid" & tetap bisa disimpan ulang.
+    const endMin      = dateOnly(editRow?.tanggal_selesai) >= today ? today : undefined;
 
     const addForm  = useForm({ nama_batch: '', tahun_batch: '', tanggal_mulai: '', tanggal_selesai: '' });
     const editForm = useForm({ nama_batch: '', tahun_batch: '', tanggal_mulai: '', tanggal_selesai: '' });
@@ -162,8 +170,12 @@ export default function BatchIndex({ batchs }) {
                     <TextField label="Tahun Batch" type="number" value={editForm.data.tahun_batch}
                         onChange={(e) => editForm.setData('tahun_batch', e.target.value)} error={editForm.errors.tahun_batch} />
                     <TextField label="Tanggal Mulai" type="date" required={false} value={editForm.data.tanggal_mulai}
+                        disabled={startLocked}
+                        helperText={startLocked ? 'Tanggal mulai terkunci. Untuk mengubahnya, hapus batch lalu buat ulang.' : undefined}
                         onChange={(e) => editForm.setData('tanggal_mulai', e.target.value)} error={editForm.errors.tanggal_mulai} />
                     <TextField label="Tanggal Selesai" type="date" required={false} value={editForm.data.tanggal_selesai}
+                        min={endMin}
+                        helperText="Tidak boleh diubah ke tanggal sebelum hari ini."
                         onChange={(e) => editForm.setData('tanggal_selesai', e.target.value)} error={editForm.errors.tanggal_selesai} />
                 </form>
             </Modal>

@@ -62,7 +62,6 @@ export default function FeedbackResult({ datas, mentor, jawaban, pertanyaans, we
                                 <th className={thCls}>Mentor</th>
                                 <th className={thCls}>Kader</th>
                                 <th className={thCls}>Batch</th>
-                                <th className={thCls}>L/P</th>
                                 <th className={thCls}>IQ</th>
                                 <th className={thCls}>Inch</th>
                                 {isMentor ? (
@@ -136,7 +135,6 @@ export default function FeedbackResult({ datas, mentor, jawaban, pertanyaans, we
                                         <td className={tdCls}>{getMentor(mentor, d.nik)}</td>
                                         <td className={tdCls}>{d.nama}</td>
                                         <td className={tdCls}>{toRoman(d.nama_batch)} - {d.tahun_batch}</td>
-                                        <td className={tdCls}>{d.jenis_kelamin}</td>
                                         <td className={tdCls}>{d.iq}</td>
                                         <td className={tdCls}>{d.ipk}</td>
 

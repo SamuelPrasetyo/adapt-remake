@@ -6,6 +6,9 @@ import Modal from '@/Components/Modal';
 
 const inputCls = "w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 bg-white";
 
+// Batas maksimum mentor per kader — selaras dgn KaderPerMentorController::MAX_MENTORS_PER_KADER.
+const MAX_MENTORS_PER_KADER = 5;
+
 const COLS = [
     { key: '_no',     label: 'No',      width: '60px', render: (_, __, i) => i + 1 },
     { key: 'nama',    label: 'Nama',    sortable: true },
@@ -116,6 +119,15 @@ export default function MentorIndex({ mentors, companys, kaders = [], assignment
         router.delete(`/mentor/delete/${row.id}`);
     };
 
+    // Peta kader_id -> daftar mentor { id, nama } (semua mentor aktif kader tsb).
+    const mentorsByKader = useMemo(() => {
+        const map = {};
+        for (const a of assignments) {
+            (map[a.kader_id] ||= []).push({ id: a.mentor_id, nama: a.mentor_name });
+        }
+        return map;
+    }, [assignments]);
+
     const openAssign = (mentor) => {
         setAssignMentor(mentor);
         const alreadyAssigned = assignments
@@ -141,7 +153,16 @@ export default function MentorIndex({ mentors, companys, kaders = [], assignment
         );
     }, [kaders, assignSearch, assignMentor]);
 
+    // Jumlah mentor LAIN (selain mentor yang sedang di-assign) untuk satu kader.
+    const otherMentorCount = (kaderId) =>
+        (mentorsByKader[kaderId] || []).filter((m) => m.id !== assignMentor?.id).length;
+
+    // Kader terkunci bila sudah punya MAX mentor dari mentor lain (tak bisa ditambah).
+    const isKaderLocked = (kaderId) =>
+        !assignKaderIds.includes(kaderId) && otherMentorCount(kaderId) >= MAX_MENTORS_PER_KADER;
+
     const toggleKader = (id) => {
+        if (isKaderLocked(id)) return; // sudah penuh, tidak bisa ditambah
         setAssignKaderIds((prev) =>
             prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
         );
@@ -395,19 +416,46 @@ export default function MentorIndex({ mentors, companys, kaders = [], assignment
                                 Tidak ada kader yang cocok.
                             </div>
                         ) : filteredKaders.map((k) => {
-                            const checked = assignKaderIds.includes(k.id);
+                            const checked    = assignKaderIds.includes(k.id);
+                            const allMentors = mentorsByKader[k.id] || [];
+                            const otherMentors = allMentors.filter((m) => m.id !== assignMentor?.id);
+                            const locked     = isKaderLocked(k.id);
+                            // Jumlah mentor bila assign ini disimpan (mentor lain + mentor ini bila dicentang).
+                            const effectiveCount = otherMentors.length + (checked ? 1 : 0);
                             return (
                                 <label key={k.id}
-                                    className={`flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition ${
-                                        checked ? 'border-emerald-400 bg-emerald-50' : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50/50'
+                                    className={`flex items-center gap-3 p-2.5 rounded-lg border transition ${
+                                        locked
+                                            ? 'border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed'
+                                            : checked
+                                                ? 'border-emerald-400 bg-emerald-50 cursor-pointer'
+                                                : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 cursor-pointer'
                                     }`}>
-                                    <input type="checkbox" checked={checked} onChange={() => toggleKader(k.id)}
-                                        className="w-4 h-4 accent-emerald-600 shrink-0" />
+                                    <input type="checkbox" checked={checked} disabled={locked}
+                                        onChange={() => toggleKader(k.id)}
+                                        className="w-4 h-4 accent-emerald-600 shrink-0 disabled:cursor-not-allowed" />
                                     <div className="flex-1 min-w-0">
-                                        <div className="text-sm font-medium text-slate-800 truncate">{k.nama}</div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-medium text-slate-800 truncate">{k.nama}</span>
+                                            <span className={`inline-flex items-center shrink-0 px-1.5 py-0.5 rounded-full text-[10px] font-semibold ring-1 ring-inset ${
+                                                effectiveCount >= MAX_MENTORS_PER_KADER
+                                                    ? 'bg-rose-50 text-rose-600 ring-rose-200'
+                                                    : effectiveCount > 0
+                                                        ? 'bg-indigo-50 text-indigo-600 ring-indigo-200'
+                                                        : 'bg-slate-50 text-slate-400 ring-slate-200'
+                                            }`}>
+                                                {effectiveCount}/{MAX_MENTORS_PER_KADER} mentor
+                                            </span>
+                                        </div>
                                         <div className="text-xs text-slate-500 truncate">
                                             {k.nik} · {k.bu || k.company_code} {k.divisi_name ? `· ${k.divisi_name}` : ''}
                                         </div>
+                                        {otherMentors.length > 0 && (
+                                            <div className="text-[11px] text-slate-500 mt-0.5 truncate">
+                                                Mentor lain: <span className="text-slate-600">{otherMentors.map((m) => m.nama).join(', ')}</span>
+                                                {locked && <span className="ml-1 text-rose-500 font-medium">· sudah penuh</span>}
+                                            </div>
+                                        )}
                                     </div>
                                 </label>
                             );

@@ -3,29 +3,25 @@ import { useForm, router } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import DataTable from '@/Components/DataTable';
 import Modal from '@/Components/Modal';
-import { renderStatusBadge } from '@/Components/DataTable';
 
+// Value = anggota enum dokumen.jenis khusus menu ini (jenis lain milik fitur upload masing-masing).
 const JENIS_OPTIONS = [
-    { value: 'surat',    label: 'Surat' },
-    { value: 'laporan',  label: 'Laporan' },
-    { value: 'formulir', label: 'Formulir' },
-    { value: 'lainnya',  label: 'Lainnya' },
+    { value: 'DOKUMEN', label: 'Dokumen' },
+    { value: 'LAPORAN', label: 'Laporan' },
+    { value: 'LAINNYA', label: 'Lainnya' },
 ];
-const STATUS_OPTIONS = [
-    { value: 'pending',  label: 'Pending' },
-    { value: 'approved', label: 'Approved' },
-    { value: 'rejected', label: 'Rejected' },
-];
+
+// Nama tanpa ekstensi — dipakai untuk default input Nama Dokumen (ekstensi ditambahkan backend).
+const stripExt = (name) => (name ?? '').replace(/\.[^.]+$/, '');
 
 const COLS = [
     { key: '_no',       label: 'No',       width: '52px', render: (_, __, i) => i + 1 },
     { key: 'nama_file', label: 'Nama File', sortable: true },
     { key: 'jenis',     label: 'Jenis',    sortable: true },
-    { key: 'status',    label: 'Status',   render: (v) => renderStatusBadge(v) },
     {
         key: 'path_file', label: 'File',
-        render: (v) => v ? (
-            <a href={`/${v}`} target="_blank" rel="noreferrer"
+        render: (v, row) => v ? (
+            <a href={`/${v}`} target="_blank" rel="noreferrer" download={row?.nama_file}
                 className="inline-flex items-center gap-1 text-blue-600 hover:underline text-xs">
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13l-3 3m0 0l-3-3m3 3V8m0 13a9 9 0 110-18 9 9 0 010 18z" />
@@ -61,8 +57,10 @@ export default function DokumenIndex({ dokumens }) {
     const [editOpen, setEditOpen]     = useState(false);
     const [editRow, setEditRow]       = useState(null);
 
-    const addForm  = useForm({ file: null, jenis: '' });
-    const editForm = useForm({ file: null, status: '', jenis: '' });
+    const addForm  = useForm({ file: null, nama: '', jenis: '' });
+    // _method: 'put' = method spoofing. Update mengirim POST multipart (PHP tak mem-parse body
+    // PUT), lalu Laravel memperlakukannya sebagai PUT via field _method di body form.
+    const editForm = useForm({ _method: 'put', file: null, nama: '', jenis: '' });
 
     const submitAdd = (e) => {
         e.preventDefault();
@@ -74,7 +72,8 @@ export default function DokumenIndex({ dokumens }) {
 
     const openEdit = (row) => {
         setEditRow(row);
-        editForm.setData({ file: null, status: row.status ?? '', jenis: row.jenis ?? '' });
+        // setData(obj) mengganti data secara utuh — _method wajib ikut disertakan.
+        editForm.setData({ _method: 'put', file: null, nama: stripExt(row.nama_file), jenis: row.jenis ?? '' });
         setEditOpen(true);
     };
 
@@ -88,7 +87,7 @@ export default function DokumenIndex({ dokumens }) {
 
     const handleDelete = (row) => {
         if (!window.confirm(`Hapus dokumen "${row.nama_file}"?`)) return;
-        router.delete(`/dokumen/destroy/${row.id}`);
+        router.delete(`/dokumen/delete/${row.id}`);
     };
 
     const BtnRow = ({ onCancel, formId, processing }) => (
@@ -137,8 +136,18 @@ export default function DokumenIndex({ dokumens }) {
                 <form id="add-form" onSubmit={submitAdd}>
                     <Field label="File (PDF, Word, Excel, PPT — maks 2MB)" error={addForm.errors.file}>
                         <input type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
-                            onChange={(e) => addForm.setData('file', e.target.files[0])} required
+                            onChange={(e) => {
+                                const f = e.target.files[0];
+                                // Default Nama Dokumen = nama file asli (tanpa ekstensi), tetap bisa diedit.
+                                addForm.setData((d) => ({ ...d, file: f, nama: stripExt(f?.name) }));
+                            }} required
                             className="w-full text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                    </Field>
+                    <Field label="Nama Dokumen" error={addForm.errors.nama}>
+                        <input type="text" value={addForm.data.nama} required maxLength={150}
+                            onChange={(e) => addForm.setData('nama', e.target.value)}
+                            placeholder="Nama dokumen yang tampil di daftar..."
+                            className={inputCls} />
                     </Field>
                     <Field label="Jenis" error={addForm.errors.jenis}>
                         <select value={addForm.data.jenis} required
@@ -159,18 +168,17 @@ export default function DokumenIndex({ dokumens }) {
                             onChange={(e) => editForm.setData('file', e.target.files[0])}
                             className="w-full text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
                     </Field>
+                    <Field label="Nama Dokumen" error={editForm.errors.nama}>
+                        <input type="text" value={editForm.data.nama} required maxLength={150}
+                            onChange={(e) => editForm.setData('nama', e.target.value)}
+                            placeholder="Nama dokumen yang tampil di daftar..."
+                            className={inputCls} />
+                    </Field>
                     <Field label="Jenis" error={editForm.errors.jenis}>
                         <select value={editForm.data.jenis} required
                             onChange={(e) => editForm.setData('jenis', e.target.value)} className={inputCls}>
                             <option value="">Pilih Jenis...</option>
                             {JENIS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
-                    </Field>
-                    <Field label="Status" error={editForm.errors.status}>
-                        <select value={editForm.data.status} required
-                            onChange={(e) => editForm.setData('status', e.target.value)} className={inputCls}>
-                            <option value="">Pilih Status...</option>
-                            {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                         </select>
                     </Field>
                 </form>

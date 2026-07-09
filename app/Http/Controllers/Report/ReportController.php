@@ -13,11 +13,14 @@ use App\Models\FmDetail;
 use App\Models\Jawaban;
 use App\Models\Kader;
 use App\Models\ListKaderPerMentor;
+use App\Models\MonthlyFeedbackSummary;
 use App\Models\PerformanceSum;
 use App\Models\Pertanyaan;
+use App\Models\ReportArsip;
 use App\Models\User;
 use App\Models\Week;
 use App\Models\WeekKader;
+use App\Support\ArsipImporter;
 use App\Support\KaderReportData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -410,22 +413,172 @@ class ReportController extends Controller
     // App\Support\KaderReportData (sumber yang sama dengan Kader Saya/Detail).
     // ──────────────────────────────────────────────────────────────────────────
 
+    // ── Import Arsip Batch 1 & 2 (upload Excel) — Admin MAI ───────────────────
+    // Batch 1-2 arsip: skor agregat diimpor dari Excel ke tabel report_arsip
+    // (lihat App\Support\ArsipImporter). Idempotent: upload ulang meng-update.
+    public function import_arsip_index()
+    {
+        if (Auth::user()->type !== 'Admin') abort(403);
+
+        return Inertia::render('Report/ImportArsip', [
+            'result' => session('arsipImportResult'),
+        ]);
+    }
+
+    public function import_arsip_store(Request $request)
+    {
+        if (Auth::user()->type !== 'Admin') abort(403);
+
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls|max:10240',
+        ], [
+            'file.mimes' => 'File harus berformat .xlsx / .xls.',
+        ]);
+
+        try {
+            $result = ArsipImporter::run($request->file('file')->getRealPath(), Auth::id(), true);
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Gagal impor: ' . $e->getMessage());
+        }
+
+        $s   = $result['summary'];
+        $msg = "Impor selesai — Batch 1 dibuat {$s['batch1_created']}, Batch 2 dicocokkan {$s['batch2_matched']}"
+             . ($s['batch2_unmatched'] ? " ({$s['batch2_unmatched']} tak cocok)" : '')
+             . ", mentor baru {$s['mentors_created']}, skor tersimpan {$s['arsip_upserted']}.";
+
+        return redirect()->route('report.arsip.import.index')
+            ->with('arsipImportResult', $result)
+            ->with('success', $msg);
+    }
+
+    // Picker report gabungan: 2 kelompok dalam satu halaman —
+    //   group 'system' = Batch 3+ (report sistem penuh, /report-new/{id})
+    //   group 'arsip'  = Batch 1-2 (report arsip skor saja, /report-arsip/{id})
     public function report_new_index()
     {
         $user     = Auth::user();
         $isMentor = $user->type === 'Mentor';
 
-        // Hanya kader batch ke-3 ke atas (nama_batch numerik). Batch <= 2 tetap pakai Report Old.
-        $kaders = Kader::select('kader.id', 'kader.nama', 'kader.nik', 'batch.nama_batch', 'batch.tahun_batch')
+        $cols = [
+            'kader.id', 'kader.nik', 'kader.nama', 'kader.jenis_kelamin',
+            'company.company_name as bu', 'divisis.nama as divisi_name', 'departemens.nama as dept_name',
+            'batch.nama_batch', 'batch.tahun_batch',
+        ];
+
+        $base = fn () => Kader::query()
             ->leftJoin('batch', 'kader.id_batch', '=', 'batch.id_batch')
+            ->leftJoin('company', 'kader.company_code', '=', 'company.company_code')
+            ->leftJoin('divisis', 'kader.id_divisi', '=', 'divisis.id')
+            ->leftJoin('departemens', 'kader.id_departemen', '=', 'departemens.id')
+            ->whereNotNull('batch.nama_batch')
+            ->when($isMentor, fn ($q) => $q->where('kader.company_code', $user->company_code));
+
+        // Batch 3+ : report sistem penuh.
+        $system = $base()
             ->whereRaw('CAST(batch.nama_batch AS UNSIGNED) >= 3')
-            ->when($isMentor, fn ($q) => $q->where('kader.company_code', $user->company_code))
-            ->orderBy('batch.nama_batch', 'desc')
+            ->orderByRaw('CAST(batch.nama_batch AS UNSIGNED) DESC')
             ->orderBy('kader.nama', 'asc')
-            ->get();
+            ->get($cols)
+            ->map(fn ($k) => [
+                'id' => $k->id, 'nik' => $k->nik, 'nama' => $k->nama, 'jenis_kelamin' => $k->jenis_kelamin,
+                'bu' => $k->bu, 'divisi_name' => $k->divisi_name, 'dept_name' => $k->dept_name,
+                'nama_batch' => $k->nama_batch, 'tahun_batch' => $k->tahun_batch, 'group' => 'system',
+            ]);
+
+        // Batch 1-2 : hanya kader yang punya baris arsip (report_arsip).
+        $arsip = $base()
+            ->join('report_arsip', 'report_arsip.kader_id', '=', 'kader.id')
+            ->whereRaw('CAST(batch.nama_batch AS UNSIGNED) <= 2')
+            ->orderByRaw('CAST(batch.nama_batch AS UNSIGNED) DESC')
+            ->orderBy('kader.nama', 'asc')
+            ->get($cols)
+            ->map(fn ($k) => [
+                'id' => $k->id, 'nik' => $k->nik, 'nama' => $k->nama, 'jenis_kelamin' => $k->jenis_kelamin,
+                'bu' => $k->bu, 'divisi_name' => $k->divisi_name, 'dept_name' => $k->dept_name,
+                'nama_batch' => $k->nama_batch, 'tahun_batch' => $k->tahun_batch, 'group' => 'arsip',
+            ]);
 
         return Inertia::render('Report/DevelopmentIndex', [
-            'kaders' => $kaders,
+            'kaders' => $system->concat($arsip)->values(),
+        ]);
+    }
+
+    // Report Arsip (Batch 1-2) — skor agregat dari report_arsip, tanpa grafik / filter FMC /
+    // Grand Score (data historis tak lengkap; lihat App\Support\ArsipImporter).
+    public function report_arsip_show($kader_id)
+    {
+        $user     = Auth::user();
+        $isMentor = $user->type === 'Mentor';
+
+        $kader = Kader::select(
+                'kader.*',
+                'company.company_name as bu',
+                'departemens.nama as dept_name',
+                'batch.nama_batch as batch_name',
+                'batch.tahun_batch as batch_year'
+            )
+            ->leftJoin('company', 'kader.company_code', '=', 'company.company_code')
+            ->leftJoin('departemens', 'kader.id_departemen', '=', 'departemens.id')
+            ->leftJoin('batch', 'kader.id_batch', '=', 'batch.id_batch')
+            ->where('kader.id', $kader_id)
+            ->first();
+
+        if (!$kader) abort(404);
+
+        $arsip = ReportArsip::where('kader_id', $kader->id)->first();
+        if (!$arsip) abort(404);
+
+        $assignedMentors = ListKaderPerMentor::join('mentor', 'list_kader_per_mentor.mentor_id', '=', 'mentor.id')
+            ->where('list_kader_per_mentor.kader_id', $kader->id)
+            ->whereNull('list_kader_per_mentor.deleted_at')
+            ->whereNull('mentor.deleted_at')
+            ->orderBy('mentor.nama', 'asc')
+            ->get(['mentor.nama', 'mentor.jabatan'])
+            ->unique('nama')
+            ->values();
+
+        if ($isMentor) {
+            $hasAccess = ListKaderPerMentor::where('list_kader_per_mentor.kader_id', $kader->id)
+                ->whereNull('list_kader_per_mentor.deleted_at')
+                ->join('mentor', 'list_kader_per_mentor.mentor_id', '=', 'mentor.id')
+                ->whereNull('mentor.deleted_at')
+                ->where('mentor.company_code', $user->company_code)
+                ->exists();
+            if (!$hasAccess) abort(403);
+        }
+
+        // Skor OJT & aspek Development disimpan skala 0-10; kirim apa adanya, frontend
+        // menampilkan ×10 agar seragam dengan skala 0-100 (KKM 70).
+        return Inertia::render('Report/DevelopmentArsip', [
+            'kader' => [
+                'nama'        => $kader->nama,
+                'nik'         => $kader->nik,
+                'batch_name'  => $kader->batch_name,
+                'batch_roman' => $kader->batch_name !== null ? $this->ToRomawi((int) $kader->batch_name) : null,
+                'batch_year'  => $kader->batch_year,
+                'bu'          => $kader->bu,
+                'departemen'  => $kader->dept_name,
+                'mentors'     => $assignedMentors->map(fn ($m) => ['nama' => $m->nama, 'jabatan' => $m->jabatan])->values(),
+            ],
+            'scores' => [
+                'learning_growth'      => $arsip->learning_growth,
+                'development_progress' => $arsip->development_progress,
+                'fmc_avg'              => $arsip->fmc_avg,
+                'ojt' => [
+                    ['label' => 'OJT 1', 'score' => $arsip->ojt1],
+                    ['label' => 'OJT 2', 'score' => $arsip->ojt2],
+                    ['label' => 'OJT 3', 'score' => $arsip->ojt3],
+                    ['label' => 'OJT 4', 'score' => $arsip->ojt4],
+                ],
+                'dev' => [
+                    ['label' => 'Job Routine',     'score' => $arsip->dev_job_routine],
+                    ['label' => 'Assignment',      'score' => $arsip->dev_assignment],
+                    ['label' => 'SOP Understanding','score' => $arsip->dev_sop],
+                    ['label' => 'Project Execution','score' => $arsip->dev_project],
+                ],
+                'status'   => $arsip->status,
+                'batch_no' => $arsip->batch_no,
+            ],
         ]);
     }
 
@@ -441,22 +594,26 @@ class ReportController extends Controller
                 'departemens.nama as dept_name',
                 'batch.nama_batch as batch_name',
                 'batch.tahun_batch as batch_year',
-                'batch.tanggal_mulai as batch_start',
-                'lkpm.mentor_id',
-                'mentor.nama as mentor_name'
+                'batch.tanggal_mulai as batch_start'
             )
             ->leftJoin('company', 'kader.company_code', '=', 'company.company_code')
             ->leftJoin('divisis', 'kader.id_divisi', '=', 'divisis.id')
             ->leftJoin('departemens', 'kader.id_departemen', '=', 'departemens.id')
             ->leftJoin('batch', 'kader.id_batch', '=', 'batch.id_batch')
-            ->leftJoin(DB::raw('list_kader_per_mentor lkpm'), function ($j) {
-                $j->on('lkpm.kader_id', '=', 'kader.id')->whereNull('lkpm.deleted_at');
-            })
-            ->leftJoin('mentor', 'lkpm.mentor_id', '=', 'mentor.id')
             ->where('kader.id', $kader_id)
             ->first();
 
         if (!$kader) abort(404);
+
+        // Semua mentor aktif yang di-assign ke kader ini (bisa lebih dari satu) — nama + jabatan.
+        $assignedMentors = ListKaderPerMentor::join('mentor', 'list_kader_per_mentor.mentor_id', '=', 'mentor.id')
+            ->where('list_kader_per_mentor.kader_id', $kader->id)
+            ->whereNull('list_kader_per_mentor.deleted_at')
+            ->whereNull('mentor.deleted_at')
+            ->orderBy('mentor.nama', 'asc')
+            ->get(['mentor.nama', 'mentor.jabatan'])
+            ->unique('nama')
+            ->values();
 
         // Mentor hanya boleh membuka kader di BU-nya (selaras dengan KaderSaya::show).
         if ($isMentor) {
@@ -477,7 +634,7 @@ class ReportController extends Controller
         // Development Progress (section B) di-bucket per FMC = rata-rata 4 aspek mentor pada
         // minggu yang tanggalnya jatuh di rentang FMC tsb (+ bucket 'all' utk view Final Score).
         // Aspek id_pertanyaan: 1 Routine Job, 2 Assignment, 3 SOP, 4 Project.
-        $aspectRows = Jawaban::selectRaw('jawaban.id_pertanyaan as idp, jawaban.jawaban as val, weeks.tanggal_mulai as wdate')
+        $aspectRows = Jawaban::selectRaw('jawaban.id_pertanyaan as idp, jawaban.jawaban as val, jawaban.nama_mentor as nama_mentor, weeks.tanggal_mulai as wdate, weeks.id_week as id_week')
             ->join('weeks', 'jawaban.id_week', '=', 'weeks.id_week')
             ->where('jawaban.nik_kader', $kader->nik)
             ->whereNotNull('jawaban.nama_mentor')
@@ -485,9 +642,11 @@ class ReportController extends Controller
             ->get();
 
         $acc = ['all' => [], 1 => [], 2 => [], 3 => []]; // [bucket][idp] => [sum, count]
+        // Nama mentor untuk TTD "Mentor" = nama_mentor dari feedback mingguan TERAKHIR
+        // (id_week tertinggi) dalam rentang FMC yang dipilih.
+        $lastMentorWeek = ['all' => null, 1 => null, 2 => null, 3 => null];
+        $lastMentorName = ['all' => null, 1 => null, 2 => null, 3 => null];
         foreach ($aspectRows as $r) {
-            if (!is_numeric($r->val)) continue;
-            $val     = (float) $r->val;
             $buckets = ['all'];
             if ($r->wdate) {
                 $d = \Carbon\Carbon::parse($r->wdate);
@@ -495,6 +654,14 @@ class ReportController extends Controller
                     if ($d->between($w['start'], $w['end'])) { $buckets[] = $w['fmc']; break; }
                 }
             }
+            foreach ($buckets as $b) {
+                if ($lastMentorWeek[$b] === null || $r->id_week > $lastMentorWeek[$b]) {
+                    $lastMentorWeek[$b] = $r->id_week;
+                    $lastMentorName[$b] = $r->nama_mentor;
+                }
+            }
+            if (!is_numeric($r->val)) continue;
+            $val = (float) $r->val;
             foreach ($buckets as $b) {
                 $acc[$b][$r->idp] ??= [0, 0];
                 $acc[$b][$r->idp][0] += $val;
@@ -533,6 +700,32 @@ class ReportController extends Controller
             ? round(($fmcFinalScores[1] + $fmcFinalScores[2] + $fmcFinalScores[3]) / 3, 1)
             : null;
 
+        // Section D · Catatan Perkembangan — Summary Monthly Feedback (ditulis Admin MAI atas
+        // Monthly Feedback mentor). Di-bucket per FMC berdasarkan bulan/tahun yang jatuh di
+        // rentang jendela FMC; bucket 'all' dipakai view Final Score.
+        $summaries = MonthlyFeedbackSummary::where('kader_id', $kader->id)
+            ->orderBy('tahun')
+            ->orderBy('bulan')
+            ->get(['bulan', 'tahun', 'summary']);
+
+        $summariesByFmc = ['all' => [], 1 => [], 2 => [], 3 => []];
+        foreach ($summaries as $s) {
+            $item = [
+                'bulan'   => (int) $s->bulan,
+                'tahun'   => (int) $s->tahun,
+                'label'   => (self::BULAN[(int) $s->bulan] ?? $s->bulan) . ' ' . $s->tahun,
+                'summary' => $s->summary,
+            ];
+            $summariesByFmc['all'][] = $item;
+            $mDate = \Carbon\Carbon::create((int) $s->tahun, (int) $s->bulan, 1);
+            foreach ($windows as $w) {
+                if ($mDate->between($w['start'], $w['end'])) {
+                    $summariesByFmc[$w['fmc']][] = $item;
+                    break;
+                }
+            }
+        }
+
         return Inertia::render('Report/Development', [
             'kader' => [
                 'nama'        => $kader->nama,
@@ -543,16 +736,31 @@ class ReportController extends Controller
                 'bu'          => $kader->bu,
                 'divisi'      => $kader->divisi_name,
                 'departemen'  => $kader->dept_name,
-                'mentor'      => $kader->mentor_name,
+                'mentor'      => $assignedMentors->isNotEmpty() ? $assignedMentors->pluck('nama')->implode(', ') : null,
+                'mentors'     => $assignedMentors->map(fn ($m) => [
+                    'nama'    => $m->nama,
+                    'jabatan' => $m->jabatan,
+                ])->values(),
             ],
             'faseGroups'       => $report['faseGroups'],
             'allFases'         => $report['allFases'],
             'penilaianList'    => $report['penilaianList'],
             'fmcScore'         => $report['fmcScore'],
             'developmentByFmc' => $devByFmc,
+            'monthlySummariesByFmc' => $summariesByFmc,
             'fmcFinalScores'   => $fmcFinalScores,
             'fmcApproved'      => $fmcApproved,
             'grandScore'       => $grandScore,
+            'signatures'       => [
+                'mentorByFmc'  => [
+                    1       => $lastMentorName[1],
+                    2       => $lastMentorName[2],
+                    3       => $lastMentorName[3],
+                    'final' => $lastMentorName['all'],
+                ],
+                'hr'           => 'HR Business Unit',
+                'divisionHead' => 'MAI',
+            ],
             'fmcWindows'       => array_map(fn ($w) => [
                 'fmc'            => $w['fmc'],
                 'label'          => $w['label'],
@@ -589,7 +797,7 @@ class ReportController extends Controller
                 'fmc'            => $f,
                 'start'          => $fs,
                 'end'            => $fe,
-                'label'          => self::BULAN_SINGKAT[$fs->month] . ' – ' . self::BULAN_SINGKAT[$fe->month] . ' ' . $fe->year,
+                'label'          => self::BULAN[$fs->month] . ' – ' . self::BULAN[$fe->month] . ' ' . $fe->year,
                 'penilaianLabel' => self::BULAN[$fe->month] . ' ' . $fe->year,
             ];
         }

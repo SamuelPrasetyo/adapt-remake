@@ -124,10 +124,13 @@ Route::middleware(['can:isAdmin'])->group(function () {
     });
     Route::post('/modul/assign', [ModulController::class, 'assign'])->name('modul.assign');
 
-    Route::controller(DokumenController::class)->group(function () {
-        Route::get('/dokumen', 'index')->name('dokumen.index');
-        Route::post('/dokumen/store', 'store')->name('dokumen.store');
-        Route::put('/dokumen/update/{id}', 'update')->name('dokumen.update');
-        Route::delete('/dokumen/delete/{id}', 'destroy')->name('dokumen.destroy');
-    });
+});
+
+// Upload Dokumen — dipakai Admin & Mentor; daftar difilter per role di controller
+// (Admin → tipe 'admin', Mentor → tipe 'mentor' miliknya sendiri).
+Route::middleware(['can:isAdmin&Mentor'])->controller(DokumenController::class)->group(function () {
+    Route::get('/dokumen', 'index')->name('dokumen.index');
+    Route::post('/dokumen/store', 'store')->name('dokumen.store');
+    Route::put('/dokumen/update/{id}', 'update')->name('dokumen.update');
+    Route::delete('/dokumen/delete/{id}', 'destroy')->name('dokumen.destroy');
 });

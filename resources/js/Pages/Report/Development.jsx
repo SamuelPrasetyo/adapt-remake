@@ -49,16 +49,64 @@ function SectionTitle({ code, children }) {
     );
 }
 
+// Avatar warna bergilir + inisial supaya daftar mentor tetap eye-catching walau lebih dari satu.
+const MENTOR_AV = [
+    "bg-blue-100 text-blue-700",
+    "bg-emerald-100 text-emerald-700",
+    "bg-amber-100 text-amber-700",
+    "bg-violet-100 text-violet-700",
+    "bg-rose-100 text-rose-700",
+];
+const initialsOf = (name = "") =>
+    name.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() || "").join("");
+
+// Kolom Mentor pada info row — nama + jabatan, ringkas & rapi meski kader punya banyak mentor.
+function MentorCell({ mentors = [] }) {
+    return (
+        <div className="px-5 py-4">
+            <div className="text-[11px] uppercase tracking-wide text-slate-400 mb-1.5 flex items-center gap-1.5">
+                Mentor
+                {mentors.length > 1 && (
+                    <span className="inline-flex items-center justify-center min-w-4.5 h-4.5 px-1 rounded-full bg-blue-100 text-blue-700 text-[10px] font-bold">
+                        {mentors.length}
+                    </span>
+                )}
+            </div>
+            {mentors.length === 0 ? (
+                <div className="text-sm font-semibold text-slate-400">Tidak ada mentor</div>
+            ) : (
+                <div className="space-y-2">
+                    {mentors.map((m, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                            <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${MENTOR_AV[i % MENTOR_AV.length]}`}>
+                                {initialsOf(m.nama)}
+                            </span>
+                            <div className="min-w-0">
+                                <div className="text-sm font-semibold text-slate-800 leading-tight truncate" title={m.nama}>{m.nama}</div>
+                                {m.jabatan && (
+                                    <div className="text-[11px] text-slate-400 leading-tight truncate" title={m.jabatan}>{m.jabatan}</div>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function Development({
     kader = {},
     faseGroups = [],
     penilaianList = [],
     developmentByFmc = {},
+    monthlySummariesByFmc = {},
     fmcFinalScores = {},
     fmcApproved = {},
     grandScore = null,
     fmcWindows = [],
     currentFmc = 1,
+    signatures = {},
 }) {
     // view: 1 | 2 | 3 (per FMC) atau "final" (Grand Score).
     const [view, setView] = useState(currentFmc);
@@ -202,6 +250,10 @@ export default function Development({
     const periodeLabel = isFinal ? "FMC 1–3 · Final Score" : `FMC ${selFmc} · ${selWindow?.label ?? "—"}`;
     const badgeLabel = isFinal ? "Grand Score" : selWindow?.label ?? "—";
 
+    // ── Section D · Catatan Perkembangan Bulanan (Summary Monthly Feedback) ────
+    // Ringkasan per bulan yang jatuh di jendela FMC terpilih; view Final = semua bulan.
+    const monthlyNotes = (isFinal ? monthlySummariesByFmc.all : monthlySummariesByFmc[view]) ?? [];
+
     const Info = ({ label, value }) => (
         <div className="px-5 py-4">
             <div className="text-[11px] uppercase tracking-wide text-slate-400">{label}</div>
@@ -211,8 +263,8 @@ export default function Development({
 
     return (
         <AppLayout
-            title="REPORT NEW"
-            breadcrumb="Report / Report New"
+            title="REPORT"
+            breadcrumb="Report"
         >
             <div className="max-w-5xl mx-auto space-y-4">
                 {/* MODE LAPORAN — per FMC + Final Score */}
@@ -234,7 +286,7 @@ export default function Development({
                     >
                         {fmcWindows.map((w) => (
                             <option key={w.fmc} value={w.fmc}>
-                                FMC {w.fmc} — {w.label}
+                                FMC {w.fmc} : {w.label}
                             </option>
                         ))}
                         <option value="final" disabled={grandScore == null}>
@@ -251,23 +303,21 @@ export default function Development({
                     {/* Header band */}
                     <div className="bg-slate-800 text-white px-6 py-5 flex items-start justify-between gap-4">
                         <div>
-                            <div className="text-[11px] font-semibold uppercase tracking-widest text-slate-300">New Armada Group · People &amp; Organization</div>
+                            <div className="text-[11px] font-semibold uppercase tracking-widest text-slate-300">New Armada Group · People Development</div>
                             <h2 className="text-lg font-bold tracking-wide mt-1">MANAGEMENT TRAINEE DEVELOPMENT REPORT</h2>
-                            <div className="text-xs text-slate-300 mt-0.5">Learning Progress &amp; Development Tracking</div>
                         </div>
                         <div className="text-right shrink-0">
                             <div className="text-[11px] uppercase tracking-widest text-slate-400">Periode</div>
                             <div className="text-sm font-semibold mt-1">{periodeLabel}</div>
-                            <span className="inline-block mt-2 px-2.5 py-1 rounded-md bg-white/10 text-xs font-medium uppercase tracking-wide">{badgeLabel}</span>
                         </div>
                     </div>
 
                     {/* Info row */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-y lg:divide-y-0 divide-slate-100 border-b border-slate-100">
                         <Info label="Nama" value={kader.nama} />
-                        <Info label="MT Batch" value={kader.batch_roman ? `Batch ${kader.batch_roman}` : kader.batch_name} />
+                        <Info label="MT Batch · Department" value={[kader.batch_roman ? `Batch ${kader.batch_roman}` : kader.batch_name, kader.departemen].filter(Boolean).join(" · ")} />
                         <Info label="Business Unit" value={kader.bu} />
-                        <Info label="Department · Mentor" value={[kader.departemen, kader.mentor].filter(Boolean).join(" · ")} />
+                        <MentorCell mentors={kader.mentors} />
                     </div>
 
                     {/* FMC timeline */}
@@ -401,23 +451,34 @@ export default function Development({
                     {/* D · CATATAN PERKEMBANGAN */}
                     <div className="px-6 py-5 border-t border-slate-100">
                         <SectionTitle code="D">Catatan Perkembangan</SectionTitle>
-                        <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
-                            <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-2">Catatan Mentor / HR People Development</div>
-                            <p className="text-sm text-slate-600 leading-relaxed">
-                                {pen?.overview || pen?.mentor_comments ||
-                                    "Belum ada catatan perkembangan untuk periode ini. Catatan akan terisi mengikuti hasil Penilaian OJT dan feedback mentor."}
-                            </p>
-                            <div className="flex flex-wrap gap-2 mt-3">
-                                {["Konsistensi Belajar", "Self-Directed Learning", "Komunikasi Mentor"].map((t) => (
-                                    <span key={t} className="text-xs font-medium px-2.5 py-1 rounded-full bg-blue-50 text-blue-700">{t}</span>
+                        {/* Ringkasan Monthly Feedback per bulan (disusun Admin MAI) */}
+                        {monthlyNotes.length === 0 ? (
+                            <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
+                                <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-2">Catatan Mentor</div>
+                                <p className="text-sm text-slate-600 leading-relaxed">
+                                    Belum ada catatan perkembangan untuk periode ini. Catatan akan terisi mengikuti hasil Penilaian OJT dan feedback mentor.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {monthlyNotes.map((n) => (
+                                    <div key={`${n.tahun}-${n.bulan}`} className="rounded-xl bg-slate-50 border border-slate-200 p-4">
+                                        <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-2">{n.label}</div>
+                                        <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">{n.summary}</p>
+                                    </div>
                                 ))}
                             </div>
-                        </div>
+                        )}
+
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-6">
-                            {["Mentor", "HR / People Development", "Division Head"].map((role) => (
+                            {[
+                                { role: "Mentor", name: signatures?.mentorByFmc?.[isFinal ? "final" : selFmc] },
+                                { role: "HR / People Development", name: signatures?.hr },
+                                { role: "Division Head", name: signatures?.divisionHead },
+                            ].map(({ role, name }) => (
                                 <div key={role} className="text-center">
                                     <div className="text-sm text-slate-400 mb-10">{role}</div>
-                                    <div className="border-t border-slate-300 pt-1 text-xs text-slate-400">(&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)</div>
+                                    <div className="border-t border-slate-300 pt-1 text-xs text-slate-600">({name || "         "})</div>
                                 </div>
                             ))}
                         </div>

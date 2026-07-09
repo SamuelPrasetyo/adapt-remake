@@ -120,7 +120,9 @@ export const ADMIN_NAV = [
                 match: "/pertanyaan",
                 requires: "admin",
             },
-            { label: "Week", href: "/week", match: "/week", requires: "admin" },
+            // "Week" sengaja disembunyikan dari menu — jadwal minggu kini di-generate
+            // otomatis per-batch (WeekGenerator). Route /week & halaman Master/Week
+            // tetap ada (bisa diakses langsung bila perlu).
             {
                 label: "Kader",
                 href: "/kader",
@@ -186,7 +188,7 @@ export const ADMIN_NAV = [
                 label: "Dokumen",
                 href: "/dokumen",
                 match: "/dokumen",
-                requires: "admin",
+                requires: "mentor_or_admin021",
             },
             {
                 label: "Template",
@@ -206,33 +208,23 @@ export const ADMIN_NAV = [
     },
     { type: "section", label: "Report" },
     {
-        type: "group",
-        label: "Report Old",
-        icon: "file",
-        children: [
-            {
-                label: "Learning Growth",
-                href: "/learning-index",
-                match: "/learning-index",
-            },
-            {
-                label: "OJT Monitoring",
-                href: "/ojt-index",
-                match: "/ojt-index",
-            },
-            {
-                label: "Feedback",
-                href: "/reportfeedback-index",
-                match: "/reportfeedback-index",
-            },
-        ],
-    },
-    {
+        // Menu Report tunggal — di dalamnya ada filter kelompok batch:
+        // Batch 3+ (report sistem) & Batch 1-2 (arsip). Halaman "Report Old"
+        // lama (learning-index / ojt-index / reportfeedback-index) dipensiunkan
+        // dari menu; route-nya masih ada bila perlu diakses langsung.
         type: "item",
-        label: "Report New",
+        label: "Report",
         icon: "file",
         href: "/report-new",
         match: "/report-new",
+    },
+    {
+        type: "item",
+        label: "Import Arsip B1–2",
+        icon: "upload_doc",
+        href: "/report-import-arsip",
+        match: "/report-import-arsip",
+        requires: "admin021",
     },
 ];
 
@@ -265,13 +257,6 @@ export const KADER_NAV = [
                 icon: "file",
                 href: "/form-idp",
                 match: "/form-idp",
-            },
-            {
-                type: "item",
-                label: "Weekly Feedback",
-                icon: "file",
-                href: "/weekly-feedback",
-                match: "/weekly-feedback",
             },
         ],
     },

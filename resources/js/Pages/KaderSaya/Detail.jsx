@@ -4,6 +4,7 @@ import AppLayout from "@/Layouts/AppLayout";
 import { getFaseLabel, getFaseNum } from "@/constants/fase";
 import LearningGrowthTab from "./tabs/LearningGrowthTab";
 import FeedbackTab from "./tabs/FeedbackTab";
+import SummaryMonthlyTab from "./tabs/SummaryMonthlyTab";
 import PenilaianOjtTab from "./tabs/PenilaianOjtTab";
 import PerjanjianKerjaTab from "./tabs/PerjanjianKerjaTab";
 
@@ -35,6 +36,17 @@ const TABS = [
         ),
     },
     {
+        id: "summary",
+        label: "Summary Monthly Feedback",
+        adminMaiOnly: true,
+        icon: (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                    d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+        ),
+    },
+    {
         id: "penilaian",
         label: "Penilaian OJT",
         icon: (
@@ -56,8 +68,6 @@ const TABS = [
     },
 ];
 
-const VALID_TABS = TABS.map((t) => t.id);
-
 export default function KaderSayaDetail({
     kader,
     faseGroups = [],
@@ -72,6 +82,10 @@ export default function KaderSayaDetail({
     weeksKader = [],
     refleksi = [],
     mentorFeedbackList = [],
+    monthlyPeriods = [],
+    monthlyFeedbackList = [],
+    monthlyFeedbackSummaries = {},
+    canSummarizeMonthly = false,
     mentorName = "",
     perjanjianKerja = null,
     templatePerjanjianKerja = null,
@@ -83,9 +97,18 @@ export default function KaderSayaDetail({
     canEditPenilaian = false,
     allFases = [],
     kaderView = false,
+    weeklyFeedback = null,
 }) {
+    // Summary Monthly Feedback = tab khusus Admin MAI; Perjanjian disembunyikan dari Kader.
+    const visibleTabs = TABS.filter((t) => {
+        if (kaderView && t.id === "perjanjian") return false;
+        if (t.adminMaiOnly && !canSummarizeMonthly) return false;
+        return true;
+    });
+    const validTabIds = visibleTabs.map((t) => t.id);
+
     const hashTab = typeof window !== "undefined" ? window.location.hash.replace("#", "") : "";
-    const [tab, setTab] = useState(VALID_TABS.includes(hashTab) ? hashTab : "learning");
+    const [tab, setTab] = useState(validTabIds.includes(hashTab) ? hashTab : "learning");
 
     const handleTabChange = (id) => {
         setTab(id);
@@ -118,7 +141,7 @@ export default function KaderSayaDetail({
             {/* Kader header card */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-6">
                 <div className="flex flex-wrap items-start gap-4">
-                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-xl font-bold text-white shrink-0">
+                    <div className="w-14 h-14 rounded-xl bg-linear-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-xl font-bold text-white shrink-0">
                         {initials}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -196,7 +219,7 @@ export default function KaderSayaDetail({
             {/* Tab navigation */}
             <div className="border-b border-slate-200 mb-6 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] scrollbar-none">
                 <div className="flex gap-1 min-w-max">
-                    {TABS.filter((t) => !(kaderView && t.id === "perjanjian")).map((t) => (
+                    {visibleTabs.map((t) => (
                         <button key={t.id} onClick={() => handleTabChange(t.id)}
                             className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition border-b-2 -mb-px ${
                                 tab === t.id
@@ -221,10 +244,20 @@ export default function KaderSayaDetail({
                     weeksKader={weeksKader}
                     refleksi={refleksi}
                     mentorFeedbackList={mentorFeedbackList}
+                    monthlyPeriods={monthlyPeriods}
+                    monthlyFeedbackList={monthlyFeedbackList}
                     mentorName={mentorName}
                     kaderId={kaderId}
                     showFeedbackForm={!kaderView}
                     kaderView={kaderView}
+                    weeklyFeedback={weeklyFeedback}
+                />
+            )}
+            {tab === "summary" && canSummarizeMonthly && (
+                <SummaryMonthlyTab
+                    kaderId={kaderId}
+                    monthlyFeedbackList={monthlyFeedbackList}
+                    monthlyFeedbackSummaries={monthlyFeedbackSummaries}
                 />
             )}
             {tab === "penilaian" && (

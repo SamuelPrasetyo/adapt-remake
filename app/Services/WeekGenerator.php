@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Auth;
  * - Anchor W1   = hari Minggu pertama pada/atau setelah batch.tanggal_mulai.
  * - Jumlah week = mengikuti durasi batch (tanggal_mulai s/d tanggal_selesai).
  * - weeks_kader = refleksi kader, mingguan (angka_week 1..N).
- * - weeks       = feedback mentor, dwi-mingguan (angka_week genap 2,4,..<=N),
+ * - weeks       = feedback mentor, mingguan (angka_week 1..N),
  *                 tanggalnya sama dengan minggu kader yang bersangkutan.
  *
  * Update aman: baris yang sudah ada dipertahankan (id_week & angka_week tetap),
@@ -60,9 +60,11 @@ class WeekGenerator
         }
         self::pruneExtra(WeekKader::class, $batch->id_batch, $n);
 
-        // weeks (mentor): genap 2,4,..<=N (dwi-mingguan)
+        // weeks (mentor): mingguan 1..N. Dulu dwi-mingguan (genap 2,4,..); kini tiap minggu.
+        // Karena rumus tanggal sama (anchor + (w-1) minggu), baris genap lama dipertahankan
+        // (id_week & tanggal tetap) dan re-generate hanya menambah minggu ganjil yang hilang.
         $mentorCount = 0;
-        for ($w = 2; $w <= $n; $w += 2) {
+        for ($w = 1; $w <= $n; $w++) {
             $tgl = $anchor->copy()->addWeeks($w - 1);
             self::upsertWeek(Week::class, $batch->id_batch, $w, $tgl, $uid);
             $mentorCount++;
