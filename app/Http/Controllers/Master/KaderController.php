@@ -17,9 +17,12 @@ use App\Models\Company;
 use App\Models\Departemen;
 use App\Models\Divisi;
 use App\Models\FeedbackMai;
+use App\Support\KaderNikSync;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Validators\ValidationException;
 use Inertia\Inertia;
 
@@ -187,23 +190,54 @@ class KaderController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $kader = Kader::where('id', $id)->first();
-        Kader::where('id', $id)
-            ->update([
-                'nama'              => $request->nama ?? $kader->nama,
-                'nik'               => $request->nik ?? $kader->nik,
-                'jenis_kelamin'     => $request->jenis_kelamin ?? $kader->jenis_kelamin,
-                'iq'                => $request->iq ?? $kader->iq,
-                'ipk'               => $request->ipk ?? $kader->ipk,
-                'id_batch'          => $request->id_batch ?? $kader->id_batch,
-                'id_divisi'         => $request->id_divisi ?? $kader->id_divisi,
-                'id_departemen'     => $request->id_departemen ?? $kader->id_departemen,
-                'company_code'      => $request->company_code ?? $kader->id_departemen,
-                'updated_at'        => now(),
-                'updated_by'        => Auth::user()->id
-            ]);
+        $kader = Kader::where('id', $id)->firstOrFail();
 
-        ActivityLog::activity_log('Mengubah data Kader');
+        // NIK harus unik di kader (selain dirinya) DAN tidak boleh sudah dipakai akun
+        // login lain (users.nik = kunci login); akun milik kader ini sendiri (nik lama)
+        // dikecualikan karena akan ikut di-rename oleh KaderNikSync.
+        $request->validate([
+            'nik' => [
+                'nullable', 'string', 'max:255',
+                Rule::unique('kader', 'nik')->ignore($id, 'id'),
+                Rule::unique('users', 'nik')->ignore($kader->nik, 'nik'),
+            ],
+        ], [
+            'nik.unique' => 'NIK sudah dipakai kader/akun lain.',
+        ], [
+            'nik' => 'NIK',
+        ]);
+
+        $oldNik = (string) $kader->nik;
+        $newNik = (string) ($request->nik ?? $kader->nik);
+
+        DB::transaction(function () use ($request, $id, $kader, $oldNik, $newNik) {
+            Kader::where('id', $id)
+                ->update([
+                    'nama'              => $request->nama ?? $kader->nama,
+                    'nik'               => $newNik,
+                    'jenis_kelamin'     => $request->jenis_kelamin ?? $kader->jenis_kelamin,
+                    'iq'                => $request->iq ?? $kader->iq,
+                    'ipk'               => $request->ipk ?? $kader->ipk,
+                    'id_batch'          => $request->id_batch ?? $kader->id_batch,
+                    'id_divisi'         => $request->id_divisi ?? $kader->id_divisi,
+                    'id_departemen'     => $request->id_departemen ?? $kader->id_departemen,
+                    'company_code'      => $request->company_code ?? $kader->company_code,
+                    'updated_at'        => now(),
+                    'updated_by'        => Auth::user()->id
+                ]);
+
+            // NIK berubah (mis. NIK sementara → NIK resmi): sinkronkan users.nik
+            // (users.id dipertahankan → progress modul/test/dokumen tetap tertaut)
+            // + nik_kader di jawaban & feedback_mai. Lihat App\Support\KaderNikSync.
+            if ($newNik !== $oldNik) {
+                KaderNikSync::rename($oldNik, $newNik);
+            }
+        });
+
+        // Catatan: activity_log.desc bukan utf8mb4 — hindari karakter multibyte (mis. panah unicode).
+        ActivityLog::activity_log($newNik !== $oldNik
+            ? "Mengubah data Kader (NIK {$oldNik} -> {$newNik}, login & feedback tersinkron)"
+            : 'Mengubah data Kader');
         Alert::success('Success', 'Data berhasil diupdate!');
         return redirect()->route('kader.index');
     }
