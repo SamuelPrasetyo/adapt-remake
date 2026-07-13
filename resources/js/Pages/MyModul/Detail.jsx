@@ -669,6 +669,24 @@ export default function ModulDetail({ modul, progress = {}, pretest = [], postte
                                 </ul>
                             )}
 
+                            {/* Template acuan pengisian, ditempel per modul (opsional) — terbuka berbarengan dengan Upload Post Activity */}
+                            {modul?.file_template_pa && !progress.post_activity && (
+                                <div className="mb-2">
+                                    {paLocked ? (
+                                        <LockedBtn label="Unduh Template Post Activity" message={hasTest ? 'Selesaikan Post-Test terlebih dahulu' : 'Baca materi hingga 100% terlebih dahulu'} />
+                                    ) : (
+                                        <a href={`/${modul.file_template_pa}`} target="_blank" rel="noreferrer"
+                                            className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border border-emerald-300 text-emerald-700 hover:bg-emerald-50 transition">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                            </svg>
+                                            Unduh Template Post Activity
+                                        </a>
+                                    )}
+                                </div>
+                            )}
+
                             {/* Aksi sesuai state */}
                             {paLocked ? (
                                 <LockedBtn label="Upload Post Activity" message={hasTest ? 'Selesaikan Post-Test terlebih dahulu' : 'Baca materi hingga 100% terlebih dahulu'} />
