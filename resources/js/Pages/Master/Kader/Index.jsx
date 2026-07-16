@@ -8,6 +8,12 @@ import Modal from '@/Components/Modal';
 const COLS = [
     { key: '_no',  label: 'No',   width: '52px', render: (_, __, i) => i + 1 },
     { key: 'nik',  label: 'NIK',  sortable: true },
+    {
+        key: 'nik_ktp', label: 'NIK KTP', sortable: true,
+        render: (v) => v
+            ? <span className="font-mono text-xs">{v}</span>
+            : <span className="text-slate-300 italic text-xs">—</span>,
+    },
     { key: 'nama', label: 'Nama', sortable: true },
     { key: 'bu',   label: 'BU',   sortable: true },
     { key: 'divisi_name', label: 'Divisi',     sortable: true },
@@ -20,7 +26,8 @@ const TEMPLATE_COLS = [
     { name: 'batch',             note: 'Otomatis — jangan diubah', locked: true },
     { name: 'tahun',             note: 'Otomatis — jangan diubah', locked: true },
     { name: 'nama',              note: 'Nama lengkap kader' },
-    { name: 'nik',               note: 'NIK unik' },
+    { name: 'nik',               note: 'NIK (No. Induk Karyawan) unik' },
+    { name: 'nik_ktp',           note: 'No. KTP 16 digit (opsional, unik)' },
     { name: 'jenis_kelamin',     note: 'L atau P' },
     { name: 'iq',                note: 'Angka, mis. 110' },
     { name: 'ipk',               note: 'Angka, mis. 3.45' },
@@ -190,6 +197,12 @@ function KaderFields({ form, companys, divisis, departemens, batchs }) {
                 <input type="text" value={form.data.nik}
                     onChange={(e) => form.setData('nik', e.target.value)} className={inputCls} />
             </Field>
+            <Field label="NIK KTP" error={form.errors.nik_ktp}>
+                <input type="text" inputMode="numeric" maxLength={20} value={form.data.nik_ktp}
+                    onChange={(e) => form.setData('nik_ktp', e.target.value)} className={inputCls}
+                    placeholder="No. KTP untuk tautan data kandidat" />
+                <p className="text-[11px] text-slate-400 mt-0.5">Menautkan kader ke data kandidat (Career MAI). Opsional.</p>
+            </Field>
             <Field label="Jenis Kelamin" error={form.errors.jenis_kelamin}>
                 <select value={form.data.jenis_kelamin}
                     onChange={(e) => form.setData('jenis_kelamin', e.target.value)} className={inputCls}>
@@ -242,7 +255,7 @@ function KaderFields({ form, companys, divisis, departemens, batchs }) {
 }
 
 const EMPTY_KADER = {
-    nama: '', nik: '', jenis_kelamin: '', iq: '', ipk: '',
+    nama: '', nik: '', nik_ktp: '', jenis_kelamin: '', iq: '', ipk: '',
     id_batch: '', id_divisi: '', id_departemen: '', company_code: '',
 };
 
@@ -281,6 +294,7 @@ export default function KaderIndex({ kaders, companys, divisis, departemens, bat
         editForm.setData({
             nama:          row.nama          ?? '',
             nik:           row.nik           ?? '',
+            nik_ktp:       row.nik_ktp       ?? '',
             jenis_kelamin: row.jenis_kelamin ?? '',
             iq:            row.iq            ?? '',
             ipk:           row.ipk           ?? '',
@@ -459,6 +473,7 @@ export default function KaderIndex({ kaders, companys, divisis, departemens, bat
                                     <td className="px-2 py-1.5 whitespace-nowrap font-semibold text-amber-700">{currentBatch?.tahun_batch ?? '—'}</td>
                                     <td className="px-2 py-1.5 whitespace-nowrap">Budi Santoso</td>
                                     <td className="px-2 py-1.5 whitespace-nowrap">60320250001</td>
+                                    <td className="px-2 py-1.5 whitespace-nowrap">3201234567890001</td>
                                     <td className="px-2 py-1.5 whitespace-nowrap">L</td>
                                     <td className="px-2 py-1.5 whitespace-nowrap">110</td>
                                     <td className="px-2 py-1.5 whitespace-nowrap">3.45</td>

@@ -24,9 +24,11 @@ use App\Models\User;
 use App\Models\Week;
 use App\Models\WeekKader;
 use App\Support\KaderReportData;
+use App\Support\KandidatData;
 use App\Support\ModulScore;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
@@ -283,6 +285,19 @@ class KaderSayaController extends Controller
             $perjanjianKerja->uploaded_by_name = $uploader ? $uploader->name : '—';
         }
 
+        // Data kandidat (portal rekrutmen Career MAI), ditautkan via kader.nik_ktp = kandidat.ktp.
+        // Dibungkus try/catch: bila DB career_mai tak terjangkau, detail kader tetap tampil.
+        $kandidat = null;
+        $kandidatError = null;
+        if (!empty($kader->nik_ktp)) {
+            try {
+                $kandidat = KandidatData::forKtp($kader->nik_ktp);
+            } catch (\Throwable $e) {
+                Log::warning('[KaderSaya::show] gagal ambil data kandidat Career MAI: ' . $e->getMessage());
+                $kandidatError = 'Tidak dapat terhubung ke database Career MAI. Coba lagi nanti.';
+            }
+        }
+
         return Inertia::render('KaderSaya/Detail', [
             'kader'              => $kader,
             'faseGroups'         => $report['faseGroups'],
@@ -319,7 +334,36 @@ class KaderSayaController extends Controller
             'kaderView'          => $isKader,
             // Upload Weekly Feedback hanya untuk Kader yang melihat dashboard-nya sendiri.
             'weeklyFeedback'     => $isKader ? WeeklyFeedbackController::dataFor($user) : null,
+            // Data kandidat rekrutmen (tab Kandidat).
+            'kandidat'           => $kandidat,
+            'nikKtp'             => $kader->nik_ktp,
+            'kandidatError'      => $kandidatError,
         ]);
+    }
+
+    /**
+     * Cek keberadaan berkas kandidat di portal Career MAI (server-to-server, bebas CORS).
+     * Dipakai tab Kandidat agar berkas yang hilang memunculkan notifikasi di aplikasi,
+     * bukan halaman 404 portal. Anti-SSRF: hanya URL di bawah base storage yang diizinkan.
+     *
+     * @return \Illuminate\Http\JsonResponse status: found | missing | error
+     */
+    public function kandidatFileExists(Request $request)
+    {
+        $url  = (string) $request->query('url', '');
+        $base = rtrim((string) config('services.career_mai.asset_url'), '/');
+
+        if ($base === '' || !str_starts_with($url, $base . '/')) {
+            return response()->json(['status' => 'error'], 422);
+        }
+
+        try {
+            $status = Http::timeout(10)->head($url)->status();
+            return response()->json(['status' => ($status >= 200 && $status < 400) ? 'found' : 'missing']);
+        } catch (\Throwable $e) {
+            Log::warning('[KaderSaya::kandidatFileExists] gagal cek berkas: ' . $e->getMessage());
+            return response()->json(['status' => 'error']);
+        }
     }
 
     public function storeFeedback(Request $request, $kader_id)

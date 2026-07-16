@@ -87,6 +87,7 @@ class KaderController extends Controller
         $validated = $request->validate([
             'nama'          => 'required|string|max:255',
             'nik'           => 'required|string|max:255|unique:kader,nik',
+            'nik_ktp'       => 'nullable|string|max:20|unique:kader,nik_ktp',
             'jenis_kelamin' => 'required|in:L,P',
             'iq'            => 'nullable|numeric',
             'ipk'           => 'nullable|numeric',
@@ -94,8 +95,11 @@ class KaderController extends Controller
             'id_divisi'     => 'required',
             'id_departemen' => 'required',
             'id_batch'      => 'required',
-        ], [], [
+        ], [
+            'nik_ktp.unique' => 'NIK KTP sudah dipakai kader lain.',
+        ], [
             'nik'           => 'NIK',
+            'nik_ktp'       => 'NIK KTP',
             'jenis_kelamin' => 'Jenis Kelamin',
             'company_code'  => 'Bisnis Unit',
             'id_divisi'     => 'Divisi',
@@ -106,6 +110,7 @@ class KaderController extends Controller
         Kader::insert([
             'id'            => Str::uuid(),
             'nik'           => $validated['nik'],
+            'nik_ktp'       => $validated['nik_ktp'] ?: null,
             'nama'          => $validated['nama'],
             'jenis_kelamin' => $validated['jenis_kelamin'],
             'iq'            => $validated['iq'] ?? '0',
@@ -201,10 +206,16 @@ class KaderController extends Controller
                 Rule::unique('kader', 'nik')->ignore($id, 'id'),
                 Rule::unique('users', 'nik')->ignore($kader->nik, 'nik'),
             ],
+            'nik_ktp' => [
+                'nullable', 'string', 'max:20',
+                Rule::unique('kader', 'nik_ktp')->ignore($id, 'id'),
+            ],
         ], [
-            'nik.unique' => 'NIK sudah dipakai kader/akun lain.',
+            'nik.unique'     => 'NIK sudah dipakai kader/akun lain.',
+            'nik_ktp.unique' => 'NIK KTP sudah dipakai kader lain.',
         ], [
-            'nik' => 'NIK',
+            'nik'     => 'NIK',
+            'nik_ktp' => 'NIK KTP',
         ]);
 
         $oldNik = (string) $kader->nik;
@@ -215,6 +226,8 @@ class KaderController extends Controller
                 ->update([
                     'nama'              => $request->nama ?? $kader->nama,
                     'nik'               => $newNik,
+                    // '' → null agar unique(nik_ktp) tidak bentrok antar kader yang sama-sama kosong.
+                    'nik_ktp'           => $request->has('nik_ktp') ? ($request->input('nik_ktp') ?: null) : $kader->nik_ktp,
                     'jenis_kelamin'     => $request->jenis_kelamin ?? $kader->jenis_kelamin,
                     'iq'                => $request->iq ?? $kader->iq,
                     'ipk'               => $request->ipk ?? $kader->ipk,

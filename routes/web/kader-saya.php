@@ -11,6 +11,8 @@ Route::middleware(['can:canMentorDashboard'])->group(function () {
     Route::get('/mentor/{mentor_id}/kaders', [KaderPerMentorController::class, 'listByMentor'])->name('mentor.listKaders');
 
     Route::get('/kader-saya', [KaderSayaController::class, 'index'])->name('kader.saya.index');
+    // Cek keberadaan berkas kandidat (tab Kandidat) — didaftarkan sebelum route wildcard {kader_id}.
+    Route::get('/kandidat/file-exists', [KaderSayaController::class, 'kandidatFileExists'])->name('kandidat.fileExists');
     Route::get('/kader-saya/{kader_id}', [KaderSayaController::class, 'show'])->name('kader.saya.show');
     Route::post('/kader-saya/{kader_id}/feedback', [KaderSayaController::class, 'storeFeedback'])->name('kader.saya.storeFeedback');
     Route::post('/kader-saya/{kader_id}/monthly-feedback', [KaderSayaController::class, 'storeMonthlyFeedback'])->name('kader.saya.storeMonthlyFeedback');

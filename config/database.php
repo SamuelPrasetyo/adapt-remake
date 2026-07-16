@@ -64,6 +64,29 @@ return [
         ],
 
 
+        // Koneksi read-only ke database Career MAI (portal rekrutmen). Dipakai hanya
+        // untuk MEMBACA data kandidat/lamaran yang ditampilkan di Kader Saya — jangan
+        // pernah menulis ke koneksi ini. Kredensial diambil dari env CAREER_MAI_DB_*.
+        'career_mai' => [
+            'driver' => 'mysql',
+            'url' => env('CAREER_MAI_DATABASE_URL'),
+            'host' => env('CAREER_MAI_DB_HOST', env('DB_HOST', '127.0.0.1')),
+            'port' => env('CAREER_MAI_DB_PORT', env('DB_PORT', '3306')),
+            'database' => env('CAREER_MAI_DB_DATABASE', 'career_mai'),
+            'username' => env('CAREER_MAI_DB_USERNAME', env('DB_USERNAME', 'root')),
+            'password' => env('CAREER_MAI_DB_PASSWORD', env('DB_PASSWORD', '')),
+            'unix_socket' => env('DB_SOCKET', ''),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => false,
+            'engine' => null,
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+            ]) : [],
+        ],
+
         'pgsql' => [
             'driver' => 'pgsql',
             'url' => env('DATABASE_URL'),
