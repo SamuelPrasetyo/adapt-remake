@@ -14,10 +14,12 @@ use App\Models\ModulAssignment;
 use App\Models\ModulReadingProgress;
 use App\Models\ModulTestResult;
 use App\Models\User;
+use App\Support\KandidatData;
 use App\Support\ModulScore;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class KaderPerMentorController extends Controller
@@ -152,6 +154,7 @@ class KaderPerMentorController extends Controller
                 'kader.id as k_id',
                 'kader.nama as nama_kader',
                 'kader.nik as nik_kader',
+                'kader.nik_ktp as nik_ktp',
                 'kader.company_code as company_code',
                 'batch.nama_batch as batch_name',
                 'batch.tahun_batch as batch_year',
@@ -175,6 +178,7 @@ class KaderPerMentorController extends Controller
 
         // Tampilkan SEMUA mentor kader (bukan hanya mentor yang difilter) agar kartu konsisten.
         $this->attachMentors($rows, $idBatch);
+        $this->attachKandidatPhotos($rows);
 
         return $this->attachProgressStats($rows);
     }
@@ -234,6 +238,7 @@ class KaderPerMentorController extends Controller
                 'kader.id as k_id',
                 'kader.id as kader_id',
                 'kader.nik as nik_kader',
+                'kader.nik_ktp as nik_ktp',
                 'kader.nama as nama_kader',
                 'kader.company_code',
                 'company.company_shortname as bu',
@@ -259,8 +264,36 @@ class KaderPerMentorController extends Controller
         $rows = $kadersQuery->get();
 
         $this->attachMentors($rows, $idBatch);
+        $this->attachKandidatPhotos($rows);
 
         return $this->attachProgressStats($rows);
+    }
+
+    /**
+     * Menempelkan `$row->foto` (URL foto kandidat Career MAI) tiap kader yang sudah
+     * ditautkan lewat nik_ktp. Satu query untuk seluruh daftar.
+     *
+     * Sengaja dibungkus try/catch: Dashboard & daftar kader TIDAK boleh ikut tumbang
+     * hanya karena DB portal rekrutmen tak terjangkau — foto sekadar pemanis, kader
+     * tanpa foto jatuh ke avatar inisial.
+     */
+    protected function attachKandidatPhotos($rows)
+    {
+        if ($rows->isEmpty()) return;
+
+        $photos = [];
+        try {
+            $photos = KandidatData::photosForKtps(
+                $rows->pluck('nik_ktp')->filter()->unique()->values()->all()
+            );
+        } catch (\Throwable $e) {
+            Log::warning('[KaderPerMentor] gagal ambil foto kandidat Career MAI: ' . $e->getMessage());
+        }
+
+        $rows->each(function ($r) use ($photos) {
+            $ktp = trim((string) ($r->nik_ktp ?? ''));
+            $r->foto = ($ktp !== '' && isset($photos[$ktp])) ? $photos[$ktp] : null;
+        });
     }
 
     protected function attachProgressStats($rows)

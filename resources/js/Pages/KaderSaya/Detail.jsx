@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "@inertiajs/react";
 import AppLayout from "@/Layouts/AppLayout";
+import KaderAvatar from "@/Components/KaderAvatar";
 import { getFaseLabel, getFaseNum } from "@/constants/fase";
 import LearningGrowthTab from "./tabs/LearningGrowthTab";
 import KandidatTab from "./tabs/KandidatTab";
@@ -109,13 +110,16 @@ export default function KaderSayaDetail({
     allFases = [],
     kaderView = false,
     weeklyFeedback = null,
+    canViewKandidat = false,
     kandidat = null,
     nikKtp = null,
     kandidatError = null,
 }) {
     // Summary Monthly Feedback = tab khusus Admin MAI; Perjanjian disembunyikan dari Kader.
+    // Job Applicant = khusus Admin MAI 021 (backend juga tidak mengirim datanya ke role lain).
     const visibleTabs = TABS.filter((t) => {
         if (kaderView && t.id === "perjanjian") return false;
+        if (t.id === "kandidat" && !canViewKandidat) return false;
         if (t.adminMaiOnly && !canSummarizeMonthly) return false;
         return true;
     });
@@ -155,9 +159,14 @@ export default function KaderSayaDetail({
             {/* Kader header card */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-6">
                 <div className="flex flex-wrap items-start gap-4">
-                    <div className="w-14 h-14 rounded-xl bg-linear-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-xl font-bold text-white shrink-0">
-                        {initials}
-                    </div>
+                    <KaderAvatar
+                        src={kandidat?.profile?.foto}
+                        initials={initials}
+                        alt={kader?.nama}
+                        zoomable
+                        className="w-14 h-14 rounded-xl text-xl"
+                        fallbackClass="bg-linear-to-br from-blue-500 to-indigo-500"
+                    />
                     <div className="flex-1 min-w-0">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                             <h1 className="text-xl font-bold text-slate-900">{kader?.nama}</h1>
@@ -251,7 +260,7 @@ export default function KaderSayaDetail({
             {tab === "learning" && (
                 <LearningGrowthTab faseGroups={faseGroups} allFases={allFases} />
             )}
-            {tab === "kandidat" && (
+            {tab === "kandidat" && canViewKandidat && (
                 <KandidatTab kandidat={kandidat} nikKtp={nikKtp} kandidatError={kandidatError} />
             )}
             {tab === "feedback" && (
