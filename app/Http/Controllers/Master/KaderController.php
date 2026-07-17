@@ -128,11 +128,21 @@ class KaderController extends Controller
         return redirect()->route('kader.index');
     }
 
-    public function export_kader()
+    public function export_kader(Request $request)
     {
-        $file_name = 'kaders_'.date('d-m-Y_H:i:s') . '.xlsx';
+        $idBatch = $request->query('batch');
+        $idBatch = ($idBatch === null || $idBatch === '') ? null : (int) $idBatch;
 
-        return Excel::download(new KadersExport,$file_name);
+        // Sisipkan label batch ke nama file agar mudah dikenali (mis. kaders_batch-3_...).
+        $suffix = 'all';
+        if ($idBatch !== null) {
+            $batch  = Batch::where('id_batch', $idBatch)->first();
+            $suffix = $batch ? 'batch-' . $batch->nama_batch : 'batch-' . $idBatch;
+        }
+
+        $file_name = 'kaders_' . $suffix . '_' . date('d-m-Y_His') . '.xlsx';
+
+        return Excel::download(new KadersExport($idBatch), $file_name);
     }
 
     public function downloadTemplate()

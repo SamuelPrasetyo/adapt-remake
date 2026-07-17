@@ -265,6 +265,23 @@ export default function KaderIndex({ kaders, companys, divisis, departemens, bat
     const [editRow, setEditRow]       = useState(null);
     const [importOpen, setImportOpen] = useState(false);
     const [importFile, setImportFile] = useState(null);
+    const [exportOpen, setExportOpen] = useState(false);
+    const exportRef = useRef(null);
+
+    // Tutup dropdown export saat klik di luar area tombol.
+    useEffect(() => {
+        if (!exportOpen) return;
+        const onClick = (e) => {
+            if (exportRef.current && !exportRef.current.contains(e.target)) setExportOpen(false);
+        };
+        document.addEventListener('mousedown', onClick);
+        return () => document.removeEventListener('mousedown', onClick);
+    }, [exportOpen]);
+
+    // Batch terbaru di atas agar batch berjalan mudah dijangkau.
+    const exportBatches = [...(batchs ?? [])].sort(
+        (a, b) => Number(b.nama_batch) - Number(a.nama_batch),
+    );
 
     const createForm = useForm({ ...EMPTY_KADER });
     const editForm   = useForm({ ...EMPTY_KADER });
@@ -349,13 +366,40 @@ export default function KaderIndex({ kaders, companys, divisis, departemens, bat
                             </svg>
                             Tambah
                         </button>
-                        <a href="/kader/export"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" />
-                            </svg>
-                            Export
-                        </a>
+                        <div className="relative" ref={exportRef}>
+                            <button type="button" onClick={() => setExportOpen((v) => !v)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" />
+                                </svg>
+                                Export
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+                            {exportOpen && (
+                                <div className="absolute right-0 z-20 mt-1 w-56 py-1 bg-white border border-slate-200 rounded-lg shadow-lg">
+                                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">Export per Batch</div>
+                                    {exportBatches.map((b) => (
+                                        <a key={b.id_batch} href={`/kader/export?batch=${b.id_batch}`}
+                                            onClick={() => setExportOpen(false)}
+                                            className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-emerald-50">
+                                            <span>Batch {b.nama_batch}
+                                                <span className="text-slate-400"> / {b.tahun_batch}</span>
+                                            </span>
+                                            {String(b.id_batch) === String(currentBatch?.id_batch) && (
+                                                <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded">Berjalan</span>
+                                            )}
+                                        </a>
+                                    ))}
+                                    <div className="my-1 border-t border-slate-100" />
+                                    <a href="/kader/export" onClick={() => setExportOpen(false)}
+                                        className="block px-3 py-2 text-sm font-medium text-slate-700 hover:bg-emerald-50">
+                                        Semua Batch
+                                    </a>
+                                </div>
+                            )}
+                        </div>
                         <button onClick={() => setImportOpen(true)}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg transition">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
