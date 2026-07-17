@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import ImageLightbox from "@/Components/ImageLightbox";
 
 /* ── Helpers ──────────────────────────────────────────────────────────────── */
 
@@ -46,6 +47,7 @@ const TONE_STYLES = {
     cyan:   { chip: "bg-cyan-100 text-cyan-600",     accent: "border-cyan-200" },
     violet: { chip: "bg-violet-100 text-violet-600", accent: "border-violet-200" },
     orange: { chip: "bg-orange-100 text-orange-600", accent: "border-orange-200" },
+    lime:   { chip: "bg-lime-100 text-lime-600",     accent: "border-lime-200" },
     slate:  { chip: "bg-slate-100 text-slate-400",   accent: "border-slate-100" },
 };
 
@@ -72,12 +74,22 @@ function Card({ title, icon, count, action, children, className = "", tone = "sl
 
 // Foto kandidat: tampilkan gambar bila URL valid, tapi fallback ke avatar inisial
 // bila gambar gagal dimuat (sebagian berkas record lama tidak ada di server portal).
-function Avatar({ src, initials }) {
+// Hanya foto asli yang bisa dibuka penuh — avatar inisial tidak ada yang diperbesar.
+function Avatar({ src, initials, name }) {
     const [failed, setFailed] = useState(false);
+    const [zoom, setZoom] = useState(false);
+
     if (isUrl(src) && !failed) {
         return (
-            <img src={src} alt={initials} onError={() => setFailed(true)}
-                className="w-24 h-24 rounded-2xl object-cover border-4 border-white shadow-md bg-slate-100" />
+            <>
+                <button type="button" onClick={() => setZoom(true)}
+                    title="Lihat foto ukuran penuh" aria-label="Lihat foto ukuran penuh"
+                    className="block rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                    <img src={src} alt={name || initials} onError={() => setFailed(true)}
+                        className="w-24 h-24 rounded-2xl object-cover border-4 border-white shadow-md bg-slate-100 cursor-zoom-in hover:brightness-95 transition" />
+                </button>
+                {zoom && <ImageLightbox src={src} alt={name || initials} onClose={() => setZoom(false)} />}
+            </>
         );
     }
     return (
@@ -385,6 +397,59 @@ function Applications({ applications }) {
     );
 }
 
+/* ── Bahasa ───────────────────────────────────────────────────────────────── */
+
+// Tingkat kemampuan selalu tampil sebagai TEKS; warna hanya penegas, tidak pernah
+// jadi satu-satunya pembeda (aman untuk pembaca buta warna).
+const LEVEL_CLS = {
+    aktif:    "bg-emerald-50 text-emerald-700",
+    pasif:    "bg-amber-50 text-amber-700",
+    terbatas: "bg-slate-100 text-slate-500",
+};
+
+function LevelCell({ value }) {
+    if (!value) return <td className="py-1.5 text-center text-slate-300">—</td>;
+    return (
+        <td className="py-1.5 text-center">
+            <span className={`inline-block px-2 py-0.5 rounded-md text-[11px] font-medium capitalize ${LEVEL_CLS[value] || "bg-slate-100 text-slate-500"}`}>
+                {value}
+            </span>
+        </td>
+    );
+}
+
+function Languages({ languages }) {
+    return (
+        <Card title="Kemampuan Bahasa" tone="lime" count={languages.length || undefined}
+            icon={<Icon path="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />}>
+            {languages.length === 0 ? (
+                <p className="text-sm text-slate-400 italic">Belum ada data kemampuan bahasa.</p>
+            ) : (
+                <table className="w-full text-sm">
+                    <thead>
+                        <tr className="text-[11px] uppercase tracking-wide text-slate-400">
+                            <th className="text-left font-medium pb-1.5">Bahasa</th>
+                            <th className="font-medium pb-1.5">Bicara</th>
+                            <th className="font-medium pb-1.5">Baca</th>
+                            <th className="font-medium pb-1.5">Tulis</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {languages.map((l, i) => (
+                            <tr key={i}>
+                                <td className="py-1.5 text-slate-700 font-medium">{l.nama}</td>
+                                <LevelCell value={l.bicara} />
+                                <LevelCell value={l.baca} />
+                                <LevelCell value={l.tulis} />
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            )}
+        </Card>
+    );
+}
+
 /* ── Main tab ─────────────────────────────────────────────────────────────── */
 
 export default function KandidatTab({ kandidat, nikKtp, kandidatError }) {
@@ -421,6 +486,15 @@ export default function KandidatTab({ kandidat, nikKtp, kandidatError }) {
     const p = kandidat.profile;
     const initials = (p.nama_lengkap || "?").split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() || "").join("");
 
+    // Pendidikan terakhir = entri pertama educations (sudah diurut tahun terbaru dulu
+    // oleh backend). Kolom profil p.pendidikan hanya dipakai sebagai cadangan: di flow
+    // MT kolom itu hampir selalu kosong, sedangkan riwayatnya ada di pendidikan_mt.
+    const lastEdu = kandidat.educations?.[0] ?? null;
+    const lastEducation = lastEdu?.jenjang || p.pendidikan || "—";
+    const lastEducationFull = lastEdu
+        ? [lastEdu.jenjang, lastEdu.jurusan, lastEdu.universitas, lastEdu.tahun].filter(Boolean).join(" · ")
+        : (p.pendidikan || "—");
+
     return (
         <div className="space-y-5">
             {/* Hero identitas */}
@@ -429,7 +503,7 @@ export default function KandidatTab({ kandidat, nikKtp, kandidatError }) {
                 <div className="px-5 sm:px-6 pb-5">
                     <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                         <div className="-mt-12 shrink-0">
-                            <Avatar src={p.foto} initials={initials} />
+                            <Avatar src={p.foto} initials={initials} name={p.nama_lengkap} />
                         </div>
                         <div className="flex-1 min-w-0 sm:pt-3">
                             <div className="flex flex-wrap items-center gap-2">
@@ -458,12 +532,16 @@ export default function KandidatTab({ kandidat, nikKtp, kandidatError }) {
                         </div>
                     </div>
 
-                    {/* KPI ringkas */}
+                    {/* KPI ringkas. Empat item: di mobile jatuh rata 2 kolom × 2 baris,
+                        di layar lebar satu baris penuh.
+                        Ekspektasi gaji sengaja TIDAK di sini: kolom profil kandidat.gaji
+                        hampir selalu kosong di flow MT — nilainya per-lamaran dan sudah
+                        tampil di tiap kartu Riwayat Lamaran. */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
                         <Kpi label="Total Lamaran" value={kandidat.applications.length} />
-                        <Kpi label="Pendidikan" value={p.pendidikan || "—"} />
-                        <Kpi label="Ekspektasi Gaji" value={formatIDR(p.ekspektasi_gaji) || "—"} />
+                        <Kpi label="Pendidikan Terakhir" value={lastEducation} title={lastEducationFull} />
                         <Kpi label="Pengalaman Kerja" value={`${kandidat.experiences.length} posisi`} />
+                        <Kpi label="Total Sertifikasi" value={kandidat.certifications.length} />
                     </div>
                 </div>
             </div>
@@ -558,6 +636,14 @@ export default function KandidatTab({ kandidat, nikKtp, kandidatError }) {
                                         </div>
                                         {e.nm_company && <p className="text-xs text-slate-500 mt-0.5">{e.nm_company}</p>}
                                         {e.deskripsi && <p className="text-xs text-slate-500 mt-1 leading-relaxed">{e.deskripsi}</p>}
+                                        {(e.gaji != null || e.alasan) && (
+                                            <div className="flex flex-wrap gap-x-5 gap-y-1 mt-1.5 text-[11px]">
+                                                {e.gaji != null && (
+                                                    <span className="text-slate-500">Gaji: <b className="text-slate-700">{formatIDR(e.gaji)}</b></span>
+                                                )}
+                                                {e.alasan && <span className="text-slate-500">Alasan keluar: {e.alasan}</span>}
+                                            </div>
+                                        )}
                                     </li>
                                 ))}
                             </ol>
@@ -577,8 +663,12 @@ export default function KandidatTab({ kandidat, nikKtp, kandidatError }) {
                                 <ul className="space-y-3">
                                     {kandidat.educations.map((e, i) => (
                                         <li key={i} className="text-sm">
-                                            <p className="font-medium text-slate-700">{e.jenjang || "—"}{e.jurusan ? ` · ${e.jurusan}` : ""}</p>
+                                            <div className="flex items-baseline justify-between gap-2">
+                                                <p className="font-medium text-slate-700">{e.jenjang || "—"}{e.jurusan ? ` · ${e.jurusan}` : ""}</p>
+                                                {e.tahun && <span className="text-xs text-slate-400 shrink-0">{e.tahun}</span>}
+                                            </div>
                                             {e.universitas && <p className="text-xs text-slate-500 mt-0.5">{e.universitas}</p>}
+                                            {e.ipk && <p className="text-xs text-slate-400 mt-0.5">IPK/Nilai: {e.ipk}</p>}
                                         </li>
                                     ))}
                                 </ul>
@@ -607,6 +697,8 @@ export default function KandidatTab({ kandidat, nikKtp, kandidatError }) {
                         </Card>
                     </div>
 
+                    {(kandidat.languages?.length > 0) && <Languages languages={kandidat.languages} />}
+
                     {(kandidat.disc || kandidat.mbti) && (
                         <Card title="Hasil Asesmen" tone="orange" icon={<Icon path="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />}>
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -631,11 +723,11 @@ export default function KandidatTab({ kandidat, nikKtp, kandidatError }) {
     );
 }
 
-function Kpi({ label, value }) {
+function Kpi({ label, value, title }) {
     return (
         <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
             <div className="text-[11px] uppercase tracking-wide text-slate-400 font-medium">{label}</div>
-            <div className="text-sm font-bold text-slate-800 mt-0.5 truncate" title={String(value)}>{value}</div>
+            <div className="text-sm font-bold text-slate-800 mt-0.5 truncate" title={title || String(value)}>{value}</div>
         </div>
     );
 }

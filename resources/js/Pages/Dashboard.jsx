@@ -4,6 +4,7 @@ import { router } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import StatsCard from '@/Components/StatsCard';
 import ProgressBar from '@/Components/ProgressBar';
+import KaderAvatar from '@/Components/KaderAvatar';
 
 const STATUS_META = {
     on_track:        { label: 'On Track',        cls: 'bg-emerald-50 text-emerald-700 ring-emerald-200',  dot: 'bg-emerald-500' },
@@ -350,9 +351,13 @@ function KaderTable({ kaders, mentorFilter, mentors, onMentorFilter, batches, ba
 
                                             <td className="px-6 py-3 whitespace-nowrap">
                                                 <div className="flex items-center gap-3">
-                                                    <div className={`w-9 h-9 rounded-full bg-linear-to-br ${avatarColor(k.nik_kader || k.nama_kader || '')} flex items-center justify-center text-xs font-bold text-white shrink-0`}>
-                                                        {initials || '?'}
-                                                    </div>
+                                                    <KaderAvatar
+                                                        src={k.foto}
+                                                        initials={initials}
+                                                        alt={k.nama_kader}
+                                                        className="w-9 h-9 rounded-full text-xs"
+                                                        fallbackClass={`bg-linear-to-br ${avatarColor(k.nik_kader || k.nama_kader || '')}`}
+                                                    />
                                                     <div className="min-w-0">
                                                         <div className="font-medium text-slate-900 truncate max-w-40">{k.nama_kader}</div>
                                                         <div className="text-[11px] text-slate-500 truncate max-w-40">

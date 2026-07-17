@@ -60,9 +60,50 @@ class KandidatData
             'experiences'    => self::experiences($db, $ids),
             'certifications' => self::certifications($db, $ids),
             'educations'     => self::educations($db, $ids),
+            'languages'      => self::languages($db, $ids),
             'disc'           => self::disc($db, $ids),
             'mbti'           => self::mbti($db, $ids),
         ];
+    }
+
+    /**
+     * Peta `ktp => URL foto` untuk DAFTAR kader (Dashboard / Kader Saya) — cukup satu
+     * query, jadi jangan panggil forKtp() per kader di dalam loop.
+     *
+     * Satu KTP bisa punya beberapa baris kandidat (mendaftar >1 kali): dipakai foto dari
+     * pendaftaran TERBARU yang benar-benar punya foto, sehingga baris terbaru tanpa foto
+     * tidak menutupi foto lama yang masih ada.
+     *
+     * @param  string[] $ktps
+     * @return array<string,string>  hanya memuat KTP yang punya foto
+     */
+    public static function photosForKtps(array $ktps): array
+    {
+        $ktps = array_values(array_filter(array_unique(
+            array_map(fn ($k) => trim((string) $k), $ktps)
+        )));
+        if (empty($ktps)) {
+            return [];
+        }
+
+        $rows = DB::connection(self::CONN)->table('kandidat')
+            ->whereIn('ktp', $ktps)
+            ->orderByDesc('created_at')
+            ->get(['ktp', 'foto_kandidat']);
+
+        $out = [];
+        foreach ($rows as $r) {
+            $ktp = trim((string) $r->ktp);
+            if ($ktp === '' || isset($out[$ktp])) {
+                continue;
+            }
+            $url = self::assetUrl($r->foto_kandidat, 'foto');
+            if ($url !== null) {
+                $out[$ktp] = $url;
+            }
+        }
+
+        return $out;
     }
 
     private static function assetBaseUrl(): ?string
@@ -202,20 +243,88 @@ class KandidatData
         return $out;
     }
 
+    /**
+     * Gabungan pengalaman kerja dari DUA tabel portal:
+     *  - pengalaman_mt : form MT (sumber utama & terkaya — ada gaji & alasan keluar),
+     *                    presisi BULAN ("2024-02").
+     *  - pengalaman    : flow lama, presisi tanggal penuh.
+     * Keduanya nyaris disjoint (hanya ~10 kandidat punya keduanya), jadi digabung
+     * tanpa dedup; membaca salah satunya saja membuat mayoritas data hilang.
+     */
     private static function experiences($db, array $ids): array
     {
         if (empty($ids)) return [];
-        return $db->table('pengalaman')
-            ->whereIn('id_kandidat', $ids)
-            ->orderByDesc('tgl_masuk')
-            ->get()
-            ->map(fn ($e) => [
-                'nm_company' => $e->nm_company,
-                'jabatan'    => $e->jabatan,
+
+        $out = [];
+
+        foreach ($db->table('pengalaman_mt')->whereIn('id_kandidat', $ids)->get() as $e) {
+            $gaji = self::toInt(self::cleanText($e->gaji));
+            $out[] = [
+                'nm_company' => self::cleanText($e->perusahaan),
+                'jabatan'    => self::cleanText($e->posisi),
+                'tgl_masuk'  => self::formatMonth($e->bulan_masuk),
+                'tgl_keluar' => self::formatMonth($e->bulan_keluar),
+                'deskripsi'  => self::cleanText($e->tugas),
+                // Gaji 0 = tidak diisi, bukan digaji nol.
+                'gaji'       => ($gaji !== null && $gaji > 0) ? $gaji : null,
+                'alasan'     => self::cleanText($e->alasan),
+                '_sort'      => substr(trim((string) $e->bulan_masuk), 0, 7),
+            ];
+        }
+
+        foreach ($db->table('pengalaman')->whereIn('id_kandidat', $ids)->get() as $e) {
+            $out[] = [
+                'nm_company' => self::cleanText($e->nm_company),
+                'jabatan'    => self::cleanText($e->jabatan),
                 'tgl_masuk'  => self::formatDate($e->tgl_masuk, false),
                 'tgl_keluar' => self::formatDate($e->tgl_keluar, false),
-                'deskripsi'  => $e->deskripsi,
-            ])->all();
+                'deskripsi'  => self::cleanText($e->deskripsi),
+                'gaji'       => null,
+                'alasan'     => null,
+                '_sort'      => substr(trim((string) $e->tgl_masuk), 0, 7),
+            ];
+        }
+
+        // Buang baris hampa (portal mengizinkan submit form pengalaman kosong) —
+        // tanpa ini timeline menampilkan entri "—" tanpa isi apa pun.
+        $out = array_values(array_filter(
+            $out,
+            fn ($e) => $e['nm_company'] || $e['jabatan'] || $e['tgl_masuk'] || $e['deskripsi']
+        ));
+
+        // Terbaru dulu. Kunci urut disamakan ke "YYYY-MM" karena dua sumber
+        // beda presisi; nilai kosong/"0000-.." otomatis jatuh ke bawah.
+        usort($out, fn ($a, $b) => strcmp($b['_sort'], $a['_sort']));
+
+        return array_map(function ($e) { unset($e['_sort']); return $e; }, $out);
+    }
+
+    /**
+     * Kemampuan bahasa. Satu baris `bahasa` memuat 3 bahasa sekaligus (Indonesia,
+     * Inggris, dan satu bahasa lain bebas) — dipecah jadi daftar per bahasa.
+     * Diambil baris TERBARU saja; baris lama = pengisian ulang, bukan tambahan.
+     */
+    private static function languages($db, array $ids): array
+    {
+        if (empty($ids)) return [];
+
+        $b = $db->table('bahasa')->whereIn('id_kandidat', $ids)->orderByDesc('created_at')->first();
+        if (!$b) return [];
+
+        $rows = [
+            ['Indonesia', $b->indo_bicara, $b->indo_baca, $b->indo_tulis],
+            ['Inggris', $b->inggris_bicara, $b->inggris_baca, $b->inggris_tulis],
+            [self::cleanText($b->lain_nama), $b->lain_bicara, $b->lain_baca, $b->lain_tulis],
+        ];
+
+        $out = [];
+        foreach ($rows as [$nama, $bicara, $baca, $tulis]) {
+            // Bahasa lain sering kosong atau diisi "-" → jangan tampilkan baris hampa.
+            if (!$nama || (!$bicara && !$baca && !$tulis)) continue;
+            $out[] = ['nama' => $nama, 'bicara' => $bicara, 'baca' => $baca, 'tulis' => $tulis];
+        }
+
+        return $out;
     }
 
     private static function certifications($db, array $ids): array
@@ -232,20 +341,52 @@ class KandidatData
             ])->all();
     }
 
+    /**
+     * Riwayat pendidikan. Sumber utama = pendidikan_mt (form MT: jenjang/institusi
+     * bebas ketik + tahun & IPK). Tabel lama pendidikan_kandidat (id_pendidikan /
+     * id_universitas berelasi ke master) ikut dibaca agar record lama tidak hilang.
+     */
     private static function educations($db, array $ids): array
     {
         if (empty($ids)) return [];
-        return $db->table('pendidikan_kandidat as pk')
-            ->leftJoin('pendidikan as p', 'pk.id_pendidikan', '=', 'p.id')
-            ->leftJoin('universitas as u', 'pk.id_universitas', '=', 'u.id')
-            ->whereIn('pk.id_kandidat', $ids)
-            ->select('p.nama as jenjang', 'u.nama as universitas', 'pk.nama_jurusan')
-            ->get()
-            ->map(fn ($e) => [
-                'jenjang'     => $e->jenjang,
-                'universitas' => $e->universitas,
-                'jurusan'     => $e->nama_jurusan,
-            ])->all();
+
+        $out = [];
+
+        foreach ($db->table('pendidikan_mt')->whereIn('id_kandidat', $ids)->get() as $e) {
+            $out[] = [
+                'jenjang'     => self::cleanText($e->jenjang),
+                'universitas' => self::cleanText($e->institusi),
+                'jurusan'     => self::cleanText($e->jurusan),
+                'tahun'       => self::cleanText($e->tahun),
+                'ipk'         => self::cleanText($e->ipk),
+                // Numerik: kolom tahun varchar bebas ketik, sesekali berisi teks.
+                // Dibanding sebagai string, teks sampah justru menang atas tahun asli.
+                '_sort'       => (int) preg_replace('/\D/', '', (string) $e->tahun),
+            ];
+        }
+
+        foreach (
+            $db->table('pendidikan_kandidat as pk')
+                ->leftJoin('pendidikan as p', 'pk.id_pendidikan', '=', 'p.id')
+                ->leftJoin('universitas as u', 'pk.id_universitas', '=', 'u.id')
+                ->whereIn('pk.id_kandidat', $ids)
+                ->select('p.nama as jenjang', 'u.nama as universitas', 'pk.nama_jurusan')
+                ->get() as $e
+        ) {
+            $out[] = [
+                'jenjang'     => self::cleanText($e->jenjang),
+                'universitas' => self::cleanText($e->universitas),
+                'jurusan'     => self::cleanText($e->nama_jurusan),
+                'tahun'       => null,
+                'ipk'         => null,
+                '_sort'       => 0,
+            ];
+        }
+
+        // Jenjang terakhir (tahun terbesar) di atas; tanpa tahun → paling bawah.
+        usort($out, fn ($a, $b) => $b['_sort'] <=> $a['_sort']);
+
+        return array_map(function ($e) { unset($e['_sort']); return $e; }, $out);
     }
 
     private static function disc($db, array $ids): ?array
@@ -322,10 +463,40 @@ class KandidatData
         return ($v === null || $v === '') ? null : (int) $v;
     }
 
+    /**
+     * Nilai kosong di portal tidak konsisten: ada '', '-', dan spasi. Semuanya
+     * dianggap kosong agar frontend menampilkan '—', bukan tanda hubung menggantung.
+     */
+    private static function cleanText($v): ?string
+    {
+        $v = trim((string) $v);
+        return ($v === '' || $v === '-') ? null : $v;
+    }
+
     private const MONTHS = [
         1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April', 5 => 'Mei', 6 => 'Juni',
         7 => 'Juli', 8 => 'Agustus', 9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
     ];
+
+    private const MONTHS_SHORT = [
+        1 => 'Jan', 2 => 'Feb', 3 => 'Mar', 4 => 'Apr', 5 => 'Mei', 6 => 'Jun',
+        7 => 'Jul', 8 => 'Agu', 9 => 'Sep', 10 => 'Okt', 11 => 'Nov', 12 => 'Des',
+    ];
+
+    /**
+     * pengalaman_mt menyimpan periode dengan presisi BULAN ("2024-02"), jadi
+     * ditampilkan "Feb 2024" — bukan dd/mm/yyyy yang mengarang tanggal.
+     */
+    private static function formatMonth($value): ?string
+    {
+        $value = trim((string) $value);
+        if ($value === '' || str_starts_with($value, '0000')) return null;
+        if (preg_match('/^(\d{4})-(\d{1,2})$/', $value, $m)) {
+            $mo = (int) $m[2];
+            return ($mo >= 1 && $mo <= 12) ? self::MONTHS_SHORT[$mo] . ' ' . $m[1] : $m[1];
+        }
+        return self::formatDate($value, false); // jaga-jaga bila ada tanggal penuh
+    }
 
     private static function formatDate($value, bool $withMonthName = true): ?string
     {

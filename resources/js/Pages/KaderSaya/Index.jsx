@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { Link, router } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
+import KaderAvatar from '@/Components/KaderAvatar';
 
 const STATUS_META = {
     on_track:        { label: 'On Track',        cls: 'bg-emerald-50 text-emerald-700 ring-emerald-200', dot: 'bg-emerald-500' },
@@ -228,9 +229,13 @@ function KaderCard({ kader }) {
             <div className="p-5 flex-1">
                 {/* Header */}
                 <div className="flex items-start gap-3 mb-4">
-                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${avatarColor(kader.nik_kader || kader.nama_kader)} flex items-center justify-center text-base font-bold text-white shrink-0`}>
-                        {initials || '?'}
-                    </div>
+                    <KaderAvatar
+                        src={kader.foto}
+                        initials={initials}
+                        alt={kader.nama_kader}
+                        className="w-12 h-12 rounded-xl text-base"
+                        fallbackClass={`bg-gradient-to-br ${avatarColor(kader.nik_kader || kader.nama_kader)}`}
+                    />
                     <div className="flex-1 min-w-0">
                         <div className="font-semibold text-slate-900 leading-snug group-hover:text-blue-600 transition wrap-break-word">{kader.nama_kader}</div>
                         <div className="text-xs text-slate-500 truncate mt-0.5">

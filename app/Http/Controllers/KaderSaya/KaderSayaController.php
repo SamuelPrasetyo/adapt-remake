@@ -287,15 +287,26 @@ class KaderSayaController extends Controller
 
         // Data kandidat (portal rekrutmen Career MAI), ditautkan via kader.nik_ktp = kandidat.ktp.
         // Dibungkus try/catch: bila DB career_mai tak terjangkau, detail kader tetap tampil.
+        //
+        // KHUSUS Admin MAI 021. Data ini berisi informasi pribadi (KTP, alamat, ekspektasi
+        // gaji, kontak keluarga, hasil asesmen) — menyembunyikan tab di frontend saja TIDAK
+        // cukup, karena props Inertia terbaca dari view-source. Jadi jangan dikirim sama
+        // sekali ke Kader/Mentor. Sekaligus menghemat query ke career_mai bagi role lain.
         $kandidat = null;
         $kandidatError = null;
-        if (!empty($kader->nik_ktp)) {
+        if ($isAdmin021 && !empty($kader->nik_ktp)) {
             try {
                 $kandidat = KandidatData::forKtp($kader->nik_ktp);
             } catch (\Throwable $e) {
                 Log::warning('[KaderSaya::show] gagal ambil data kandidat Career MAI: ' . $e->getMessage());
                 $kandidatError = 'Tidak dapat terhubung ke database Career MAI. Coba lagi nanti.';
             }
+        }
+
+        // nik_ktp ikut terbawa select kader.* — sembunyikan dari role selain Admin MAI 021
+        // agar nomor KTP tidak ikut terserialisasi ke props.
+        if (!$isAdmin021) {
+            $kader->makeHidden('nik_ktp');
         }
 
         return Inertia::render('KaderSaya/Detail', [
@@ -334,9 +345,10 @@ class KaderSayaController extends Controller
             'kaderView'          => $isKader,
             // Upload Weekly Feedback hanya untuk Kader yang melihat dashboard-nya sendiri.
             'weeklyFeedback'     => $isKader ? WeeklyFeedbackController::dataFor($user) : null,
-            // Data kandidat rekrutmen (tab Kandidat).
+            // Data kandidat rekrutmen (tab Job Applicant) — hanya Admin MAI 021.
+            'canViewKandidat'    => $isAdmin021,
             'kandidat'           => $kandidat,
-            'nikKtp'             => $kader->nik_ktp,
+            'nikKtp'             => $isAdmin021 ? $kader->nik_ktp : null,
             'kandidatError'      => $kandidatError,
         ]);
     }
