@@ -44,6 +44,11 @@ class KaderController extends Controller
             ->leftJoin('departemens', 'kader.id_departemen', 'departemens.id')
             ->leftJoin('batch', 'kader.id_batch', 'batch.id_batch')
             ->leftJoin('company', 'kader.company_code', '=', 'company.company_code')
+            // Batch terbaru dulu, lalu nama A-Z di dalam tiap batch.
+            // tanggal_mulai tidak dipakai: batch arsip (1 & 2) NULL. id_batch juga
+            // tidak urut nomor batch. nama_batch varchar → cast agar "10" > "2".
+            ->orderByDesc('batch.tahun_batch')
+            ->orderByRaw('CAST(batch.nama_batch AS UNSIGNED) DESC')
             ->orderBy('kader.nama', 'asc')
             ->get();
 
