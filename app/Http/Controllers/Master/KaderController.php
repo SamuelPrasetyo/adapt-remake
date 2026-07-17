@@ -44,6 +44,11 @@ class KaderController extends Controller
             ->leftJoin('departemens', 'kader.id_departemen', 'departemens.id')
             ->leftJoin('batch', 'kader.id_batch', 'batch.id_batch')
             ->leftJoin('company', 'kader.company_code', '=', 'company.company_code')
+            // Batch terbaru dulu, lalu nama A-Z di dalam tiap batch.
+            // tanggal_mulai tidak dipakai: batch arsip (1 & 2) NULL. id_batch juga
+            // tidak urut nomor batch. nama_batch varchar → cast agar "10" > "2".
+            ->orderByDesc('batch.tahun_batch')
+            ->orderByRaw('CAST(batch.nama_batch AS UNSIGNED) DESC')
             ->orderBy('kader.nama', 'asc')
             ->get();
 
@@ -87,6 +92,7 @@ class KaderController extends Controller
         $validated = $request->validate([
             'nama'          => 'required|string|max:255',
             'nik'           => 'required|string|max:255|unique:kader,nik',
+            'nik_ktp'       => 'nullable|string|max:20|unique:kader,nik_ktp',
             'jenis_kelamin' => 'required|in:L,P',
             'iq'            => 'nullable|numeric',
             'ipk'           => 'nullable|numeric',
@@ -94,8 +100,11 @@ class KaderController extends Controller
             'id_divisi'     => 'required',
             'id_departemen' => 'required',
             'id_batch'      => 'required',
-        ], [], [
+        ], [
+            'nik_ktp.unique' => 'NIK KTP sudah dipakai kader lain.',
+        ], [
             'nik'           => 'NIK',
+            'nik_ktp'       => 'NIK KTP',
             'jenis_kelamin' => 'Jenis Kelamin',
             'company_code'  => 'Bisnis Unit',
             'id_divisi'     => 'Divisi',
@@ -106,6 +115,7 @@ class KaderController extends Controller
         Kader::insert([
             'id'            => Str::uuid(),
             'nik'           => $validated['nik'],
+            'nik_ktp'       => $validated['nik_ktp'] ?: null,
             'nama'          => $validated['nama'],
             'jenis_kelamin' => $validated['jenis_kelamin'],
             'iq'            => $validated['iq'] ?? '0',
@@ -123,11 +133,21 @@ class KaderController extends Controller
         return redirect()->route('kader.index');
     }
 
-    public function export_kader()
+    public function export_kader(Request $request)
     {
-        $file_name = 'kaders_'.date('d-m-Y_H:i:s') . '.xlsx';
+        $idBatch = $request->query('batch');
+        $idBatch = ($idBatch === null || $idBatch === '') ? null : (int) $idBatch;
 
-        return Excel::download(new KadersExport,$file_name);
+        // Sisipkan label batch ke nama file agar mudah dikenali (mis. kaders_batch-3_...).
+        $suffix = 'all';
+        if ($idBatch !== null) {
+            $batch  = Batch::where('id_batch', $idBatch)->first();
+            $suffix = $batch ? 'batch-' . $batch->nama_batch : 'batch-' . $idBatch;
+        }
+
+        $file_name = 'kaders_' . $suffix . '_' . date('d-m-Y_His') . '.xlsx';
+
+        return Excel::download(new KadersExport($idBatch), $file_name);
     }
 
     public function downloadTemplate()
@@ -201,10 +221,16 @@ class KaderController extends Controller
                 Rule::unique('kader', 'nik')->ignore($id, 'id'),
                 Rule::unique('users', 'nik')->ignore($kader->nik, 'nik'),
             ],
+            'nik_ktp' => [
+                'nullable', 'string', 'max:20',
+                Rule::unique('kader', 'nik_ktp')->ignore($id, 'id'),
+            ],
         ], [
-            'nik.unique' => 'NIK sudah dipakai kader/akun lain.',
+            'nik.unique'     => 'NIK sudah dipakai kader/akun lain.',
+            'nik_ktp.unique' => 'NIK KTP sudah dipakai kader lain.',
         ], [
-            'nik' => 'NIK',
+            'nik'     => 'NIK',
+            'nik_ktp' => 'NIK KTP',
         ]);
 
         $oldNik = (string) $kader->nik;
@@ -215,6 +241,8 @@ class KaderController extends Controller
                 ->update([
                     'nama'              => $request->nama ?? $kader->nama,
                     'nik'               => $newNik,
+                    // '' → null agar unique(nik_ktp) tidak bentrok antar kader yang sama-sama kosong.
+                    'nik_ktp'           => $request->has('nik_ktp') ? ($request->input('nik_ktp') ?: null) : $kader->nik_ktp,
                     'jenis_kelamin'     => $request->jenis_kelamin ?? $kader->jenis_kelamin,
                     'iq'                => $request->iq ?? $kader->iq,
                     'ipk'               => $request->ipk ?? $kader->ipk,
