@@ -2,6 +2,10 @@ import { useRef, useState } from "react";
 import { router } from "@inertiajs/react";
 import Toast from "@/Components/Toast";
 
+const MAX_SIZE_MB    = 8;
+const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
+const ALLOWED_EXT    = ["pdf", "doc", "docx"];
+
 function formatDate(dateStr) {
     if (!dateStr) return "—";
     const d = new Date(dateStr);
@@ -56,7 +60,7 @@ function UploadZone({ hasDoc, uploading, onClick }) {
                         </svg>
                         Klik untuk upload dokumen
                     </div>
-                    <p className="text-xs text-slate-400">PDF, DOC, atau DOCX · Maks. 5 MB</p>
+                    <p className="text-xs text-slate-400">PDF, DOC, atau DOCX · Maks. 8 MB</p>
                 </div>
             )}
         </button>
@@ -74,6 +78,21 @@ export default function PerjanjianKerjaTab({ kader, perjanjianKerja, canUpload, 
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
+
+        const resetInput = () => { if (fileRef.current) fileRef.current.value = ""; };
+
+        const ext = file.name.split(".").pop().toLowerCase();
+        if (!ALLOWED_EXT.includes(ext)) {
+            showToast("Format dokumen harus PDF, DOC, atau DOCX.", "error");
+            resetInput();
+            return;
+        }
+        if (file.size > MAX_SIZE_BYTES) {
+            showToast(`Ukuran dokumen maksimal ${MAX_SIZE_MB} MB.`, "error");
+            resetInput();
+            return;
+        }
+
         setUploading(true);
         const formData = new FormData();
         formData.append("file", file);
@@ -81,8 +100,8 @@ export default function PerjanjianKerjaTab({ kader, perjanjianKerja, canUpload, 
             forceFormData: true,
             preserveScroll: true,
             onSuccess: () => showToast("Dokumen berhasil diupload."),
-            onError:   () => showToast("Gagal mengupload dokumen.", "error"),
-            onFinish:  () => { setUploading(false); if (fileRef.current) fileRef.current.value = ""; },
+            onError:   (errors) => showToast(errors?.file || "Gagal mengupload dokumen.", "error"),
+            onFinish:  () => { setUploading(false); resetInput(); },
         });
     };
 
