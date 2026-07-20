@@ -23,6 +23,7 @@ use App\Models\ModulTestResult;
 use App\Models\User;
 use App\Models\Week;
 use App\Models\WeekKader;
+use App\Support\KaderDevelopmentReport;
 use App\Support\KaderReportData;
 use App\Support\KandidatData;
 use App\Support\ModulScore;
@@ -309,6 +310,11 @@ class KaderSayaController extends Controller
             $kader->makeHidden('nik_ktp');
         }
 
+        // Tab "Report" — kartu Management Trainee Development Report yang sama persis dengan
+        // menu Report (Admin & Mentor; menu Report memang tidak dibuka untuk Kader).
+        // Batch 1-2 otomatis memakai varian arsip; null bila tidak ada data report.
+        $developmentReport = $isKader ? null : KaderDevelopmentReport::forTab($kader, $report);
+
         return Inertia::render('KaderSaya/Detail', [
             'kader'              => $kader,
             'faseGroups'         => $report['faseGroups'],
@@ -350,6 +356,8 @@ class KaderSayaController extends Controller
             'kandidat'           => $kandidat,
             'nikKtp'             => $isAdmin021 ? $kader->nik_ktp : null,
             'kandidatError'      => $kandidatError,
+            // Tab Report — null bila role Kader atau kader tanpa data report.
+            'developmentReport'  => $developmentReport,
         ]);
     }
 

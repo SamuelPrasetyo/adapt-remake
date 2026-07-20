@@ -305,7 +305,7 @@ class MentorModulController extends Controller
             'completed' => $completed,
             'total'     => $total,
             'avg_score' => $avgScore,
-            'status'    => $progress >= 60 ? 'On Track' : 'Perlu Perhatian',
+            'status'    => $progress >= 60 ? 'On Track' : 'Slightly Delayed',
         ];
 
         return Inertia::render('MentorProgramSaya/Index', [
@@ -397,7 +397,7 @@ class MentorModulController extends Controller
                 'avg_score'    => $avgScore,
                 'status'       => $total === 0
                     ? 'Belum Ada Modul'
-                    : ($progress >= 60 ? 'On Track' : 'Perlu Perhatian'),
+                    : ($progress >= 60 ? 'On Track' : 'Slightly Delayed'),
                 'has_account'  => (bool) $targetUser,
             ];
         });
@@ -405,7 +405,7 @@ class MentorModulController extends Controller
         $summary = [
             'total_mentor'    => $list->count(),
             'on_track'        => $list->where('status', 'On Track')->count(),
-            'perlu_perhatian' => $list->where('status', 'Perlu Perhatian')->count(),
+            'perlu_perhatian' => $list->where('status', 'Slightly Delayed')->count(),
             'belum_mulai'     => $list->where('status', 'Belum Ada Modul')->count(),
             'avg_progress'    => $list->where('total', '>', 0)->avg('progress')
                 ? (int) round($list->where('total', '>', 0)->avg('progress'))
