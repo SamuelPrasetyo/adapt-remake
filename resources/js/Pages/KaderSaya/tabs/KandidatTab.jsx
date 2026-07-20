@@ -10,20 +10,6 @@ const formatIDR = (n) =>
 
 const jkLabel = (jk) => (jk === "L" ? "Laki-laki" : jk === "P" ? "Perempuan" : null);
 
-// Warna badge tahap rekrutmen berdasarkan nama progress.
-const progressCls = (name) => {
-    const n = (name || "").toLowerCase();
-    if (n.includes("accept") || n.includes("hire") || n.includes("diterima"))
-        return "bg-emerald-100 text-emerald-700 border-emerald-200";
-    if (n.includes("offer")) return "bg-blue-100 text-blue-700 border-blue-200";
-    if (n.includes("interview")) return "bg-indigo-100 text-indigo-700 border-indigo-200";
-    if (n.includes("shortlist")) return "bg-violet-100 text-violet-700 border-violet-200";
-    if (n.includes("screen")) return "bg-amber-100 text-amber-700 border-amber-200";
-    if (n.includes("not suitable") || n.includes("reject") || n.includes("tolak") || n.includes("gagal"))
-        return "bg-rose-100 text-rose-700 border-rose-200";
-    return "bg-slate-100 text-slate-600 border-slate-200";
-};
-
 /* ── Small building blocks ────────────────────────────────────────────────── */
 
 function Icon({ path, className = "w-5 h-5" }) {
@@ -326,11 +312,6 @@ function ApplicationCard({ app }) {
                         {app.applied_at && <span>Melamar {app.applied_at}</span>}
                     </div>
                 </div>
-                {app.progress && (
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium border whitespace-nowrap ${progressCls(app.progress)}`}>
-                        {app.progress}
-                    </span>
-                )}
             </div>
 
             {(app.ekspektasi_gaji != null || app.alasan_ditolak) && (
