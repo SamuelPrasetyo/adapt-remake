@@ -37,7 +37,7 @@ function StatusBadge({ progress, total }) {
                 : 'border-amber-400 text-amber-700 bg-amber-50'
         }`}>
             <span className={`w-1.5 h-1.5 rounded-full ${onTrack ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-            {onTrack ? 'ON TRACK' : 'PERLU PERHATIAN'}
+            {onTrack ? 'ON TRACK' : 'SLIGHTLY DELAYED'}
         </span>
     );
 }

@@ -13,8 +13,8 @@ import ReportTab from "./tabs/ReportTab";
 
 const STATUS_META = {
     on_track:        { label: "On Track",        cls: "bg-emerald-100 text-emerald-700 border-emerald-300" },
-    perlu_perhatian: { label: "Perlu Perhatian",  cls: "bg-amber-100 text-amber-700 border-amber-300"   },
-    kritis:          { label: "Kritis",           cls: "bg-rose-100 text-rose-700 border-rose-300"      },
+    perlu_perhatian: { label: "Slightly Delayed",  cls: "bg-amber-100 text-amber-700 border-amber-300"   },
+    kritis:          { label: "Behind Schedule",           cls: "bg-rose-100 text-rose-700 border-rose-300"      },
 };
 
 const TABS = [

@@ -5,7 +5,7 @@ import AppLayout from '@/Layouts/AppLayout';
 function StatusPill({ status }) {
     const map = {
         'On Track':        { dot: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50',  ring: 'ring-emerald-200' },
-        'Perlu Perhatian': { dot: 'bg-amber-500',   text: 'text-amber-700',   bg: 'bg-amber-50',    ring: 'ring-amber-200'   },
+        'Slightly Delayed': { dot: 'bg-amber-500',   text: 'text-amber-700',   bg: 'bg-amber-50',    ring: 'ring-amber-200'   },
         'Belum Ada Modul': { dot: 'bg-slate-400',   text: 'text-slate-600',   bg: 'bg-slate-50',    ring: 'ring-slate-200'   },
     };
     const s = map[status] ?? map['Belum Ada Modul'];
@@ -67,7 +67,7 @@ export default function AllMentorIndex({ mentors = [], summary = {} }) {
     const FILTERS = [
         { id: 'all',             label: 'Semua',           count: mentors.length },
         { id: 'On Track',        label: 'On Track',        count: summary.on_track },
-        { id: 'Perlu Perhatian', label: 'Perlu Perhatian', count: summary.perlu_perhatian },
+        { id: 'Slightly Delayed', label: 'Slightly Delayed', count: summary.perlu_perhatian },
         { id: 'Belum Ada Modul', label: 'Belum Ada Modul', count: summary.belum_mulai },
     ];
 
@@ -77,7 +77,7 @@ export default function AllMentorIndex({ mentors = [], summary = {} }) {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
                 <SummaryCard label="Total Mentor"    value={summary.total_mentor ?? 0} />
                 <SummaryCard label="On Track"        value={summary.on_track ?? 0}        accent="text-emerald-600" />
-                <SummaryCard label="Perlu Perhatian" value={summary.perlu_perhatian ?? 0} accent="text-amber-600"  />
+                <SummaryCard label="Slightly Delayed" value={summary.perlu_perhatian ?? 0} accent="text-amber-600"  />
                 <SummaryCard label="Avg Progress"    value={`${summary.avg_progress ?? 0}%`} accent="text-blue-600" />
             </div>
 

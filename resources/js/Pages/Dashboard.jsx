@@ -8,8 +8,8 @@ import KaderAvatar from '@/Components/KaderAvatar';
 
 const STATUS_META = {
     on_track:        { label: 'On Track',        cls: 'bg-emerald-50 text-emerald-700 ring-emerald-200',  dot: 'bg-emerald-500' },
-    perlu_perhatian: { label: 'Perlu Perhatian', cls: 'bg-amber-50 text-amber-700 ring-amber-200',        dot: 'bg-amber-500'   },
-    kritis:          { label: 'Kritis',          cls: 'bg-rose-50 text-rose-700 ring-rose-200',           dot: 'bg-rose-500'    },
+    perlu_perhatian: { label: 'Slightly Delayed', cls: 'bg-amber-50 text-amber-700 ring-amber-200',        dot: 'bg-amber-500'   },
+    kritis:          { label: 'Behind Schedule',          cls: 'bg-rose-50 text-rose-700 ring-rose-200',           dot: 'bg-rose-500'    },
 };
 
 const AVATAR_COLORS = [
