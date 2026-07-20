@@ -13,14 +13,13 @@ use App\Models\FmDetail;
 use App\Models\Jawaban;
 use App\Models\Kader;
 use App\Models\ListKaderPerMentor;
-use App\Models\MonthlyFeedbackSummary;
 use App\Models\PerformanceSum;
 use App\Models\Pertanyaan;
-use App\Models\ReportArsip;
 use App\Models\User;
 use App\Models\Week;
 use App\Models\WeekKader;
 use App\Support\ArsipImporter;
+use App\Support\KaderDevelopmentReport;
 use App\Support\KaderReportData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -507,309 +506,48 @@ class ReportController extends Controller
     // Grand Score (data historis tak lengkap; lihat App\Support\ArsipImporter).
     public function report_arsip_show($kader_id)
     {
-        $user     = Auth::user();
-        $isMentor = $user->type === 'Mentor';
-
-        $kader = Kader::select(
-                'kader.*',
-                'company.company_name as bu',
-                'departemens.nama as dept_name',
-                'batch.nama_batch as batch_name',
-                'batch.tahun_batch as batch_year'
-            )
-            ->leftJoin('company', 'kader.company_code', '=', 'company.company_code')
-            ->leftJoin('departemens', 'kader.id_departemen', '=', 'departemens.id')
-            ->leftJoin('batch', 'kader.id_batch', '=', 'batch.id_batch')
-            ->where('kader.id', $kader_id)
-            ->first();
-
+        $kader = Kader::where('id', $kader_id)->first();
         if (!$kader) abort(404);
 
-        $arsip = ReportArsip::where('kader_id', $kader->id)->first();
-        if (!$arsip) abort(404);
+        $this->assertKaderAccess($kader);
 
-        $assignedMentors = ListKaderPerMentor::join('mentor', 'list_kader_per_mentor.mentor_id', '=', 'mentor.id')
-            ->where('list_kader_per_mentor.kader_id', $kader->id)
-            ->whereNull('list_kader_per_mentor.deleted_at')
-            ->whereNull('mentor.deleted_at')
-            ->orderBy('mentor.nama', 'asc')
-            ->get(['mentor.nama', 'mentor.jabatan'])
-            ->unique('nama')
-            ->values();
+        $props = KaderDevelopmentReport::arsip($kader);
+        if (!$props) abort(404);
 
-        if ($isMentor) {
-            $hasAccess = ListKaderPerMentor::where('list_kader_per_mentor.kader_id', $kader->id)
-                ->whereNull('list_kader_per_mentor.deleted_at')
-                ->join('mentor', 'list_kader_per_mentor.mentor_id', '=', 'mentor.id')
-                ->whereNull('mentor.deleted_at')
-                ->where('mentor.company_code', $user->company_code)
-                ->exists();
-            if (!$hasAccess) abort(403);
-        }
-
-        // Skor OJT & aspek Development disimpan skala 0-10; kirim apa adanya, frontend
-        // menampilkan ×10 agar seragam dengan skala 0-100 (KKM 70).
-        return Inertia::render('Report/DevelopmentArsip', [
-            'kader' => [
-                'nama'        => $kader->nama,
-                'nik'         => $kader->nik,
-                'batch_name'  => $kader->batch_name,
-                'batch_roman' => $kader->batch_name !== null ? $this->ToRomawi((int) $kader->batch_name) : null,
-                'batch_year'  => $kader->batch_year,
-                'bu'          => $kader->bu,
-                'departemen'  => $kader->dept_name,
-                'mentors'     => $assignedMentors->map(fn ($m) => ['nama' => $m->nama, 'jabatan' => $m->jabatan])->values(),
-            ],
-            'scores' => [
-                'learning_growth'      => $arsip->learning_growth,
-                'development_progress' => $arsip->development_progress,
-                'fmc_avg'              => $arsip->fmc_avg,
-                'ojt' => [
-                    ['label' => 'OJT 1', 'score' => $arsip->ojt1],
-                    ['label' => 'OJT 2', 'score' => $arsip->ojt2],
-                    ['label' => 'OJT 3', 'score' => $arsip->ojt3],
-                    ['label' => 'OJT 4', 'score' => $arsip->ojt4],
-                ],
-                'dev' => [
-                    ['label' => 'Job Routine',     'score' => $arsip->dev_job_routine],
-                    ['label' => 'Assignment',      'score' => $arsip->dev_assignment],
-                    ['label' => 'SOP Understanding','score' => $arsip->dev_sop],
-                    ['label' => 'Project Execution','score' => $arsip->dev_project],
-                ],
-                'status'   => $arsip->status,
-                'batch_no' => $arsip->batch_no,
-            ],
-        ]);
+        return Inertia::render('Report/DevelopmentArsip', $props);
     }
 
+    // Mentor hanya boleh membuka kader di BU-nya (selaras dengan KaderSaya::show).
+    private function assertKaderAccess($kader): void
+    {
+        $user = Auth::user();
+        if ($user->type !== 'Mentor') return;
+
+        $hasAccess = ListKaderPerMentor::where('list_kader_per_mentor.kader_id', $kader->id)
+            ->whereNull('list_kader_per_mentor.deleted_at')
+            ->join('mentor', 'list_kader_per_mentor.mentor_id', '=', 'mentor.id')
+            ->whereNull('mentor.deleted_at')
+            ->where('mentor.company_code', $user->company_code)
+            ->exists();
+
+        abort_if(!$hasAccess, 403);
+    }
+
+    // Report New — "Management Trainee Development Report" (batch 3+). Semua hitungan
+    // (LGS per fase, jendela FMC, Development Progress, catatan bulanan, Grand Score, TTD)
+    // disusun App\Support\KaderDevelopmentReport — dipakai bersama tab "Report" di
+    // KaderSaya/Detail agar kartu reportnya identik di dua tempat.
     public function report_new($kader_id)
     {
-        $user     = Auth::user();
-        $isMentor = $user->type === 'Mentor';
-
-        $kader = Kader::select(
-                'kader.*',
-                'company.company_name as bu',
-                'divisis.nama as divisi_name',
-                'departemens.nama as dept_name',
-                'batch.nama_batch as batch_name',
-                'batch.tahun_batch as batch_year',
-                'batch.tanggal_mulai as batch_start'
-            )
-            ->leftJoin('company', 'kader.company_code', '=', 'company.company_code')
-            ->leftJoin('divisis', 'kader.id_divisi', '=', 'divisis.id')
-            ->leftJoin('departemens', 'kader.id_departemen', '=', 'departemens.id')
-            ->leftJoin('batch', 'kader.id_batch', '=', 'batch.id_batch')
-            ->where('kader.id', $kader_id)
-            ->first();
-
+        $kader = Kader::where('id', $kader_id)->first();
         if (!$kader) abort(404);
 
-        // Semua mentor aktif yang di-assign ke kader ini (bisa lebih dari satu) — nama + jabatan.
-        $assignedMentors = ListKaderPerMentor::join('mentor', 'list_kader_per_mentor.mentor_id', '=', 'mentor.id')
-            ->where('list_kader_per_mentor.kader_id', $kader->id)
-            ->whereNull('list_kader_per_mentor.deleted_at')
-            ->whereNull('mentor.deleted_at')
-            ->orderBy('mentor.nama', 'asc')
-            ->get(['mentor.nama', 'mentor.jabatan'])
-            ->unique('nama')
-            ->values();
+        $this->assertKaderAccess($kader);
 
-        // Mentor hanya boleh membuka kader di BU-nya (selaras dengan KaderSaya::show).
-        if ($isMentor) {
-            $hasAccess = ListKaderPerMentor::where('list_kader_per_mentor.kader_id', $kader->id)
-                ->whereNull('list_kader_per_mentor.deleted_at')
-                ->join('mentor', 'list_kader_per_mentor.mentor_id', '=', 'mentor.id')
-                ->whereNull('mentor.deleted_at')
-                ->where('mentor.company_code', $user->company_code)
-                ->exists();
-            if (!$hasAccess) abort(403);
-        }
-
-        $report = KaderReportData::build($kader);
-
-        // Jendela tanggal tiap FMC (3 × 4 bulan) diturunkan dari tanggal mulai batch.
-        $windows = $this->fmcWindows($kader->batch_start, $kader->batch_year);
-
-        // Development Progress (section B) di-bucket per FMC = rata-rata 4 aspek mentor pada
-        // minggu yang tanggalnya jatuh di rentang FMC tsb (+ bucket 'all' utk view Final Score).
-        // Aspek id_pertanyaan: 1 Routine Job, 2 Assignment, 3 SOP, 4 Project.
-        $aspectRows = Jawaban::selectRaw('jawaban.id_pertanyaan as idp, jawaban.jawaban as val, jawaban.nama_mentor as nama_mentor, weeks.tanggal_mulai as wdate, weeks.id_week as id_week')
-            ->join('weeks', 'jawaban.id_week', '=', 'weeks.id_week')
-            ->where('jawaban.nik_kader', $kader->nik)
-            ->whereNotNull('jawaban.nama_mentor')
-            ->whereIn('jawaban.id_pertanyaan', [1, 2, 3, 4])
-            ->get();
-
-        $acc = ['all' => [], 1 => [], 2 => [], 3 => []]; // [bucket][idp] => [sum, count]
-        // Nama mentor untuk TTD "Mentor" = nama_mentor dari feedback mingguan TERAKHIR
-        // (id_week tertinggi) dalam rentang FMC yang dipilih.
-        $lastMentorWeek = ['all' => null, 1 => null, 2 => null, 3 => null];
-        $lastMentorName = ['all' => null, 1 => null, 2 => null, 3 => null];
-        foreach ($aspectRows as $r) {
-            $buckets = ['all'];
-            if ($r->wdate) {
-                $d = \Carbon\Carbon::parse($r->wdate);
-                foreach ($windows as $w) {
-                    if ($d->between($w['start'], $w['end'])) { $buckets[] = $w['fmc']; break; }
-                }
-            }
-            foreach ($buckets as $b) {
-                if ($lastMentorWeek[$b] === null || $r->id_week > $lastMentorWeek[$b]) {
-                    $lastMentorWeek[$b] = $r->id_week;
-                    $lastMentorName[$b] = $r->nama_mentor;
-                }
-            }
-            if (!is_numeric($r->val)) continue;
-            $val = (float) $r->val;
-            foreach ($buckets as $b) {
-                $acc[$b][$r->idp] ??= [0, 0];
-                $acc[$b][$r->idp][0] += $val;
-                $acc[$b][$r->idp][1] += 1;
-            }
-        }
-
-        $aspectLabels = [1 => 'Routine Job', 2 => 'Assignment', 3 => 'SOP Understanding', 4 => 'Project Execution'];
-        $devByFmc     = [];
-        foreach (['all', 1, 2, 3] as $b) {
-            $list = [];
-            foreach ([1, 3, 2, 4] as $idp) { // urutan tampil sesuai mockup
-                $list[] = [
-                    'label' => $aspectLabels[$idp],
-                    'score' => isset($acc[$b][$idp]) && $acc[$b][$idp][1] > 0
-                        ? round($acc[$b][$idp][0] / $acc[$b][$idp][1], 1)
-                        : null,
-                ];
-            }
-            $devByFmc[$b] = $list;
-        }
-
-        // Final score & status approval tiap FMC. Grand Score (rata-rata FMC 1-3) hanya
-        // valid bila KETIGA FMC sudah di-APPROVE — nilai sebelum approve belum final.
-        $fmcFinalScores = [];
-        $fmcApproved    = [];
-        foreach ($report['penilaianList'] as $p) {
-            $fmcFinalScores[$p['fmc']] = $p['final_score'];
-            $fmcApproved[$p['fmc']]    = ($p['approval_status'] ?? null) === 'approved';
-        }
-        $allApproved = !empty($fmcApproved[1]) && !empty($fmcApproved[2]) && !empty($fmcApproved[3])
-            && ($fmcFinalScores[1] ?? null) !== null
-            && ($fmcFinalScores[2] ?? null) !== null
-            && ($fmcFinalScores[3] ?? null) !== null;
-        $grandScore = $allApproved
-            ? round(($fmcFinalScores[1] + $fmcFinalScores[2] + $fmcFinalScores[3]) / 3, 1)
-            : null;
-
-        // Section D · Catatan Perkembangan — Summary Monthly Feedback (ditulis Admin MAI atas
-        // Monthly Feedback mentor). Di-bucket per FMC berdasarkan bulan/tahun yang jatuh di
-        // rentang jendela FMC; bucket 'all' dipakai view Final Score.
-        $summaries = MonthlyFeedbackSummary::where('kader_id', $kader->id)
-            ->orderBy('tahun')
-            ->orderBy('bulan')
-            ->get(['bulan', 'tahun', 'summary']);
-
-        $summariesByFmc = ['all' => [], 1 => [], 2 => [], 3 => []];
-        foreach ($summaries as $s) {
-            $item = [
-                'bulan'   => (int) $s->bulan,
-                'tahun'   => (int) $s->tahun,
-                'label'   => (self::BULAN[(int) $s->bulan] ?? $s->bulan) . ' ' . $s->tahun,
-                'summary' => $s->summary,
-            ];
-            $summariesByFmc['all'][] = $item;
-            $mDate = \Carbon\Carbon::create((int) $s->tahun, (int) $s->bulan, 1);
-            foreach ($windows as $w) {
-                if ($mDate->between($w['start'], $w['end'])) {
-                    $summariesByFmc[$w['fmc']][] = $item;
-                    break;
-                }
-            }
-        }
-
-        return Inertia::render('Report/Development', [
-            'kader' => [
-                'nama'        => $kader->nama,
-                'nik'         => $kader->nik,
-                'batch_name'  => $kader->batch_name,
-                'batch_roman' => $kader->batch_name !== null ? $this->ToRomawi((int) $kader->batch_name) : null,
-                'batch_year'  => $kader->batch_year,
-                'bu'          => $kader->bu,
-                'divisi'      => $kader->divisi_name,
-                'departemen'  => $kader->dept_name,
-                'mentor'      => $assignedMentors->isNotEmpty() ? $assignedMentors->pluck('nama')->implode(', ') : null,
-                'mentors'     => $assignedMentors->map(fn ($m) => [
-                    'nama'    => $m->nama,
-                    'jabatan' => $m->jabatan,
-                ])->values(),
-            ],
-            'faseGroups'       => $report['faseGroups'],
-            'allFases'         => $report['allFases'],
-            'penilaianList'    => $report['penilaianList'],
-            'fmcScore'         => $report['fmcScore'],
-            'developmentByFmc' => $devByFmc,
-            'monthlySummariesByFmc' => $summariesByFmc,
-            'fmcFinalScores'   => $fmcFinalScores,
-            'fmcApproved'      => $fmcApproved,
-            'grandScore'       => $grandScore,
-            'signatures'       => [
-                'mentorByFmc'  => [
-                    1       => $lastMentorName[1],
-                    2       => $lastMentorName[2],
-                    3       => $lastMentorName[3],
-                    'final' => $lastMentorName['all'],
-                ],
-                'hr'           => 'HR Business Unit',
-                'divisionHead' => 'MAI',
-            ],
-            'fmcWindows'       => array_map(fn ($w) => [
-                'fmc'            => $w['fmc'],
-                'label'          => $w['label'],
-                'penilaianLabel' => $w['penilaianLabel'],
-                'start'          => $w['start']->toIso8601String(),
-                'end'            => $w['end']->toIso8601String(),
-            ], $windows),
-            'currentFmc'       => $this->currentFmc($kader->batch_start, $kader->batch_year),
-        ]);
-    }
-
-    // Nama bulan Indonesia (penuh & singkat) untuk label periode report.
-    private const BULAN = [1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April', 5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus', 9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'];
-    private const BULAN_SINGKAT = [1 => 'Jan', 2 => 'Feb', 3 => 'Mar', 4 => 'Apr', 5 => 'Mei', 6 => 'Jun', 7 => 'Jul', 8 => 'Agu', 9 => 'Sep', 10 => 'Okt', 11 => 'Nov', 12 => 'Des'];
-
-    private function reportStartDate($batchStart, $batchYear): \Carbon\Carbon
-    {
-        if ($batchStart) return \Carbon\Carbon::parse($batchStart)->startOfMonth();
-        if ($batchYear)  return \Carbon\Carbon::create((int) $batchYear, 1, 1);
-        return now()->startOfMonth();
-    }
-
-    // 3 jendela FMC (masing-masing 4 bulan) diturunkan dari tanggal mulai batch.
-    // start/end dipakai untuk: (a) memfilter titik grafik per completed_at, (b) bucket
-    // skor mentor per FMC. label = rentang "Mei – Agu 2026"; penilaianLabel = bulan ke-4.
-    private function fmcWindows($batchStart, $batchYear): array
-    {
-        $start   = $this->reportStartDate($batchStart, $batchYear);
-        $windows = [];
-        for ($f = 1; $f <= 3; $f++) {
-            $fs = (clone $start)->addMonths(($f - 1) * 4)->startOfMonth();
-            $fe = (clone $start)->addMonths($f * 4 - 1)->endOfMonth();
-            $windows[] = [
-                'fmc'            => $f,
-                'start'          => $fs,
-                'end'            => $fe,
-                'label'          => self::BULAN[$fs->month] . ' – ' . self::BULAN[$fe->month] . ' ' . $fe->year,
-                'penilaianLabel' => self::BULAN[$fe->month] . ' ' . $fe->year,
-            ];
-        }
-        return $windows;
-    }
-
-    // FMC berjalan = relatif tanggal mulai batch (clamp 1..3).
-    private function currentFmc($batchStart, $batchYear): int
-    {
-        $start = $this->reportStartDate($batchStart, $batchYear);
-        $diff  = (int) $start->diffInMonths(now()->startOfMonth(), false);
-        return max(1, min(intdiv(max(0, $diff), 4) + 1, 3));
+        return Inertia::render(
+            'Report/Development',
+            KaderDevelopmentReport::build($kader, KaderReportData::build($kader))
+        );
     }
 
     public function report_feedback(Request $request)

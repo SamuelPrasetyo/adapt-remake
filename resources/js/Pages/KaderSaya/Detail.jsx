@@ -9,6 +9,7 @@ import FeedbackTab from "./tabs/FeedbackTab";
 import SummaryMonthlyTab from "./tabs/SummaryMonthlyTab";
 import PenilaianOjtTab from "./tabs/PenilaianOjtTab";
 import PerjanjianKerjaTab from "./tabs/PerjanjianKerjaTab";
+import ReportTab from "./tabs/ReportTab";
 
 const STATUS_META = {
     on_track:        { label: "On Track",        cls: "bg-emerald-100 text-emerald-700 border-emerald-300" },
@@ -78,6 +79,16 @@ const TABS = [
             </svg>
         ),
     },
+    {
+        id: "report",
+        label: "Report",
+        icon: (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                    d="M7 12l3-3 3 3 4-4M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+        ),
+    },
 ];
 
 export default function KaderSayaDetail({
@@ -114,12 +125,15 @@ export default function KaderSayaDetail({
     kandidat = null,
     nikKtp = null,
     kandidatError = null,
+    developmentReport = null,
 }) {
     // Summary Monthly Feedback = tab khusus Admin MAI; Perjanjian disembunyikan dari Kader.
     // Job Applicant = khusus Admin MAI 021 (backend juga tidak mengirim datanya ke role lain).
+    // Report = Admin & Mentor (backend mengirim null untuk Kader, sejalan dengan menu Report).
     const visibleTabs = TABS.filter((t) => {
         if (kaderView && t.id === "perjanjian") return false;
         if (t.id === "kandidat" && !canViewKandidat) return false;
+        if (t.id === "report" && kaderView) return false;
         if (t.adminMaiOnly && !canSummarizeMonthly) return false;
         return true;
     });
@@ -306,6 +320,9 @@ export default function KaderSayaDetail({
                     canUpload={canUpload}
                     kaderId={kaderId}
                 />
+            )}
+            {tab === "report" && !kaderView && (
+                <ReportTab report={developmentReport} />
             )}
         </AppLayout>
     );
