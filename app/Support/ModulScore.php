@@ -12,16 +12,25 @@ namespace App\Support;
  * ATURAN PENTING:
  * - Pre Test TIDAK PERNAH masuk Skor Akhir. Pre Test hanya alat ukur kemampuan awal sebelum
  *   belajar, jadi tidak boleh menaikkan/menurunkan skor pencapaian.
- * - Skor Akhir = rata-rata komponen yang SUDAH dinilai di antara:
+ * - Skor Modul = (60% × Post Test) + (40% × Post Activity), memakai komponen yang SUDAH dinilai:
  *     • Post Test       (bila modul punya test / has_test = true)
  *     • Post Activity   (bila modul punya PA  / has_post_activity = true)
- *   Komponen yang belum dinilai diabaikan (mis. Post Activity masih pending → skor = Post Test
- *   saja). Mengembalikan null bila belum ada satu pun komponen yang bisa dinilai.
+ *   Bila hanya SATU komponen yang tersedia/dinilai (mis. modul tanpa PA, atau PA masih pending),
+ *   komponen itu berbobot 100% — bukan dianggap 0. Mengembalikan null bila belum ada satu pun
+ *   komponen yang bisa dinilai.
  */
 class ModulScore
 {
+    /** Bobot Skor Modul saat Post Test & Post Activity dua-duanya sudah dinilai. Total harus 1.0. */
+    public const POST_TEST_WEIGHT     = 0.6;
+    public const POST_ACTIVITY_WEIGHT = 0.4;
+
     /**
      * Skor Akhir satu modul. Pre Test diabaikan.
+     *
+     *   Skor Modul = (60% × Post Test) + (40% × Post Activity)
+     *
+     * Hanya salah satu komponen yang ada → komponen itu dipakai 100%.
      *
      * @param  bool        $hasTest    modul punya Pre/Post Test
      * @param  bool        $hasPA      modul punya Post Activity
@@ -31,13 +40,17 @@ class ModulScore
      */
     public static function finalScore(bool $hasTest, bool $hasPA, $postScore, $paNilai): ?float
     {
-        $parts = [];
-        if ($hasTest && $postScore !== null) $parts[] = (float) $postScore;
-        if ($hasPA   && $paNilai   !== null) $parts[] = (float) $paNilai;
+        $post = ($hasTest && $postScore !== null) ? (float) $postScore : null;
+        $pa   = ($hasPA   && $paNilai   !== null) ? (float) $paNilai   : null;
 
-        if (empty($parts)) return null;
+        if ($post !== null && $pa !== null) {
+            return round(self::POST_TEST_WEIGHT * $post + self::POST_ACTIVITY_WEIGHT * $pa, 2);
+        }
 
-        return round(array_sum($parts) / count($parts), 2);
+        if ($post !== null) return round($post, 2);
+        if ($pa   !== null) return round($pa, 2);
+
+        return null;
     }
 
     /**
