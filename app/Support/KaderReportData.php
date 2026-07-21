@@ -121,7 +121,9 @@ class KaderReportData
             $doneCheckpoints  += $done;
             $totalCheckpoints += $required;
 
-            // Skor Akhir modul = rumus tunggal ModulScore (Post Test + Post Activity, TANPA Pre Test).
+            // Skor Modul = rumus tunggal ModulScore: (60% × Post Test) + (40% × Post Activity),
+            // TANPA Pre Test; bila cuma satu komponen yang ada, komponen itu berbobot 100%.
+            // Ini angka yang dipakai kartu per-modul & Avg per fase di Kader Saya / Detail.
             $modulScoreRaw = ModulScore::finalScore(
                 (bool) $modul->has_test,
                 (bool) $modul->has_post_activity,
@@ -143,9 +145,10 @@ class KaderReportData
             $growthRaw   = ModulScore::learningGrowth((bool) $modul->has_post_activity, $kgRaw, $asRaw);
             $growthScore = $growthRaw !== null ? (int) round($growthRaw) : null;
 
-            // Avg per fase = rata-rata LGS (growth_score) — angka yang sama dengan badge tiap
-            // modul, supaya Avg di header fase konsisten dengan skor per modul (bukan finalScore).
-            if ($growthScore !== null) $faseGroups[$fase]['scores'][] = $growthScore;
+            // Avg per fase (Kader Saya) = rata-rata Skor Modul ($modulScore) — angka yang sama
+            // dengan badge tiap modul, supaya Avg di header fase konsisten dengan kartu modul.
+            // LGS/growth_score TIDAK dipakai di sini; itu khusus grafik Learning Growth di Report.
+            if ($modulScore !== null) $faseGroups[$fase]['scores'][] = $modulScore;
 
             // completed_at = saat komponen penilai terakhir selesai → urutan titik di grafik.
             $completedAt = null;
@@ -187,7 +190,7 @@ class KaderReportData
             if ($done >= $required) $faseGroups[$fase]['done']++;
         }
 
-        // Avg per fase = rata-rata LGS modul (scores dikumpulkan dari $growthScore di atas).
+        // Avg per fase = rata-rata Skor Modul (scores dikumpulkan dari $modulScore di atas).
         foreach ($faseGroups as &$fg) {
             $fg['progress']  = $fg['total'] > 0 ? (int) round(($fg['done'] / $fg['total']) * 100) : 0;
             $faseAvg         = ModulScore::average($fg['scores'], null);
