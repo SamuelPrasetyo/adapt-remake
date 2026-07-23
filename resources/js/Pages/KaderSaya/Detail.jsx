@@ -275,7 +275,7 @@ export default function KaderSayaDetail({
                 <LearningGrowthTab faseGroups={faseGroups} allFases={allFases} />
             )}
             {tab === "kandidat" && canViewKandidat && (
-                <KandidatTab kandidat={kandidat} nikKtp={nikKtp} kandidatError={kandidatError} />
+                <KandidatTab kandidat={kandidat} nikKtp={nikKtp} kandidatError={kandidatError} kaderId={kader.id} />
             )}
             {tab === "feedback" && (
                 <FeedbackTab

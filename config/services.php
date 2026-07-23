@@ -38,4 +38,11 @@ return [
         'asset_url' => env('CAREER_MAI_ASSET_URL', 'https://career.mekararmadainvestama.co.id/public'),
     ],
 
+    // Biner LibreOffice untuk mengonversi CV .doc/.docx kandidat menjadi PDF saat
+    // Export PDF Job Applicant. Kosongkan bila tidak terpasang — konversi otomatis
+    // jatuh ke PhpWord + dompdf (murni PHP, tata letak lebih sederhana).
+    'libreoffice' => [
+        'path' => env('LIBREOFFICE_PATH'),
+    ],
+
 ];
