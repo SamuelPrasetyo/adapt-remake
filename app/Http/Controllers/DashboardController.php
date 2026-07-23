@@ -204,12 +204,16 @@ class DashboardController extends Controller
         }
         $idpBelum = $idpQuery->count();
 
-        // Jumlah mentor aktif (belum dihapus).
-        $mentorQuery = Mentor::whereNull('deleted_at');
+        // Jumlah mentor = mentor unik yang di-assign ke kader pada batch berjalan.
+        // Mentor yang sama membina beberapa kader tetap dihitung satu.
+        $mentorQuery = \App\Models\ListKaderPerMentor::join('mentor', 'list_kader_per_mentor.mentor_id', '=', 'mentor.id')
+            ->whereIn('list_kader_per_mentor.id_batch', $runningBatchIds)
+            ->whereNull('list_kader_per_mentor.deleted_at')
+            ->whereNull('mentor.deleted_at');
         if ($companyCode) {
-            $mentorQuery->where('company_code', $companyCode);
+            $mentorQuery->where('mentor.company_code', $companyCode);
         }
-        $mentorCount = $mentorQuery->count();
+        $mentorCount = $mentorQuery->distinct()->count('list_kader_per_mentor.mentor_id');
 
         return [
             'mentorCount'   => $mentorCount,
