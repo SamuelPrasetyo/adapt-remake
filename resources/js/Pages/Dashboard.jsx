@@ -333,6 +333,7 @@ function KaderTable({ kaders, mentorFilter, mentors, onMentorFilter, batches, ba
                             <thead>
                                 <tr className="text-left text-[11px] uppercase tracking-wider text-slate-500 bg-slate-50">
                                     <th className="px-6 py-3 font-medium whitespace-nowrap">Nama Kader</th>
+                                    <th className="px-4 py-3 font-medium whitespace-nowrap">BU</th>
                                     <th className="px-4 py-3 font-medium whitespace-nowrap">Mentor</th>
                                     <th className="px-4 py-3 font-medium whitespace-nowrap">Fase Aktif</th>
                                     <th className="px-4 py-3 font-medium whitespace-nowrap min-w-40">Progress Overall</th>
@@ -349,7 +350,7 @@ function KaderTable({ kaders, mentorFilter, mentors, onMentorFilter, batches, ba
                                             className="hover:bg-slate-50/60 transition cursor-pointer"
                                             onClick={() => router.visit(`/kader-saya/${k.k_id || k.kader_id}`)}>
 
-                                            <td className="px-6 py-3 whitespace-nowrap">
+                                            <td className="px-6 py-3">
                                                 <div className="flex items-center gap-3">
                                                     <KaderAvatar
                                                         src={k.foto}
@@ -358,23 +359,30 @@ function KaderTable({ kaders, mentorFilter, mentors, onMentorFilter, batches, ba
                                                         className="w-9 h-9 rounded-full text-xs"
                                                         fallbackClass={`bg-linear-to-br ${avatarColor(k.nik_kader || k.nama_kader || '')}`}
                                                     />
-                                                    <div className="min-w-0">
-                                                        <div className="font-medium text-slate-900 truncate max-w-40">{k.nama_kader}</div>
-                                                        <div className="text-[11px] text-slate-500 truncate max-w-40">
+                                                    <div className="min-w-0 max-w-56">
+                                                        <div className="font-medium text-slate-900">{k.nama_kader}</div>
+                                                        <div className="text-[11px] text-slate-500 leading-snug">
                                                             {k.divisi_name || '—'}{k.dept_name ? ` · ${k.dept_name}` : ''}
                                                         </div>
                                                     </div>
                                                 </div>
                                             </td>
+                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                {k.bu ? (
+                                                    <span className="text-sm text-slate-700">{k.bu}</span>
+                                                ) : (
+                                                    <span className="text-slate-300">—</span>
+                                                )}
+                                            </td>
                                             <td className="px-4 py-3">
                                                 {k.mentors?.length > 0 ? (
-                                                    <div className="space-y-2.5 max-w-56">
+                                                    <div className="space-y-2.5 max-w-64">
                                                         {k.mentors.map((m) => (
                                                             <div key={m.id} className="min-w-0">
-                                                                <div className="text-sm font-medium text-slate-700 truncate">{m.nama}</div>
+                                                                <div className="text-sm font-medium text-slate-700">{m.nama}</div>
                                                                 {m.jabatan && (
-                                                                    <span className="inline-flex items-center mt-0.5 px-2 py-0.5 rounded-full text-[11px] font-medium ring-1 ring-inset max-w-full truncate bg-blue-50 text-blue-700 ring-blue-200">
-                                                                        <span className="truncate">{m.jabatan}</span>
+                                                                    <span className="inline-flex items-center mt-0.5 px-2 py-0.5 rounded-full text-[11px] font-medium ring-1 ring-inset bg-blue-50 text-blue-700 ring-blue-200">
+                                                                        {m.jabatan}
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -565,7 +573,7 @@ export default function Dashboard({
             </div> */}
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <StatsCard title="Jumlah Mentor" value={s.mentorCount} subtitle="Mentor terdaftar" color="blue" />
+                <StatsCard title="Jumlah Mentor" value={s.mentorCount} subtitle="Membina kader batch berjalan" color="blue" />
                 <StatsCard title="Kader Aktif" value={s.kaderAktif} subtitle={`${s.batchBerjalan} batch berjalan`} color="green" />
                 <StatsCard title="Feedback Belum Terisi" value={s.feedbackBelum} subtitle="Perlu diisi mentor" color="amber" />
                 <StatsCard title="IDP Belum Lengkap" value={s.idpBelum} subtitle="Menunggu approve mentor" color="red" />
