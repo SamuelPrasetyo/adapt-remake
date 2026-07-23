@@ -293,6 +293,29 @@ function MbtiPanel({ mbti }) {
     );
 }
 
+/* ── Deskripsi pengalaman kerja ───────────────────────────────────────────── */
+
+// Deskripsi tugas diketik bebas di portal: sebagian berbutir ("-", "•", "1."),
+// sebagian paragraf biasa. Pemecahan butirnya dikerjakan backend
+// (KandidatData::bulletize) agar tampilan web dan PDF persis sama.
+function Deskripsi({ text, list }) {
+    if (list?.items?.length) {
+        const ListTag = list.type === "ol" ? "ol" : "ul";
+        return (
+            <div className="mt-1">
+                {list.intro && <p className="text-xs text-slate-500 leading-relaxed">{list.intro}</p>}
+                <ListTag
+                    className={`${list.type === "ol" ? "list-decimal" : "list-disc"} pl-4 ${list.intro ? "mt-1" : ""} space-y-1 text-xs text-slate-500 leading-relaxed marker:text-slate-400`}
+                >
+                    {list.items.map((item, i) => <li key={i}>{item}</li>)}
+                </ListTag>
+            </div>
+        );
+    }
+    if (!text) return null;
+    return <p className="text-xs text-slate-500 mt-1 leading-relaxed">{text}</p>;
+}
+
 /* ── Applications ─────────────────────────────────────────────────────────── */
 
 function ApplicationCard({ app }) {
@@ -314,14 +337,9 @@ function ApplicationCard({ app }) {
                 </div>
             </div>
 
-            {(app.ekspektasi_gaji != null || app.alasan_ditolak) && (
-                <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1.5 text-xs">
-                    {app.ekspektasi_gaji != null && (
-                        <span className="text-slate-500">Ekspektasi gaji: <b className="text-slate-700">{formatIDR(app.ekspektasi_gaji)}</b></span>
-                    )}
-                    {app.alasan_ditolak && (
-                        <span className="text-rose-600">Alasan ditolak: {app.alasan_ditolak}</span>
-                    )}
+            {app.ekspektasi_gaji != null && (
+                <div className="mt-3 text-xs">
+                    <span className="text-slate-500">Ekspektasi gaji: <b className="text-slate-700">{formatIDR(app.ekspektasi_gaji)}</b></span>
                 </div>
             )}
 
@@ -431,9 +449,192 @@ function Languages({ languages }) {
     );
 }
 
+/* ── Export PDF ───────────────────────────────────────────────────────────── */
+
+const A4 = { w: 595.28, h: 841.89 }; // titik (pt), potret
+const A4_MARGIN = 28;
+
+// Lampiran berupa gambar (ijazah/transkrip hasil pindai) ditempel di halaman A4
+// tersendiri, diskalakan proporsional agar muat di dalam margin. Gambar melebar
+// dipasang di halaman lanskap supaya terbaca — bukan menyusut di tengah potret.
+async function addImagePage(pdf, bytes, isPng) {
+    const img = isPng ? await pdf.embedPng(bytes) : await pdf.embedJpg(bytes);
+    const landscape = img.width > img.height;
+    const pw = landscape ? A4.h : A4.w;
+    const ph = landscape ? A4.w : A4.h;
+    const page = pdf.addPage([pw, ph]);
+    const scale = Math.min((pw - A4_MARGIN * 2) / img.width, (ph - A4_MARGIN * 2) / img.height, 1);
+    const w = img.width * scale;
+    const h = img.height * scale;
+    page.drawImage(img, { x: (pw - w) / 2, y: (ph - h) / 2, width: w, height: h });
+}
+
+// Deteksi jenis berkas dari MAGIC BYTES, bukan Content-Type: portal Career MAI
+// kerap mengirim application/octet-stream untuk PDF maupun gambar.
+function sniff(bytes) {
+    const b = new Uint8Array(bytes.slice(0, 8));
+    const hex = [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
+    if (hex.startsWith("25504446")) return "pdf";                 // %PDF
+    if (hex.startsWith("ffd8ff")) return "jpg";
+    if (hex.startsWith("89504e470d0a1a0a")) return "png";
+    if (hex.startsWith("504b0304")) return "zip";                 // docx/xlsx (ZIP)
+    return null;
+}
+
+const extOf = (url) => (decodeURIComponent(url).split("?")[0].split(".").pop() || "").toLowerCase();
+
+// Teks pdf-lib memakai font standar (WinAnsi) — karakter di luar Latin-1
+// (mis. "·" atau "—" dari nama posisi) membuat drawText melempar error.
+const winAnsi = (s) => String(s).replace(/[^\x20-\xFF]/g, "-");
+
+// Lampiran yang tidak bisa ditanam (berkas Word, atau hilang di portal) tetap
+// diberi satu halaman keterangan supaya urutan lampiran tidak bolong dan
+// pembaca tahu berkas itu ada beserta lokasinya.
+async function addNoticePage(pdf, { label, group, url, reason }) {
+    const { StandardFonts, rgb } = await import("pdf-lib");
+    const page = pdf.addPage([A4.w, A4.h]);
+    const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+    const font = await pdf.embedFont(StandardFonts.Helvetica);
+    const x = 56;
+    let y = A4.h - 90;
+
+    page.drawRectangle({ x: 0, y: A4.h - 60, width: A4.w, height: 60, color: rgb(0.23, 0.51, 0.96) });
+    page.drawText("LAMPIRAN TIDAK DAPAT DIGABUNG", {
+        x, y: A4.h - 38, size: 12, font: bold, color: rgb(1, 1, 1),
+    });
+
+    page.drawText(winAnsi(label), { x, y, size: 16, font: bold, color: rgb(0.06, 0.09, 0.16) });
+    y -= 20;
+    page.drawText(winAnsi(group), { x, y, size: 10, font, color: rgb(0.39, 0.45, 0.55) });
+    y -= 30;
+    page.drawText(winAnsi(reason), { x, y, size: 10, font, color: rgb(0.28, 0.33, 0.41) });
+    y -= 26;
+    page.drawText("Tautan berkas:", { x, y, size: 9, font: bold, color: rgb(0.39, 0.45, 0.55) });
+    y -= 14;
+
+    // Pecah URL panjang agar tidak terpotong di tepi kertas.
+    const teks = winAnsi(decodeURIComponent(url));
+    const perBaris = 78;
+    for (let i = 0; i < teks.length; i += perBaris) {
+        page.drawText(teks.slice(i, i + perBaris), { x, y, size: 9, font, color: rgb(0.15, 0.39, 0.92) });
+        y -= 12;
+    }
+}
+
+// Export = PDF asli (bukan cetak layar): dokumen profil dibuat server (dompdf,
+// A4 potret satu kolom), lalu SEMUA berkas kandidat digabung di belakangnya
+// mengikuti urutan dari endpoint lampiran — Dokumen dulu, baru berkas lamaran.
+function ExportPdfButton({ kaderId, nama }) {
+    const [busy, setBusy] = useState(false);
+    const [step, setStep] = useState("");
+    const [toast, setToast] = useState(null);
+
+    const handleExport = async () => {
+        if (busy || !kaderId) return;
+        setBusy(true);
+        setStep("Menyiapkan dokumen...");
+
+        try {
+            const { PDFDocument } = await import("pdf-lib");
+
+            const [profilRes, lampiranRes] = await Promise.all([
+                fetch(`/kader-saya/${kaderId}/kandidat/pdf`),
+                fetch(`/kader-saya/${kaderId}/kandidat/lampiran`, { headers: { Accept: "application/json" } }),
+            ]);
+            if (!profilRes.ok) throw new Error("Gagal membuat dokumen profil kandidat.");
+
+            const merged = await PDFDocument.load(await profilRes.arrayBuffer());
+            const attachments = lampiranRes.ok ? (await lampiranRes.json()).attachments || [] : [];
+
+            const gagal = [];
+            for (let i = 0; i < attachments.length; i++) {
+                const a = attachments[i];
+                setStep(`Menggabung berkas ${i + 1}/${attachments.length}...`);
+                let alasan = null;
+                try {
+                    const res = await fetch(`/kandidat/berkas?url=${encodeURIComponent(a.url)}`);
+                    if (!res.ok) {
+                        // 415 = berkas Word yang gagal dikonversi ke PDF di server.
+                        alasan = res.status === 404
+                            ? "Berkas tidak ditemukan di server portal Career MAI."
+                            : res.status === 415
+                                ? "Berkas Word gagal dikonversi ke PDF (kemungkinan berkasnya rusak)."
+                                : "Berkas gagal diunduh dari portal Career MAI.";
+                        throw new Error(alasan);
+                    }
+                    const bytes = await res.arrayBuffer();
+
+                    const kind = sniff(bytes);
+                    if (kind === "pdf") {
+                        // ignoreEncryption: berkas hasil scan sering "terproteksi" untuk
+                        // pencetakan saja — isinya tetap boleh disalin.
+                        const src = await PDFDocument.load(bytes, { ignoreEncryption: true });
+                        const pages = await merged.copyPages(src, src.getPageIndices());
+                        pages.forEach((pg) => merged.addPage(pg));
+                    } else if (kind === "jpg" || kind === "png") {
+                        await addImagePage(merged, bytes, kind === "png");
+                    } else {
+                        // Word (.doc/.docx/.rtf/.odt) sudah dikonversi server jadi PDF;
+                        // yang sampai sini tinggal format lain (mis. .xlsx, .zip).
+                        const ext = extOf(a.url);
+                        alasan = `Format berkas (.${ext || "?"}) tidak dapat digabung ke PDF — hanya PDF, gambar, dan dokumen Word yang didukung.`;
+                        throw new Error(alasan);
+                    }
+                } catch (err) {
+                    gagal.push(`${a.label}${a.group ? ` (${a.group})` : ""}`);
+                    await addNoticePage(merged, {
+                        ...a,
+                        reason: alasan || err.message || "Berkas tidak dapat digabung.",
+                    });
+                }
+            }
+
+            setStep("Menyimpan...");
+            const blob = new Blob([await merged.save()], { type: "application/pdf" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `Job Applicant - ${nama || "Kandidat"}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            // Jangan langsung dicabut: sebagian browser membatalkan unduhan yang
+            // masih berjalan bila object URL-nya keburu dilepas.
+            setTimeout(() => URL.revokeObjectURL(url), 30000);
+
+            if (gagal.length) {
+                setToast(`PDF tersimpan. ${gagal.length} berkas tidak dapat ditanam (${gagal.join(", ")}) — masing-masing diganti halaman keterangan berisi tautan berkasnya.`);
+            }
+        } catch (e) {
+            setToast(e.message || "Gagal membuat PDF. Coba lagi nanti.");
+        } finally {
+            setBusy(false);
+            setStep("");
+        }
+    };
+
+    return (
+        <>
+            <button type="button" onClick={handleExport} disabled={busy || !kaderId}
+                className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition disabled:opacity-70 disabled:cursor-wait">
+                {busy ? (
+                    <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                    </svg>
+                ) : (
+                    <Icon className="w-4 h-4" path="M12 10v6m0 0l-3-3m3 3l3-3M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v6" />
+                )}
+                {busy ? step || "Memproses..." : "Export PDF"}
+            </button>
+            {toast && <Toast msg={toast} onClose={() => setToast(null)} />}
+        </>
+    );
+}
+
 /* ── Main tab ─────────────────────────────────────────────────────────────── */
 
-export default function KandidatTab({ kandidat, nikKtp, kandidatError }) {
+export default function KandidatTab({ kandidat, nikKtp, kandidatError, kaderId = null }) {
     // Belum ada NIK KTP → kader belum ditautkan ke data kandidat.
     if (!nikKtp) {
         return (
@@ -478,6 +679,10 @@ export default function KandidatTab({ kandidat, nikKtp, kandidatError }) {
 
     return (
         <div className="space-y-5">
+            <div className="flex justify-end">
+                <ExportPdfButton kaderId={kaderId} nama={p.nama_lengkap} />
+            </div>
+
             {/* Hero identitas */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 <div className="h-20 bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500" />
@@ -616,7 +821,7 @@ export default function KandidatTab({ kandidat, nikKtp, kandidatError }) {
                                             </span>
                                         </div>
                                         {e.nm_company && <p className="text-xs text-slate-500 mt-0.5">{e.nm_company}</p>}
-                                        {e.deskripsi && <p className="text-xs text-slate-500 mt-1 leading-relaxed">{e.deskripsi}</p>}
+                                        <Deskripsi text={e.deskripsi} list={e.deskripsi_list} />
                                         {(e.gaji != null || e.alasan) && (
                                             <div className="flex flex-wrap gap-x-5 gap-y-1 mt-1.5 text-[11px]">
                                                 {e.gaji != null && (

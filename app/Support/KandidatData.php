@@ -173,7 +173,6 @@ class KandidatData
             ->select(
                 'ja.id_job',
                 'ja.ekspektasi_gaji',
-                'ja.alasan_ditolak',
                 'ja.file_interview',
                 'ja.file_panel',
                 'ja.file_psikogram',
@@ -199,7 +198,9 @@ class KandidatData
                 'progress'        => $r->progress_nama,
                 'progress_urut'   => self::toInt($r->progress_urut),
                 'ekspektasi_gaji' => self::toInt($r->ekspektasi_gaji),
-                'alasan_ditolak'  => $r->alasan_ditolak,
+                // ja.alasan_ditolak SENGAJA tidak ikut dikirim: catatan penilaian internal
+                // rekrutmen ("Psikotes tidak lolos", dst) tidak layak tampil di profil kader
+                // yang sekarang sudah jadi karyawan. Kolomnya tetap ada di portal.
                 'file_interview'  => self::assetUrl($r->file_interview, 'interview'),
                 'file_panel'      => self::assetUrl($r->file_panel, 'panel'),
                 'file_psikogram'  => self::assetUrl($r->file_psikogram, 'psikogram'),
@@ -230,7 +231,6 @@ class KandidatData
                     'progress'        => $progressNames[$k->id_progress] ?? null,
                     'progress_urut'   => self::toInt($progressUrut[$k->id_progress] ?? null),
                     'ekspektasi_gaji' => self::toInt($k->gaji),
-                    'alasan_ditolak'  => $k->alasan_ditolak,
                     'file_interview'  => null,
                     'file_panel'      => null,
                     'file_psikogram'  => null,
@@ -265,6 +265,7 @@ class KandidatData
                 'tgl_masuk'  => self::formatMonth($e->bulan_masuk),
                 'tgl_keluar' => self::formatMonth($e->bulan_keluar),
                 'deskripsi'  => self::cleanText($e->tugas),
+                'deskripsi_list' => self::bulletize($e->tugas),
                 // Gaji 0 = tidak diisi, bukan digaji nol.
                 'gaji'       => ($gaji !== null && $gaji > 0) ? $gaji : null,
                 'alasan'     => self::cleanText($e->alasan),
@@ -279,6 +280,7 @@ class KandidatData
                 'tgl_masuk'  => self::formatDate($e->tgl_masuk, false),
                 'tgl_keluar' => self::formatDate($e->tgl_keluar, false),
                 'deskripsi'  => self::cleanText($e->deskripsi),
+                'deskripsi_list' => self::bulletize($e->deskripsi),
                 'gaji'       => null,
                 'alasan'     => null,
                 '_sort'      => substr(trim((string) $e->tgl_masuk), 0, 7),
@@ -471,6 +473,89 @@ class KandidatData
     {
         $v = trim((string) $v);
         return ($v === '' || $v === '-') ? null : $v;
+    }
+
+    /**
+     * Memecah deskripsi tugas menjadi daftar butir. Kandidat mengetik bebas di portal:
+     * ada yang memakai "-", "•", "·", ada yang bernomor "1.", dan ada yang menempel
+     * jadi satu paragraf tanpa baris baru sama sekali. Tanpa dipecah, semuanya
+     * menggumpal jadi satu blok teks di web maupun PDF.
+     *
+     * Tiga aturan yang menjaga agar teks biasa tidak ikut terpotong:
+     *  - "-" / "–" / "*" hanya diakui sebagai penanda bila salah satu baris memang
+     *    DIAWALI penanda itu. Tanpa syarat ini, tanda hubung di tengah kalimat
+     *    ("sell-out", "incoming-delivery") ikut memotong.
+     *  - Pemotongan hanya memakai karakter yang benar-benar mengawali baris. Teks
+     *    berbutir "*" yang memuat "13 November 2023 – 05 Juli 2024" tidak boleh ikut
+     *    terpotong di en-dash-nya, begitu pula "dokumen - dokumen" pada daftar "*".
+     *  - Baris baru DI DALAM satu butir adalah bungkus baris (soft wrap) dari formulir
+     *    portal, bukan butir baru — jadi dirapatkan kembali jadi satu kalimat.
+     *
+     * Teks pengantar sebelum penanda pertama ("Jobdesk:", "Driver") dikembalikan
+     * terpisah sebagai `intro` agar tidak tampil sebagai butir palsu.
+     *
+     * @return array{type:string,intro:?string,items:string[]}|null  null bila bukan daftar
+     */
+    private static function bulletize($v): ?array
+    {
+        $text = trim(str_replace(["\r\n", "\r"], "\n", (string) $v));
+        if ($text === '') return null;
+
+        $lines = explode("\n", $text);
+        $diawali = function (string $pola) use ($lines): bool {
+            foreach ($lines as $l) {
+                if (preg_match('/^[ \t]*' . $pola . '/u', $l)) return true;
+            }
+            return false;
+        };
+
+        // Karakter bullet sejati tidak pernah muncul di tengah kalimat biasa, jadi
+        // boleh dipotong di mana pun; sisanya wajib terbukti mengawali sebuah baris.
+        $penanda = null;
+        foreach (['•', '·'] as $c) {
+            if (mb_strpos($text, $c) !== false) { $penanda = $c; break; }
+        }
+        if ($penanda === null) {
+            foreach (['-', '–', '—', '*'] as $c) {
+                if ($diawali(preg_quote($c, '/'))) { $penanda = $c; break; }
+            }
+        }
+
+        if ($penanda !== null) {
+            $q      = preg_quote($penanda, '/');
+            $type   = 'ul';
+            $awalan = '/^' . $q . '/u';
+            // Bullet sejati boleh menempel di mana saja; "-"/"*" wajib di awal teks
+            // atau setelah spasi supaya tidak memotong kata bertanda hubung.
+            $pisah  = in_array($penanda, ['•', '·'], true)
+                ? '/' . $q . '+[ \t]*/u'
+                : '/(?:^|\s)' . $q . '+[ \t]*(?=\S)/u';
+        } elseif ($diawali('\d+[.)][ \t]')) {
+            $type   = 'ol';
+            $awalan = '/^[ \t]*\d+[.)][ \t]/u';
+            $pisah  = '/(?:^|\n)[ \t]*\d+[.)][ \t]*(?=\S)/u';
+        } else {
+            return null;
+        }
+
+        $parts = preg_split($pisah, $text);
+        $rapi  = fn ($s) => trim(preg_replace('/\s+/u', ' ', $s));
+
+        // Bagian sebelum penanda pertama = kalimat pengantar, bukan butir.
+        $intro = null;
+        if (!preg_match($awalan, $text) && count($parts) > 1) {
+            $intro = $rapi(array_shift($parts)) ?: null;
+        }
+
+        // Butir tanpa huruf/angka dibuang: isian "-" atau "•" belaka (portal
+        // mengizinkannya) tak boleh berubah jadi butir kosong menggantung.
+        $items = [];
+        foreach ($parts as $part) {
+            $part = $rapi($part);
+            if ($part !== '' && preg_match('/[\p{L}\p{N}]/u', $part)) $items[] = $part;
+        }
+
+        return $items ? ['type' => $type, 'intro' => $intro, 'items' => $items] : null;
     }
 
     private const MONTHS = [
