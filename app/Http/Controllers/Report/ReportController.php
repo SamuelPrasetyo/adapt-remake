@@ -19,6 +19,7 @@ use App\Models\User;
 use App\Models\Week;
 use App\Models\WeekKader;
 use App\Support\ArsipImporter;
+use App\Support\HasilTrainingMt;
 use App\Support\KaderDevelopmentReport;
 use App\Support\KaderReportData;
 use Illuminate\Http\Request;
@@ -514,7 +515,28 @@ class ReportController extends Controller
         $props = KaderDevelopmentReport::arsip($kader);
         if (!$props) abort(404);
 
+        // Tombol "Detail Nilai Training" hanya muncul bila batch kader sudah punya dokumennya
+        // (saat ini Batch 2 saja; Batch 1 menyusul).
+        $props['trainingHref'] = HasilTrainingMt::hrefFor($kader->id, $props['scores']['batch_no']);
+
         return Inertia::render('Report/DevelopmentArsip', $props);
+    }
+
+    /**
+     * Rincian nilai in-class training kader batch arsip — tabel dokumen sumber
+     * (App\Support\HasilTrainingMt), dengan baris kader yang dibuka disorot.
+     */
+    public function report_arsip_training($kader_id)
+    {
+        $kader = Kader::where('id', $kader_id)->first();
+        if (!$kader) abort(404);
+
+        $this->assertKaderAccess($kader);
+
+        $props = HasilTrainingMt::forKader($kader);
+        if (!$props) abort(404); // batch kader belum punya dokumen hasil training
+
+        return Inertia::render('Report/HasilTraining', $props);
     }
 
     // Mentor hanya boleh membuka kader di BU-nya (selaras dengan KaderSaya::show).

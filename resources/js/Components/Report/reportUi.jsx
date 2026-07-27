@@ -118,6 +118,19 @@ export function pickerBackHref(fallbackGroup = "system") {
     return `/report-new?${params.toString()}`;
 }
 
+// Teruskan filter picker (?group=&batch=&page=) ke URL lain di lingkungan Report, supaya
+// halaman tujuan tetap bisa mengembalikan picker ke posisi semula lewat pickerBackHref().
+export function withPickerParams(href) {
+    const current = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams();
+    for (const key of ["group", "batch", "page"]) {
+        const value = current.get(key);
+        if (value) params.set(key, value);
+    }
+    const qs = params.toString();
+    return qs ? `${href}?${qs}` : href;
+}
+
 // Tombol "Pilih kader lain" — hanya relevan di halaman Report (tab Kader Saya sudah
 // punya kader yang sedang dibuka, jadi backHref dibiarkan kosong di sana).
 export function BackToPickerLink({ href }) {
