@@ -218,14 +218,8 @@ export const ADMIN_NAV = [
         href: "/report-new",
         match: "/report-new",
     },
-    {
-        type: "item",
-        label: "Import Arsip B1–2",
-        icon: "upload_doc",
-        href: "/report-import-arsip",
-        match: "/report-import-arsip",
-        requires: "admin021",
-    },
+    // "Import Arsip B1–2" (/report-import-arsip) dipensiunkan dari menu — impornya sudah
+    // selesai dijalankan. Route-nya masih ada bila perlu diakses langsung.
 ];
 
 export const KADER_NAV = [

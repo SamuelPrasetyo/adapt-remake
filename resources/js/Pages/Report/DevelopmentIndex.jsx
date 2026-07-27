@@ -259,7 +259,7 @@ export default function DevelopmentIndex({ kaders = [] }) {
                     {batches.length === 0 ? (
                         <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
                             {group === "arsip"
-                                ? "Belum ada data arsip Batch 1 & 2. Impor dulu via menu “Import Arsip B1–2”."
+                                ? "Belum ada data arsip Batch 1 & 2. Impor dulu lewat halaman /report-import-arsip."
                                 : "Belum ada kader Batch 3 ke atas."}
                         </div>
                     ) : (
