@@ -126,11 +126,16 @@ const COLS = [
     { key: "dept_name", label: "Departemen", sortable: true, render: cellOrDash },
 ];
 
-// Baca state awal dari query string (?group=&batch=) agar refresh halaman tetap
-// menampilkan kelompok/batch yang sama, bukan kembali ke default.
+// Baca state awal dari query string (?group=&batch=&page=) agar refresh halaman atau
+// balik dari report tetap menampilkan kelompok/batch/halaman yang sama.
 function readInitialParams() {
     const params = new URLSearchParams(window.location.search);
-    return { group: params.get("group") || "", batchKey: params.get("batch") || "" };
+    const page = parseInt(params.get("page"), 10);
+    return {
+        group: params.get("group") || "",
+        batchKey: params.get("batch") || "",
+        page: Number.isFinite(page) && page > 0 ? page : 1,
+    };
 }
 
 export default function DevelopmentIndex({ kaders = [] }) {
@@ -168,11 +173,15 @@ export default function DevelopmentIndex({ kaders = [] }) {
     const [batchKey, setBatchKey] = useState(validInitialGroup ? initial.batchKey : "");
     const activeBatchKey = batches.some((b) => b.key === batchKey) ? batchKey : batches[0]?.key ?? "";
 
-    // Simpan pilihan kelompok/batch ke URL supaya bertahan saat halaman di-refresh.
-    const syncUrl = (nextGroup, nextBatchKey) => {
+    // Halaman tabel ikut disimpan supaya balik dari report tidak melompat ke halaman 1.
+    const [page, setPage] = useState(validInitialGroup ? initial.page : 1);
+
+    // Simpan pilihan kelompok/batch/halaman ke URL supaya bertahan saat halaman di-refresh.
+    const syncUrl = (nextGroup, nextBatchKey, nextPage = 1) => {
         const params = new URLSearchParams();
         params.set("group", nextGroup);
         if (nextBatchKey) params.set("batch", nextBatchKey);
+        if (nextPage > 1) params.set("page", String(nextPage));
         router.replace(`/report-new?${params.toString()}`, { preserveScroll: true, preserveState: true });
     };
 
@@ -181,9 +190,14 @@ export default function DevelopmentIndex({ kaders = [] }) {
         [byGroup, activeBatchKey]
     );
 
+    // Bawa filter kelompok/batch/halaman ke URL detail supaya tombol "Pilih kader lain"
+    // bisa mengembalikan picker ke posisi yang sama, bukan reset ke default.
     const goToReport = (k) => {
         const base = group === "arsip" ? "/report-arsip/" : "/report-new/";
-        router.visit(base + k.id);
+        const params = new URLSearchParams({ group });
+        if (activeBatchKey) params.set("batch", activeBatchKey);
+        if (page > 1) params.set("page", String(page));
+        router.visit(`${base}${k.id}?${params.toString()}`);
     };
 
     const TabBtn = ({ value, label, sub }) => {
@@ -194,6 +208,7 @@ export default function DevelopmentIndex({ kaders = [] }) {
                 onClick={() => {
                     setGroup(value);
                     setBatchKey("");
+                    setPage(1);
                     syncUrl(value, "");
                 }}
                 className={`flex-1 rounded-xl border px-4 py-3 text-left transition ${
@@ -255,6 +270,7 @@ export default function DevelopmentIndex({ kaders = [] }) {
                                 value={activeBatchKey}
                                 onChange={(key) => {
                                     setBatchKey(key);
+                                    setPage(1);
                                     syncUrl(group, key);
                                 }}
                             />
@@ -268,6 +284,11 @@ export default function DevelopmentIndex({ kaders = [] }) {
                         data={rows}
                         actions={actions}
                         perPage={10}
+                        page={page}
+                        onPageChange={(p) => {
+                            setPage(p);
+                            syncUrl(group, activeBatchKey, p);
+                        }}
                         emptyMessage="Tidak ada kader pada batch ini."
                     />
                 )}

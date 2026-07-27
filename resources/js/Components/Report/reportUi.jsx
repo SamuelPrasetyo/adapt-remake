@@ -103,6 +103,21 @@ export function ReportHeader({ kader = {}, periodeLabel }) {
     );
 }
 
+// URL balik ke daftar kader (/report-new) yang mempertahankan filter kelompok/batch
+// beserta halaman tabelnya. Halaman detail dibuka dengan ?group=&batch=&page= dari
+// picker, jadi tinggal diteruskan; bila tidak ada (mis. link langsung dibagikan),
+// pakai fallbackGroup sesuai jenis halamannya.
+export function pickerBackHref(fallbackGroup = "system") {
+    const current = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams();
+    params.set("group", current.get("group") || fallbackGroup);
+    for (const key of ["batch", "page"]) {
+        const value = current.get(key);
+        if (value) params.set(key, value);
+    }
+    return `/report-new?${params.toString()}`;
+}
+
 // Tombol "Pilih kader lain" — hanya relevan di halaman Report (tab Kader Saya sudah
 // punya kader yang sedang dibuka, jadi backHref dibiarkan kosong di sana).
 export function BackToPickerLink({ href }) {
