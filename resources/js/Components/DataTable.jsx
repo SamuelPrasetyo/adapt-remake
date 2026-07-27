@@ -13,7 +13,10 @@
 //   headerActions?: ReactNode
 //   emptyMessage?:  string
 //   perPage?:       number (default 10, hanya berlaku saat tidak ada prop pagination)
-import React, { useMemo, useState, useEffect } from 'react';
+//   page?:          number — jadikan pagination client-side terkontrol (dipakai halaman
+//                   yang ingin menyimpan posisi halaman, mis. di query string)
+//   onPageChange?:  (page) => void — dipanggil tiap halaman client-side berubah
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Link } from '@inertiajs/react';
 
 function SortIcon({ active, dir }) {
@@ -103,13 +106,28 @@ export default function DataTable({
     searchPrefix,
     emptyMessage = 'Tidak ada data',
     perPage = 10,
+    page,
+    onPageChange,
 }) {
     const [query, setQuery] = useState('');
     const [sort, setSort] = useState({ key: null, dir: 'asc' });
-    const [localPage, setLocalPage] = useState(1);
+    const [localPage, setLocalPage] = useState(page ?? 1);
 
-    // Reset ke halaman 1 saat search/sort berubah
-    useEffect(() => { setLocalPage(1); }, [query, sort.key, sort.dir]);
+    // Halaman client-side boleh dikendalikan dari luar lewat prop `page` supaya
+    // posisinya bisa disimpan (mis. di query string) dan dipulihkan lagi.
+    const pageControlled = page != null;
+    const changePage = (p) => {
+        if (!pageControlled) setLocalPage(p);
+        if (onPageChange) onPageChange(p);
+    };
+
+    // Reset ke halaman 1 saat search/sort berubah — render pertama dilewati agar
+    // halaman yang dipulihkan dari luar tidak ikut ter-reset.
+    const mounted = useRef(false);
+    useEffect(() => {
+        if (!mounted.current) { mounted.current = true; return; }
+        changePage(1);
+    }, [query, sort.key, sort.dir]);
 
     const processed = useMemo(() => {
         let rows = [...data];
@@ -135,12 +153,15 @@ export default function DataTable({
 
     const useServerPagination = !!pagination;
 
+    const totalLocalPages = Math.max(1, Math.ceil(processed.length / perPage));
+    // Jaga-jaga bila halaman yang dipulihkan sudah di luar jangkauan data sekarang.
+    const currentPage = Math.min(Math.max(1, pageControlled ? page : localPage), totalLocalPages);
+
     // Rows yang ditampilkan (client-side slice jika tidak ada server pagination)
     const displayRows = useServerPagination
         ? processed
-        : processed.slice((localPage - 1) * perPage, localPage * perPage);
+        : processed.slice((currentPage - 1) * perPage, currentPage * perPage);
 
-    const totalLocalPages = Math.max(1, Math.ceil(processed.length / perPage));
     const showLocalPagination = !useServerPagination && processed.length > perPage;
 
     const handleSort = (col) => {
@@ -241,7 +262,7 @@ export default function DataTable({
                             displayRows.map((row, i) => {
                                 const globalIndex = useServerPagination
                                     ? ((pagination.from ?? 1) - 1 + i)
-                                    : ((localPage - 1) * perPage + i);
+                                    : ((currentPage - 1) * perPage + i);
                                 return (
                                     <tr key={row.id ?? row.id_batch ?? row.id_nilai ?? row.id_week ?? row.id_pertanyaan ?? row.nik ?? i} className="hover:bg-slate-50/70 transition">
                                         {columns.map((col) => (
@@ -296,11 +317,11 @@ export default function DataTable({
             {/* Client-side pagination */}
             {showLocalPagination && (
                 <LocalPagination
-                    page={localPage}
+                    page={currentPage}
                     totalPages={totalLocalPages}
                     total={processed.length}
                     perPage={perPage}
-                    onPageChange={setLocalPage}
+                    onPageChange={changePage}
                 />
             )}
         </div>

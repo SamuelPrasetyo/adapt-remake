@@ -32,9 +32,11 @@ function BigScore({ value }) {
  * Kartu report arsip Batch 1–2: skor akhir historis saja (tanpa grafik & breakdown FMC),
  * karena datanya tidak melalui sistem. Dipakai halaman Report Arsip & tab Report Kader Saya.
  *
- * @param backHref  URL tombol "Pilih kader lain"; kosongkan saat dipakai embedded.
+ * @param backHref      URL tombol "Pilih kader lain"; kosongkan saat dipakai embedded.
+ * @param trainingHref  URL rincian nilai in-class training; null bila batch kader belum
+ *                      punya dokumennya (baru Batch 2 — lihat App\Support\HasilTrainingMt).
  */
-export default function ArsipReportCard({ kader = {}, scores = {}, backHref = null }) {
+export default function ArsipReportCard({ kader = {}, scores = {}, backHref = null, trainingHref = null }) {
     const ojt = (scores.ojt ?? []).map((o) => ({ ...o, v: x10(o.score) }));
     const dev = (scores.dev ?? []).map((d) => ({ ...d, v: x10(d.score) }));
     const hasDev = dev.some((d) => d.v != null);
@@ -45,14 +47,28 @@ export default function ArsipReportCard({ kader = {}, scores = {}, backHref = nu
     return (
         <div className="space-y-4">
             {/* Bar aksi + penanda arsip */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-3">
-                <BackToPickerLink href={backHref} />
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-widest text-amber-700 bg-amber-100 rounded-lg">
-                    📁 Data Arsip · Batch {kader.batch_roman ?? scores.batch_no}
-                </span>
-                <span className="text-xs text-slate-400 sm:ml-auto">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-6 py-4 space-y-2.5">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <BackToPickerLink href={backHref} />
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-widest text-amber-700 bg-amber-100 rounded-lg self-start sm:self-auto">
+                        📁 Data Arsip · Batch {kader.batch_roman ?? scores.batch_no}
+                    </span>
+                    {trainingHref && (
+                        <a
+                            href={trainingHref}
+                            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition shrink-0 sm:ml-auto"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                    d="M9 17v-6h6v6m-9 4h12a2 2 0 002-2V7l-4-4H6a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            </svg>
+                            Detail Nilai Training
+                        </a>
+                    )}
+                </div>
+                <p className="text-xs text-slate-400">
                     Skor akhir historis — tanpa grafik & tanpa breakdown FMC (data tidak melalui sistem)
-                </span>
+                </p>
             </div>
 
             {/* REPORT CARD */}

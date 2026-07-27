@@ -21,6 +21,8 @@ Route::middleware(['can:isAdmin&Mentor'])->group(function () {
 
         // Report Arsip — Batch 1 & 2 (skor agregat, tanpa historikal sistem)
         Route::get('/report-arsip/{kader}', 'report_arsip_show')->name('report.arsip.show');
+        // Rincian nilai in-class training dari dokumen arsip (baru tersedia untuk Batch 2)
+        Route::get('/report-arsip/{kader}/hasil-training', 'report_arsip_training')->name('report.arsip.training');
 
         // Import Arsip Batch 1 & 2 (upload Excel) — Admin MAI
         Route::get('/report-import-arsip', 'import_arsip_index')->name('report.arsip.import.index');
