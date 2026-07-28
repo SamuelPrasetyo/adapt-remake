@@ -360,7 +360,7 @@ function BatchDropdown({ batches, value, onChange }) {
     );
 }
 
-function KaderCard({ kader }) {
+function KaderCard({ kader, filterQuery = "" }) {
     const initials = (kader.nama_kader || "?")
         .split(" ")
         .slice(0, 2)
@@ -374,7 +374,7 @@ function KaderCard({ kader }) {
 
     return (
         <Link
-            href={`/kader-saya/${kader.k_id}`}
+            href={`/kader-saya/${kader.k_id}${filterQuery}`}
             className="flex flex-col bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 hover:shadow-md hover:ring-blue-300 transition-all group"
         >
             <div className="p-5 flex-1">
@@ -505,6 +505,18 @@ export default function KaderSayaIndex({
     const handleMentorFilter = (value) => navigateFilter({ mentor_id: value });
     const handleBatchFilter = (value) => navigateFilter({ batch_id: value });
 
+    // Filter aktif diteruskan ke URL detail supaya tombol "Kembali ke Daftar
+    // Kader" bisa mengembalikan daftar ke batch & mentor yang sama.
+    const filterQuery = useMemo(() => {
+        const params = new URLSearchParams();
+        if (mentorFilter && mentorFilter !== "all")
+            params.set("mentor_id", mentorFilter);
+        if (batchFilter && batchFilter !== "all")
+            params.set("batch_id", batchFilter);
+        const qs = params.toString();
+        return qs ? `?${qs}` : "";
+    }, [mentorFilter, batchFilter]);
+
     const filtered = useMemo(() => {
         if (!search.trim()) return kaders;
         const q = search.toLowerCase();
@@ -579,7 +591,11 @@ export default function KaderSayaIndex({
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {filtered.map((k) => (
-                        <KaderCard key={k.k_id} kader={k} />
+                        <KaderCard
+                            key={k.k_id}
+                            kader={k}
+                            filterQuery={filterQuery}
+                        />
                     ))}
                 </div>
             )}

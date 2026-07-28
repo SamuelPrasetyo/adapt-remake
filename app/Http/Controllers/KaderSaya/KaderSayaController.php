@@ -59,7 +59,7 @@ class KaderSayaController extends Controller
         $mentors = $mentorsQuery->get();
 
         // Filter batch: default ke batch yang sedang berjalan; 'all' = semua batch.
-        $batches      = Batch::orderByDesc('tanggal_mulai')->orderByDesc('id_batch')->get();
+        $batches      = Batch::newestFirst()->get();
         $defaultBatch = optional(Batch::current())->id_batch;
         $batchFilter  = $request->query('batch_id', $defaultBatch);
         $idBatch      = ($batchFilter === 'all') ? null : $batchFilter;

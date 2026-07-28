@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "@inertiajs/react";
 import AppLayout from "@/Layouts/AppLayout";
 import KaderAvatar from "@/Components/KaderAvatar";
@@ -147,6 +147,21 @@ export default function KaderSayaDetail({
         window.location.hash = id;
     };
 
+    // Kartu di daftar kader membawa ?mentor_id=&batch_id= ke sini, jadi tombol
+    // kembali tinggal meneruskannya supaya filter daftar tidak ikut ter-reset.
+    // Bila detail dibuka lewat link langsung, jatuh ke /kader-saya polos.
+    const backHref = useMemo(() => {
+        if (typeof window === "undefined") return "/kader-saya";
+        const current = new URLSearchParams(window.location.search);
+        const params = new URLSearchParams();
+        for (const key of ["batch_id", "mentor_id"]) {
+            const value = current.get(key);
+            if (value) params.set(key, value);
+        }
+        const qs = params.toString();
+        return qs ? `/kader-saya?${qs}` : "/kader-saya";
+    }, []);
+
     const meta     = STATUS_META[status] || STATUS_META.on_track;
     const initials = (kader?.nama || "?").split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() || "").join("");
     const doneModuls = faseGroups.reduce((acc, fg) => acc + fg.done, 0);
@@ -160,7 +175,7 @@ export default function KaderSayaDetail({
             {/* Back button — hanya untuk Admin/Mentor (Kader tidak punya daftar kader) */}
             {!kaderView && (
                 <div className="mb-5">
-                    <Link href="/kader-saya"
+                    <Link href={backHref}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
