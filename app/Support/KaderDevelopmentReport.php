@@ -113,6 +113,9 @@ class KaderDevelopmentReport
                 'status'   => $arsip->status,
                 'batch_no' => $arsip->batch_no,
             ],
+            // Grafik Learning Growth Section A — dari dokumen hasil training batch arsip.
+            // null bila batchnya belum punya dokumen / kadernya tak tercatat di sana.
+            'training' => HasilTrainingMt::chartFor($kader),
         ];
     }
 

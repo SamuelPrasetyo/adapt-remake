@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "@inertiajs/react";
 import AppLayout from "@/Layouts/AppLayout";
 import KaderAvatar from "@/Components/KaderAvatar";
@@ -130,6 +130,8 @@ export default function KaderSayaDetail({
     // Summary Monthly Feedback = tab khusus Admin MAI; Perjanjian disembunyikan dari Kader.
     // Job Applicant = khusus Admin MAI 021 (backend juga tidak mengirim datanya ke role lain).
     // Report = Admin & Mentor (backend mengirim null untuk Kader, sejalan dengan menu Report).
+    // Kader batch arsip (Batch 1-2): backend mengirim canViewKandidat & canSummarizeMonthly
+    // false, jadi tab yang tersisa persis Overview, Feedback, Penilaian OJT, Perjanjian, Report.
     const visibleTabs = TABS.filter((t) => {
         if (kaderView && t.id === "perjanjian") return false;
         if (t.id === "kandidat" && !canViewKandidat) return false;
@@ -147,6 +149,21 @@ export default function KaderSayaDetail({
         window.location.hash = id;
     };
 
+    // Kartu di daftar kader membawa ?mentor_id=&batch_id= ke sini, jadi tombol
+    // kembali tinggal meneruskannya supaya filter daftar tidak ikut ter-reset.
+    // Bila detail dibuka lewat link langsung, jatuh ke /kader-saya polos.
+    const backHref = useMemo(() => {
+        if (typeof window === "undefined") return "/kader-saya";
+        const current = new URLSearchParams(window.location.search);
+        const params = new URLSearchParams();
+        for (const key of ["batch_id", "mentor_id"]) {
+            const value = current.get(key);
+            if (value) params.set(key, value);
+        }
+        const qs = params.toString();
+        return qs ? `/kader-saya?${qs}` : "/kader-saya";
+    }, []);
+
     const meta     = STATUS_META[status] || STATUS_META.on_track;
     const initials = (kader?.nama || "?").split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() || "").join("");
     const doneModuls = faseGroups.reduce((acc, fg) => acc + fg.done, 0);
@@ -160,7 +177,7 @@ export default function KaderSayaDetail({
             {/* Back button — hanya untuk Admin/Mentor (Kader tidak punya daftar kader) */}
             {!kaderView && (
                 <div className="mb-5">
-                    <Link href="/kader-saya"
+                    <Link href={backHref}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
@@ -188,17 +205,35 @@ export default function KaderSayaDetail({
                                 {meta.label}
                             </span>
                         </div>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-500">
-                            {kader?.divisi_name && <span>{kader.divisi_name}</span>}
-                            {kader?.batch_name  && <span>Batch {kader.batch_name}{kader.batch_year ? " " + kader.batch_year : ""}</span>}
+                        {/* Identitas: BU sebagai badge, sisanya chip abu-abu agar tidak
+                            terbaca sebagai satu kalimat panjang. */}
+                        <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                            {kader?.bu_name && (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 text-xs font-semibold ring-1 ring-blue-100">
+                                    {/* <span className="text-[10px] uppercase tracking-wide text-blue-400">BU</span> */}
+                                    {kader.bu_name}
+                                </span>
+                            )}
+                            {kader?.divisi_name && (
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 text-xs font-medium">
+                                    {kader.divisi_name}
+                                </span>
+                            )}
+                            {kader?.batch_name && (
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 text-xs font-medium">
+                                    Batch {kader.batch_name}{kader.batch_year ? " " + kader.batch_year : ""}
+                                </span>
+                            )}
                         </div>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 mt-1">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 mt-2.5">
                             {kader?.mentor_name && (
                                 <span>Mentor: <span className="font-medium text-slate-700">{kader.mentor_name}</span></span>
                             )}
+                            {kader?.mentor_name && totalWeeks > 0 && <span className="text-slate-300">•</span>}
                             {totalWeeks > 0 && (
                                 <span>Week: <span className="font-medium text-slate-700">{currentWeek} / {totalWeeks}</span></span>
                             )}
+                            {totalWeeks > 0 && totalModuls > 0 && <span className="text-slate-300">•</span>}
                             {totalModuls > 0 && (
                                 <span>Modul: <span className="font-medium text-slate-700">{doneModuls}/{totalModuls} selesai</span></span>
                             )}

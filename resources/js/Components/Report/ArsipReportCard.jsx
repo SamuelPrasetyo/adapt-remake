@@ -1,3 +1,4 @@
+import LearningGrowthChart from "./LearningGrowthChart";
 import { KKM, band, fmt, SectionTitle, ReportHeader, BackToPickerLink } from "./reportUi";
 
 const x10 = (v) => (v == null ? null : Number(v) * 10); // 0–10 → 0–100
@@ -34,9 +35,17 @@ function BigScore({ value }) {
  *
  * @param backHref      URL tombol "Pilih kader lain"; kosongkan saat dipakai embedded.
  * @param trainingHref  URL rincian nilai in-class training; null bila batch kader belum
- *                      punya dokumennya (baru Batch 2 — lihat App\Support\HasilTrainingMt).
+ *                      punya dokumennya (lihat App\Support\HasilTrainingMt).
+ * @param training      Titik grafik Learning Growth Section A ({modul, nilai, kkm, avg, rank,
+ *                      total}); null bila kadernya tak tercatat di dokumen training.
  */
-export default function ArsipReportCard({ kader = {}, scores = {}, backHref = null, trainingHref = null }) {
+export default function ArsipReportCard({
+    kader = {},
+    scores = {},
+    backHref = null,
+    trainingHref = null,
+    training = null,
+}) {
     const ojt = (scores.ojt ?? []).map((o) => ({ ...o, v: x10(o.score) }));
     const dev = (scores.dev ?? []).map((d) => ({ ...d, v: x10(d.score) }));
     const hasDev = dev.some((d) => d.v != null);
@@ -46,13 +55,11 @@ export default function ArsipReportCard({ kader = {}, scores = {}, backHref = nu
 
     return (
         <div className="space-y-4">
-            {/* Bar aksi + penanda arsip */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-6 py-4 space-y-2.5">
+            {/* Bar aksi (penanda arsip disembunyikan) */}
+            {(backHref || trainingHref) && (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-6 py-4">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                     <BackToPickerLink href={backHref} />
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-widest text-amber-700 bg-amber-100 rounded-lg self-start sm:self-auto">
-                        📁 Data Arsip · Batch {kader.batch_roman ?? scores.batch_no}
-                    </span>
                     {trainingHref && (
                         <a
                             href={trainingHref}
@@ -60,16 +67,14 @@ export default function ArsipReportCard({ kader = {}, scores = {}, backHref = nu
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                    d="M9 17v-6h6v6m-9 4h12a2 2 0 002-2V7l-4-4H6a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                    d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
                             </svg>
-                            Detail Nilai Training
+                            Detail Nilai MT
                         </a>
                     )}
                 </div>
-                <p className="text-xs text-slate-400">
-                    Skor akhir historis — tanpa grafik & tanpa breakdown FMC (data tidak melalui sistem)
-                </p>
             </div>
+            )}
 
             {/* REPORT CARD */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -83,18 +88,49 @@ export default function ArsipReportCard({ kader = {}, scores = {}, backHref = nu
 
                 {/* Body: A / B / C (statis, tanpa grafik) */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
-                    {/* A · LEARNING GROWTH */}
+                    {/* A · LEARNING GROWTH — bergrafik seperti report sistem bila batchnya punya
+                        dokumen hasil training; kalau tidak, jatuh balik ke skor akhir saja. */}
                     <div className="p-5">
                         <SectionTitle code="A">Learning Growth</SectionTitle>
                         <BigScore value={scores.learning_growth} />
-                        <div className="space-y-1.5 text-sm">
+                        {training && (
+                            <LearningGrowthChart
+                                modul={training.modul}
+                                nilai={training.nilai}
+                                kkm={training.kkm ?? KKM}
+                                height={150}
+                            />
+                        )}
+                        <div className={`space-y-1.5 text-sm ${training ? "mt-3" : ""}`}>
+                            {training && (
+                                <>
+                                    <div className="flex items-center justify-between">
+                                        <span className="flex items-center gap-2 text-slate-600">
+                                            <span className="w-4 h-0.5 bg-blue-500 inline-block" /> Nilai training (avg)
+                                        </span>
+                                        <span className="font-semibold text-slate-800">{fmt(training.avg)}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-slate-600">Peringkat</span>
+                                        <span className="font-semibold text-slate-800">
+                                            #{training.rank} <span className="font-normal text-slate-400">/ {training.total}</span>
+                                        </span>
+                                    </div>
+                                </>
+                            )}
                             <div className="flex items-center justify-between">
                                 <span className="flex items-center gap-2 text-slate-600">
                                     <span className="w-4 border-t border-dashed border-orange-500 inline-block" /> KKM
                                 </span>
-                                <span className="font-semibold text-slate-800">{KKM}</span>
+                                <span className="font-semibold text-slate-800">{training?.kkm ?? KKM}</span>
                             </div>
-                            <p className="text-[11px] text-slate-400 pt-1">Skor akhir rata-rata Learning Growth (arsip).</p>
+                            <p className="text-[11px] text-slate-400 pt-1">
+                                {training
+                                    ? `M1–M${training.modul.length} = modul in-class berurutan, ${training.modul[0]?.label} → ${
+                                          training.modul[training.modul.length - 1]?.label
+                                      }. Nama tiap modul muncul saat titiknya di-hover.`
+                                    : "Skor akhir rata-rata Learning Growth (arsip)."}
+                            </p>
                         </div>
                     </div>
 

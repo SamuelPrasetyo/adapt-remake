@@ -59,7 +59,7 @@ class KaderSayaController extends Controller
         $mentors = $mentorsQuery->get();
 
         // Filter batch: default ke batch yang sedang berjalan; 'all' = semua batch.
-        $batches      = Batch::orderByDesc('tanggal_mulai')->orderByDesc('id_batch')->get();
+        $batches      = Batch::newestFirst()->get();
         $defaultBatch = optional(Batch::current())->id_batch;
         $batchFilter  = $request->query('batch_id', $defaultBatch);
         $idBatch      = ($batchFilter === 'all') ? null : $batchFilter;
@@ -119,6 +119,7 @@ class KaderSayaController extends Controller
         $kader = Kader::select(
                 'kader.*',
                 'company.company_shortname as bu',
+                'company.company_name as bu_name',
                 'divisis.nama as divisi_name',
                 'departemens.nama as dept_name',
                 'batch.nama_batch as batch_name',
@@ -132,6 +133,12 @@ class KaderSayaController extends Controller
             ->first();
 
         if (!$kader) abort(404);
+
+        // Batch 1-2 = data arsip (diimpor dari Excel, tidak melewati sistem). Kadernya tidak
+        // pernah lewat portal rekrutmen Career MAI dan tidak punya Monthly Feedback di sistem,
+        // jadi tab "Job Applicant" & "Summary Monthly Feedback" tidak relevan — hanya menyisakan
+        // Overview, Feedback, Penilaian OJT, Perjanjian Kerja, dan Report.
+        $isArsipBatch = $kader->batch_name !== null && (int) $kader->batch_name <= 2;
 
         // Semua mentor aktif kader ini (bisa lebih dari satu).
         $assignedMentors = ListKaderPerMentor::join('mentor', 'list_kader_per_mentor.mentor_id', '=', 'mentor.id')
@@ -267,9 +274,11 @@ class KaderSayaController extends Controller
         // pertamanya (angka_week terkecil) sebagai id_week penyimpanan jawaban.
         [$monthlyPeriods, $monthlyFeedbackList] = $this->buildMonthlyFeedback($kader, $today);
 
-        // Summary Monthly Feedback — hanya Admin MAI (021) yang boleh melihat/menulis.
+        // Summary Monthly Feedback — hanya Admin MAI (021) yang boleh melihat/menulis, dan
+        // tidak untuk batch arsip (tab-nya disembunyikan; batch 1-2 tak punya Monthly Feedback).
         // Dikirim sebagai map "tahun-bulan" => summary agar tiap kartu Riwayat bisa prefill.
-        $monthlyFeedbackSummaries = $isAdmin021
+        $canSummarizeMonthly      = $isAdmin021 && !$isArsipBatch;
+        $monthlyFeedbackSummaries = $canSummarizeMonthly
             ? MonthlyFeedbackSummary::where('kader_id', $kader->id)
                 ->get(['bulan', 'tahun', 'summary'])
                 ->keyBy(fn ($s) => $s->tahun . '-' . $s->bulan)
@@ -289,13 +298,14 @@ class KaderSayaController extends Controller
         // Data kandidat (portal rekrutmen Career MAI), ditautkan via kader.nik_ktp = kandidat.ktp.
         // Dibungkus try/catch: bila DB career_mai tak terjangkau, detail kader tetap tampil.
         //
-        // KHUSUS Admin MAI 021. Data ini berisi informasi pribadi (KTP, alamat, ekspektasi
-        // gaji, kontak keluarga, hasil asesmen) — menyembunyikan tab di frontend saja TIDAK
-        // cukup, karena props Inertia terbaca dari view-source. Jadi jangan dikirim sama
-        // sekali ke Kader/Mentor. Sekaligus menghemat query ke career_mai bagi role lain.
+        // KHUSUS Admin MAI 021, dan bukan kader batch arsip. Data ini berisi informasi pribadi
+        // (KTP, alamat, ekspektasi gaji, kontak keluarga, hasil asesmen) — menyembunyikan tab di
+        // frontend saja TIDAK cukup, karena props Inertia terbaca dari view-source. Jadi jangan
+        // dikirim sama sekali ke Kader/Mentor. Sekaligus menghemat query ke career_mai.
+        $canViewKandidat = $isAdmin021 && !$isArsipBatch;
         $kandidat = null;
         $kandidatError = null;
-        if ($isAdmin021 && !empty($kader->nik_ktp)) {
+        if ($canViewKandidat && !empty($kader->nik_ktp)) {
             try {
                 $kandidat = KandidatData::forKtp($kader->nik_ktp);
             } catch (\Throwable $e) {
@@ -304,9 +314,9 @@ class KaderSayaController extends Controller
             }
         }
 
-        // nik_ktp ikut terbawa select kader.* — sembunyikan dari role selain Admin MAI 021
-        // agar nomor KTP tidak ikut terserialisasi ke props.
-        if (!$isAdmin021) {
+        // nik_ktp ikut terbawa select kader.* — sembunyikan dari siapa pun yang tabnya tidak
+        // terbuka agar nomor KTP tidak ikut terserialisasi ke props.
+        if (!$canViewKandidat) {
             $kader->makeHidden('nik_ktp');
         }
 
@@ -332,7 +342,7 @@ class KaderSayaController extends Controller
             'monthlyPeriods'     => $monthlyPeriods,
             'monthlyFeedbackList'=> $monthlyFeedbackList,
             'monthlyFeedbackSummaries' => $monthlyFeedbackSummaries,
-            'canSummarizeMonthly'      => $isAdmin021,
+            'canSummarizeMonthly'      => $canSummarizeMonthly,
             'mentorName'         => $user->name,
             'perjanjianKerja'         => $perjanjianKerja,
             'templatePerjanjianKerja' => ($isAdmin021 || $isMentor)
@@ -351,10 +361,10 @@ class KaderSayaController extends Controller
             'kaderView'          => $isKader,
             // Upload Weekly Feedback hanya untuk Kader yang melihat dashboard-nya sendiri.
             'weeklyFeedback'     => $isKader ? WeeklyFeedbackController::dataFor($user) : null,
-            // Data kandidat rekrutmen (tab Job Applicant) — hanya Admin MAI 021.
-            'canViewKandidat'    => $isAdmin021,
+            // Data kandidat rekrutmen (tab Job Applicant) — hanya Admin MAI 021, non-arsip.
+            'canViewKandidat'    => $canViewKandidat,
             'kandidat'           => $kandidat,
-            'nikKtp'             => $isAdmin021 ? $kader->nik_ktp : null,
+            'nikKtp'             => $canViewKandidat ? $kader->nik_ktp : null,
             'kandidatError'      => $kandidatError,
             // Tab Report — null bila role Kader atau kader tanpa data report.
             'developmentReport'  => $developmentReport,

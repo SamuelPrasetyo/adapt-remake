@@ -7,8 +7,13 @@
         "keterangan": "Nilai Management Trainee Batch 2.",
         "skala": { "min": 0, "max": 100 },
         "kkm": 70,
+        "label_avg": "Avg per Kader",
         "avg_keseluruhan": 85.2
     },
+    "identitas": [
+        { "key": "bu", "label": "BU" },
+        { "key": "area", "label": "Area" }
+    ],
     "modul": [
         { "key": "com_skill", "label": "Com Skill" },
         { "key": "agile_leadership", "label": "Agile Leadership" },

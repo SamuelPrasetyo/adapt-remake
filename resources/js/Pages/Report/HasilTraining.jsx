@@ -23,6 +23,18 @@ const TH = "px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-s
 const TD = "px-3 py-2.5 text-sm tabular-nums text-center whitespace-nowrap";
 
 /**
+ * Kolom Rank & Nama dibekukan saat tabel di-scroll ke samping.
+ *
+ * PENTING: lebar kolom Rank wajib dipatok lewat **min-width** (bukan cuma `w-`) dan harus sama
+ * persis dengan offset sticky kolom Nama (4rem = left-16). Kalau hanya pakai `w-`, browser
+ * boleh menyusutkan kolom itu ke min-content begitu tabel melebihi layar — offset Nama jadi
+ * lebih besar dari lebar aslinya dan muncul celah tempat kolom berikutnya "tembus" di antaranya.
+ * Ganti lebar kolom ini = ganti offset kolom Nama juga.
+ */
+const STICKY_RANK = "sticky left-0 w-16 min-w-[4rem]";
+const STICKY_NAMA = "sticky left-16 border-r border-slate-200";
+
+/**
  * Ukuran kartu kompetensi di ringkasan kader — ATUR DI SINI kalau mau diperbesar/perkecil.
  * Nilainya kelas Tailwind biasa, jadi cukup ganti angkanya (mis. value: "text-3xl").
  */
@@ -32,6 +44,21 @@ const CHIP = {
     bar: "h-2",         // tebal bar progres
     pad: "px-4 py-3",   // padding dalam kartu
     cols: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5", // jumlah kartu per baris
+};
+
+/**
+ * Judul kolom tabel — ATUR DI SINI kalau mau ganti gaya headernya.
+ *
+ * SATU BARIS (aktif)  : judul memanjang ke samping, tabel jadi lebih lebar → scroll
+ *                       horizontalnya lebih panjang, tapi header enak dibaca sekali lihat.
+ * BEBERAPA BARIS      : tukar dengan baris yang dikomentari di bawahnya — judul boleh turun,
+ *                       tabel lebih ramping & muat lebih banyak kolom tanpa scroll.
+ */
+const TABEL = {
+    headerModul: "whitespace-nowrap",
+    headerAvg: "whitespace-nowrap",
+    // headerModul: "min-w-[5.5rem] max-w-[7rem] whitespace-normal",
+    // headerAvg: "min-w-[6rem] whitespace-normal",
 };
 
 /** Ukuran identitas kader di ringkasan — ATUR DI SINI, sama seperti CHIP di atas. */
@@ -62,8 +89,17 @@ function ModulChip({ label, value, kkm }) {
  * Menampilkan dokumen sumbernya utuh — satu tabel seluruh peserta batch, dengan baris
  * kader yang sedang dibuka disorot. Props disusun App\Support\HasilTrainingMt.
  */
-export default function HasilTraining({ meta = {}, modul = [], peserta = [], ringkas = {}, focusNo = null, kader = {} }) {
+export default function HasilTraining({
+    meta = {},
+    identitas = [],
+    modul = [],
+    peserta = [],
+    ringkas = {},
+    focusNo = null,
+    kader = {},
+}) {
     const kkm = meta.kkm ?? 70;
+    const labelAvg = meta.label_avg ?? "Avg per Kader";
     const batchLabel = meta.batch_roman ?? meta.batch_no ?? kader.batch_name;
     const focus = peserta.find((p) => p.no === focusNo) ?? null;
     const focusBand = band(focus?.avg ?? null);
@@ -114,12 +150,21 @@ export default function HasilTraining({ meta = {}, modul = [], peserta = [], rin
                                 <div className="min-w-0">
                                     <div className="text-xs uppercase tracking-wide text-slate-400">Kader dibuka</div>
                                     <div className={`${FOCUS.nama} font-bold text-slate-800 truncate mt-0.5`}>{focus.nama}</div>
-                                    <div className="text-sm text-slate-500 mt-1">
-                                        {[focus.bu, focus.area].filter(Boolean).join(" · ")}
-                                        {focus.nama_db && focus.nama_db !== focus.nama && (
-                                            <span className="text-slate-400"> · tercatat di sistem sebagai “{focus.nama_db}”</span>
-                                        )}
+                                    {/* Kolom identitas ikut dokumennya: BU/Area (Batch 2) atau
+                                        BU/Mentor/Jabatan (Batch 1). */}
+                                    <div className="flex flex-wrap gap-x-5 gap-y-1 mt-1.5 text-sm">
+                                        {identitas.map((c) => (
+                                            <span key={c.key}>
+                                                <span className="text-slate-400">{c.label}: </span>
+                                                <span className="text-slate-600">{focus[c.key] || "—"}</span>
+                                            </span>
+                                        ))}
                                     </div>
+                                    {focus.nama_db && focus.nama_db !== focus.nama && (
+                                        <div className="text-xs text-slate-400 mt-1">
+                                            Tercatat di sistem sebagai “{focus.nama_db}”
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="sm:ml-auto flex items-center gap-6 shrink-0">
                                     <div className="text-center">
@@ -130,7 +175,7 @@ export default function HasilTraining({ meta = {}, modul = [], peserta = [], rin
                                         </div>
                                     </div>
                                     <div className="rounded-xl border border-blue-200 bg-blue-50/50 px-5 py-3 text-center">
-                                        <div className="text-[11px] uppercase tracking-wide text-blue-600">Avg per Kader</div>
+                                        <div className="text-[11px] uppercase tracking-wide text-blue-600">{labelAvg}</div>
                                         <div className="text-3xl font-bold text-blue-700 mt-0.5 tabular-nums">{avgFmt(focus.avg)}</div>
                                         <span className={`inline-block mt-1 text-[11px] font-medium px-2 py-0.5 rounded ${focusBand.cls}`}>
                                             {focusBand.label}
@@ -153,13 +198,16 @@ export default function HasilTraining({ meta = {}, modul = [], peserta = [], rin
                     )}
                 </div>
 
+                {/* Grafik Learning Growth-nya TIDAK diulang di sini — sudah ada di Section A
+                    kartu report arsip. Halaman ini fokus ke rincian angka & tabel dokumennya. */}
+
                 {/* Tabel dokumen sumber — seluruh peserta batch */}
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                     <div className="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center gap-2">
                         <div>
                             <h3 className="text-sm font-semibold text-slate-800">Tabel Nilai Training · Batch {batchLabel}</h3>
                             <p className="text-xs text-slate-400 mt-0.5">
-                                Skala 0–100 · KKM {kkm} · Avg per Kader = rata-rata {modul.length} modul.
+                                Diurutkan dari nilai tertinggi · Skala 0–100 · KKM {kkm} · {labelAvg} = rata-rata {modul.length} modul.
                             </p>
                         </div>
                         <div className="sm:ml-auto text-xs text-slate-500">
@@ -171,19 +219,22 @@ export default function HasilTraining({ meta = {}, modul = [], peserta = [], rin
                         <table className="min-w-full border-collapse">
                             <thead className="bg-slate-50 border-b border-slate-200">
                                 <tr>
-                                    <th className={`${TH} sticky left-0 z-20 bg-slate-50 text-center w-12`}>No</th>
-                                    <th className={`${TH} sticky left-12 z-20 bg-slate-50 text-left min-w-[15rem] border-r border-slate-200`}>
+                                    <th className={`${TH} ${STICKY_RANK} z-20 bg-slate-50 text-center`}>Rank</th>
+                                    <th className={`${TH} ${STICKY_NAMA} z-20 bg-slate-50 text-left min-w-[15rem]`}>
                                         Nama
                                     </th>
-                                    <th className={`${TH} text-left`}>BU</th>
-                                    <th className={`${TH} text-left`}>Area</th>
+                                    {identitas.map((c) => (
+                                        <th key={c.key} className={`${TH} text-left ${TABEL.headerModul}`}>
+                                            {c.label}
+                                        </th>
+                                    ))}
                                     {modul.map((m) => (
-                                        <th key={m.key} className={`${TH} text-center min-w-[5.5rem] max-w-[7rem] whitespace-normal`}>
+                                        <th key={m.key} className={`${TH} text-center ${TABEL.headerModul}`}>
                                             {m.label}
                                         </th>
                                     ))}
-                                    <th className={`${TH} text-center bg-blue-50 text-blue-700 min-w-[6rem] border-l border-blue-100`}>
-                                        Avg per Kader
+                                    <th className={`${TH} text-center bg-blue-50 text-blue-700 border-l border-blue-100 ${TABEL.headerAvg}`}>
+                                        {labelAvg}
                                     </th>
                                 </tr>
                             </thead>
@@ -193,11 +244,11 @@ export default function HasilTraining({ meta = {}, modul = [], peserta = [], rin
                                     const rowBg = isFocus ? "bg-blue-50" : "bg-white";
                                     return (
                                         <tr key={p.no} className={`${rowBg} ${isFocus ? "" : "hover:bg-slate-50"} group`}>
-                                            <td className={`${TD} sticky left-0 z-10 ${rowBg} ${isFocus ? "" : "group-hover:bg-slate-50"} text-slate-400`}>
-                                                {p.no}
+                                            <td className={`${TD} ${STICKY_RANK} z-10 ${rowBg} ${isFocus ? "" : "group-hover:bg-slate-50"} ${isFocus ? "font-bold text-blue-800" : "text-slate-400"}`}>
+                                                {p.rank}
                                             </td>
                                             <td
-                                                className={`px-3 py-2.5 text-sm text-left whitespace-nowrap sticky left-12 z-10 border-r border-slate-200 ${rowBg} ${
+                                                className={`px-3 py-2.5 text-sm text-left whitespace-nowrap ${STICKY_NAMA} z-10 ${rowBg} ${
                                                     isFocus ? "" : "group-hover:bg-slate-50"
                                                 }`}
                                             >
@@ -208,8 +259,11 @@ export default function HasilTraining({ meta = {}, modul = [], peserta = [], rin
                                                     </span>
                                                 )}
                                             </td>
-                                            <td className="px-3 py-2.5 text-sm text-slate-600 whitespace-nowrap">{p.bu ?? "—"}</td>
-                                            <td className="px-3 py-2.5 text-sm text-slate-600 whitespace-nowrap">{p.area ?? "—"}</td>
+                                            {identitas.map((c) => (
+                                                <td key={c.key} className="px-3 py-2.5 text-sm text-slate-600 whitespace-nowrap">
+                                                    {p[c.key] || "—"}
+                                                </td>
+                                            ))}
                                             {modul.map((m) => {
                                                 const v = p.nilai?.[m.key] ?? null;
                                                 return (
@@ -227,12 +281,13 @@ export default function HasilTraining({ meta = {}, modul = [], peserta = [], rin
                             </tbody>
                             <tfoot className="bg-slate-50 border-t-2 border-slate-200">
                                 <tr>
-                                    <td className={`${TD} sticky left-0 z-10 bg-slate-50`} />
-                                    <td className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap sticky left-12 z-10 bg-slate-50 border-r border-slate-200">
+                                    <td className={`${TD} ${STICKY_RANK} z-10 bg-slate-50`} />
+                                    <td className={`px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap ${STICKY_NAMA} z-10 bg-slate-50`}>
                                         Rata-rata Kelas
                                     </td>
-                                    <td className="px-3 py-2.5" />
-                                    <td className="px-3 py-2.5" />
+                                    {identitas.map((c) => (
+                                        <td key={c.key} className="px-3 py-2.5" />
+                                    ))}
                                     {modul.map((m) => (
                                         <td key={m.key} className={`${TD} font-semibold text-slate-600`}>
                                             {avgFmt(perModul[m.key] ?? null)}
