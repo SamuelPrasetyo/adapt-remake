@@ -11,13 +11,18 @@ use App\Models\Kader;
  * hanya tersedia sebagai dokumen. Dokumen itu diketik ulang menjadi file JSON statis di
  * resources/data/ dan dibaca apa adanya oleh helper ini (read-only, tidak pernah ditulis).
  *
- * Saat ini baru Batch 2 yang punya file; Batch 1 menyusul — cukup tambahkan filenya ke
- * self::FILES agar tombol & halamannya otomatis aktif untuk batch tersebut.
+ * Menambah batch baru = taruh filenya di resources/data lalu daftarkan di self::FILES;
+ * tombol & halamannya otomatis aktif untuk batch tersebut.
+ *
+ * Bentuk kolom tiap dokumen boleh beda — file mendeklarasikan sendiri kolom identitasnya
+ * ("identitas": BU/Area untuk Batch 2, BU/Mentor/Jabatan untuk Batch 1) dan judul kolom
+ * rata-ratanya (meta.label_avg), jadi frontend tidak perlu tahu batch mana yang dibuka.
  */
 class HasilTrainingMt
 {
     /** batch_no → nama file di resources/data. Batch yang tak terdaftar = belum ada datanya. */
     private const FILES = [
+        1 => 'hasil_training_mt_batch_1.json',
         2 => 'hasil_training_mt_batch_2.json',
     ];
 
@@ -44,6 +49,64 @@ class HasilTrainingMt
      * @return array|null null bila batch kader belum punya dokumen hasil training.
      */
     public static function forKader($kader): ?array
+    {
+        $ctx = self::resolve($kader);
+        if (!$ctx) return null;
+
+        return [
+            'meta'      => $ctx['data']['meta'] ?? [],
+            'identitas' => $ctx['data']['identitas'] ?? [],
+            'modul'     => $ctx['data']['modul'] ?? [],
+            'peserta'   => $ctx['peserta'],
+            'ringkas'   => self::ringkas($ctx['data']['modul'] ?? [], $ctx['peserta']),
+            'focusNo'   => $ctx['focusNo'],
+            'kader'     => [
+                'id'         => $ctx['row']->id,
+                'nama'       => $ctx['row']->nama,
+                'bu'         => $ctx['row']->bu,
+                'batch_name' => $ctx['row']->batch_name,
+                'batch_year' => $ctx['row']->batch_year,
+            ],
+        ];
+    }
+
+    /**
+     * Data grafik Learning Growth satu kader — dipakai Section A kartu report arsip supaya
+     * batch arsip punya grafik seperti report sistem (batch 3+).
+     *
+     * @return array|null null bila batchnya belum punya dokumen ATAU kadernya tak tercatat
+     *                    di dokumen itu (kartu tetap tampil, hanya tanpa grafik).
+     */
+    public static function chartFor($kader): ?array
+    {
+        $ctx = self::resolve($kader);
+        if (!$ctx || $ctx['focusNo'] === null) return null;
+
+        $focus = null;
+        foreach ($ctx['peserta'] as $p) {
+            if ($p['no'] === $ctx['focusNo']) { $focus = $p; break; }
+        }
+        if (!$focus) return null;
+
+        return [
+            'modul' => $ctx['data']['modul'] ?? [],
+            'nilai' => $focus['nilai'] ?? [],
+            'avg'   => $focus['avg'] ?? null,
+            'kkm'   => $ctx['data']['meta']['kkm'] ?? 70,
+            'rank'  => $focus['rank'] ?? null,
+            'total' => count($ctx['peserta']),
+        ];
+    }
+
+    // ── Internal ─────────────────────────────────────────────────────────────
+
+    /**
+     * Dokumen batch kader + daftar pesertanya (sudah berperingkat) + nomor baris kadernya.
+     * Dipakai bersama forKader() & chartFor() supaya aturan pencocokannya cuma ada satu.
+     *
+     * @return array|null {row, data, peserta, focusNo}; null bila batch belum punya dokumen.
+     */
+    private static function resolve($kader): ?array
     {
         $row = Kader::select(
                 'kader.id',
@@ -79,23 +142,8 @@ class HasilTrainingMt
             }
         }
 
-        return [
-            'meta'    => $data['meta'] ?? [],
-            'modul'   => $data['modul'] ?? [],
-            'peserta' => $peserta,
-            'ringkas' => self::ringkas($data['modul'] ?? [], $peserta),
-            'focusNo' => $focusNo,
-            'kader'   => [
-                'id'         => $row->id,
-                'nama'       => $row->nama,
-                'bu'         => $row->bu,
-                'batch_name' => $row->batch_name,
-                'batch_year' => $row->batch_year,
-            ],
-        ];
+        return ['row' => $row, 'data' => $data, 'peserta' => $peserta, 'focusNo' => $focusNo];
     }
-
-    // ── Internal ─────────────────────────────────────────────────────────────
 
     /** Baca + decode file dokumen batch (cached). null bila batch belum punya file. */
     private static function load(?int $batchNo): ?array
@@ -111,18 +159,21 @@ class HasilTrainingMt
         return self::$cache[$batchNo];
     }
 
-    /** Tambahkan peringkat (1 = avg tertinggi) supaya posisi kader terlihat di tabel. */
+    /**
+     * Beri peringkat (1 = avg tertinggi) DAN kembalikan sudah terurut dari nilai tertinggi.
+     * Dokumen Batch 1 memang sudah terurut begitu, Batch 2 masih urut BU — disamakan di sini
+     * supaya tabelnya konsisten. Nomor asli dokumen tetap ada di kolom "no".
+     */
     private static function withRank(array $peserta): array
     {
-        $sorted = $peserta;
-        usort($sorted, fn ($a, $b) => ($b['avg'] ?? 0) <=> ($a['avg'] ?? 0));
+        usort($peserta, fn ($a, $b) => ($b['avg'] ?? 0) <=> ($a['avg'] ?? 0));
 
-        $rankByNo = [];
-        foreach ($sorted as $i => $p) {
-            $rankByNo[$p['no']] = $i + 1;
+        foreach ($peserta as $i => &$p) {
+            $p['rank'] = $i + 1;
         }
+        unset($p);
 
-        return array_map(fn ($p) => $p + ['rank' => $rankByNo[$p['no']] ?? null], $peserta);
+        return $peserta;
     }
 
     /** Rata-rata per modul + rata-rata kelas, untuk baris footer & pembanding kader. */
