@@ -188,17 +188,35 @@ export default function KaderSayaDetail({
                                 {meta.label}
                             </span>
                         </div>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-500">
-                            {kader?.divisi_name && <span>{kader.divisi_name}</span>}
-                            {kader?.batch_name  && <span>Batch {kader.batch_name}{kader.batch_year ? " " + kader.batch_year : ""}</span>}
+                        {/* Identitas: BU sebagai badge, sisanya chip abu-abu agar tidak
+                            terbaca sebagai satu kalimat panjang. */}
+                        <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                            {kader?.bu_name && (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 text-xs font-semibold ring-1 ring-blue-100">
+                                    {/* <span className="text-[10px] uppercase tracking-wide text-blue-400">BU</span> */}
+                                    {kader.bu_name}
+                                </span>
+                            )}
+                            {kader?.divisi_name && (
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 text-xs font-medium">
+                                    {kader.divisi_name}
+                                </span>
+                            )}
+                            {kader?.batch_name && (
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 text-xs font-medium">
+                                    Batch {kader.batch_name}{kader.batch_year ? " " + kader.batch_year : ""}
+                                </span>
+                            )}
                         </div>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 mt-1">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 mt-2.5">
                             {kader?.mentor_name && (
                                 <span>Mentor: <span className="font-medium text-slate-700">{kader.mentor_name}</span></span>
                             )}
+                            {kader?.mentor_name && totalWeeks > 0 && <span className="text-slate-300">•</span>}
                             {totalWeeks > 0 && (
                                 <span>Week: <span className="font-medium text-slate-700">{currentWeek} / {totalWeeks}</span></span>
                             )}
+                            {totalWeeks > 0 && totalModuls > 0 && <span className="text-slate-300">•</span>}
                             {totalModuls > 0 && (
                                 <span>Modul: <span className="font-medium text-slate-700">{doneModuls}/{totalModuls} selesai</span></span>
                             )}

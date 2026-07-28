@@ -55,13 +55,11 @@ export default function ArsipReportCard({
 
     return (
         <div className="space-y-4">
-            {/* Bar aksi + penanda arsip */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-6 py-4 space-y-2.5">
+            {/* Bar aksi (penanda arsip disembunyikan) */}
+            {(backHref || trainingHref) && (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-6 py-4">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                     <BackToPickerLink href={backHref} />
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-widest text-amber-700 bg-amber-100 rounded-lg self-start sm:self-auto">
-                        📁 Data Arsip · Batch {kader.batch_roman ?? scores.batch_no}
-                    </span>
                     {trainingHref && (
                         <a
                             href={trainingHref}
@@ -75,12 +73,8 @@ export default function ArsipReportCard({
                         </a>
                     )}
                 </div>
-                <p className="text-xs text-slate-400">
-                    {training
-                        ? "Skor akhir historis — tanpa breakdown FMC (data tidak melalui sistem); grafik Section A dari dokumen hasil training"
-                        : "Skor akhir historis — tanpa grafik & tanpa breakdown FMC (data tidak melalui sistem)"}
-                </p>
             </div>
+            )}
 
             {/* REPORT CARD */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">

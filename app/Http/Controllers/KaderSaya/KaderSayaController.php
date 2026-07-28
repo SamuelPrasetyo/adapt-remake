@@ -119,6 +119,7 @@ class KaderSayaController extends Controller
         $kader = Kader::select(
                 'kader.*',
                 'company.company_shortname as bu',
+                'company.company_name as bu_name',
                 'divisis.nama as divisi_name',
                 'departemens.nama as dept_name',
                 'batch.nama_batch as batch_name',
