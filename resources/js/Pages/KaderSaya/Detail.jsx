@@ -130,6 +130,8 @@ export default function KaderSayaDetail({
     // Summary Monthly Feedback = tab khusus Admin MAI; Perjanjian disembunyikan dari Kader.
     // Job Applicant = khusus Admin MAI 021 (backend juga tidak mengirim datanya ke role lain).
     // Report = Admin & Mentor (backend mengirim null untuk Kader, sejalan dengan menu Report).
+    // Kader batch arsip (Batch 1-2): backend mengirim canViewKandidat & canSummarizeMonthly
+    // false, jadi tab yang tersisa persis Overview, Feedback, Penilaian OJT, Perjanjian, Report.
     const visibleTabs = TABS.filter((t) => {
         if (kaderView && t.id === "perjanjian") return false;
         if (t.id === "kandidat" && !canViewKandidat) return false;
