@@ -23,6 +23,7 @@ use App\Models\ModulTestResult;
 use App\Models\User;
 use App\Models\Week;
 use App\Models\WeekKader;
+use App\Support\ArsipKaderDetail;
 use App\Support\KaderDevelopmentReport;
 use App\Support\KaderReportData;
 use App\Support\KandidatData;
@@ -325,13 +326,21 @@ class KaderSayaController extends Controller
         // Batch 1-2 otomatis memakai varian arsip; null bila tidak ada data report.
         $developmentReport = $isKader ? null : KaderDevelopmentReport::forTab($kader, $report);
 
+        // Batch arsip: Overview & Penilaian OJT diisi dari dokumen training + report_arsip,
+        // karena kadernya tidak pernah di-assign modul maupun mengisi form FMC di sistem.
+        // faseGroups-nya dibentuk sebagai fase Monthly Training supaya Overview tampil sama
+        // seperti batch sistem; progress/status dipatok 100% & "On Track" (program sudah tuntas).
+        $arsipDetail = $isArsipBatch ? ArsipKaderDetail::build($kader) : null;
+
         return Inertia::render('KaderSaya/Detail', [
             'kader'              => $kader,
-            'faseGroups'         => $report['faseGroups'],
-            'overallProgress'    => $report['overallProgress'],
-            'fmcScore'           => $report['fmcScore'],
-            'status'             => $report['status'],
-            'totalModuls'        => $report['totalModuls'],
+            'faseGroups'         => $isArsipBatch ? $arsipDetail['faseGroups'] : $report['faseGroups'],
+            'overallProgress'    => $isArsipBatch ? ArsipKaderDetail::PROGRESS : $report['overallProgress'],
+            // Stat "FMC" batch arsip = rata-rata OJT 1-4 (report_arsip.fmc_avg), penilaiannya
+            // sudah tuntas. Batch sistem tetap memakai FMC terakhir yang dinilai & di-approve.
+            'fmcScore'           => $isArsipBatch ? ($arsipDetail['ojt']['final'] ?? null) : $report['fmcScore'],
+            'status'             => $isArsipBatch ? ArsipKaderDetail::STATUS : $report['status'],
+            'totalModuls'        => $isArsipBatch ? $arsipDetail['totalModuls'] : $report['totalModuls'],
             'avgFeedback'        => $avgFeedback,
             'currentWeek'        => $currentWeek,
             'totalWeeks'         => $totalWeeks,
@@ -357,7 +366,7 @@ class KaderSayaController extends Controller
             'penilaianKomentarMap' => $report['penilaianKomentarMap'],
             'penilaianStructure' => PenilaianOjtStructure::all(),
             'canEditPenilaian'   => $isMentor,
-            'allFases'           => $report['allFases'],
+            'allFases'           => $isArsipBatch ? $arsipDetail['allFases'] : $report['allFases'],
             'kaderView'          => $isKader,
             // Upload Weekly Feedback hanya untuk Kader yang melihat dashboard-nya sendiri.
             'weeklyFeedback'     => $isKader ? WeeklyFeedbackController::dataFor($user) : null,
@@ -368,6 +377,8 @@ class KaderSayaController extends Controller
             'kandidatError'      => $kandidatError,
             // Tab Report — null bila role Kader atau kader tanpa data report.
             'developmentReport'  => $developmentReport,
+            // Isi tab Overview & Penilaian OJT versi arsip; null untuk batch sistem (3+).
+            'arsipDetail'        => $arsipDetail,
         ]);
     }
 

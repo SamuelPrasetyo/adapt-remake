@@ -42,6 +42,17 @@ class HasilTrainingMt
     }
 
     /**
+     * Jumlah modul in-class pada dokumen training batch ini (0 bila belum punya dokumen).
+     * Dipakai daftar kader untuk mengisi kolom "n modul" tanpa perlu memuat nilai per kader.
+     */
+    public static function modulCountFor(?int $batchNo): int
+    {
+        $data = self::load($batchNo);
+
+        return $data ? count($data['modul'] ?? []) : 0;
+    }
+
+    /**
      * Props halaman detail nilai training: seluruh tabel batch + penanda baris kader ini.
      * Seluruh tabel ikut dikirim karena halaman ini memang menampilkan dokumen sumbernya,
      * bukan sekadar potongan satu kader.

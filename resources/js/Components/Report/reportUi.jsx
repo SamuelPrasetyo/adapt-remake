@@ -14,6 +14,24 @@ export function band(v) {
 
 export const fmt = (v, d = 1) => (v == null ? "—" : Number(v).toFixed(d));
 
+/**
+ * Warna satu skor 0–100 berdasarkan KKM — SATU SUMBER untuk seluruh aplikasi supaya
+ * nilai yang sama tidak pernah berbeda warna antar halaman:
+ *
+ *   >= 70 (KKM) : biru   — lulus
+ *   60 – 69     : amber  — di bawah KKM
+ *   < 60        : rose   — jauh di bawah KKM
+ *
+ * Mengembalikan kelas untuk tiap bentuk pemakaian: `text` (angka nilai), `bar` (batang
+ * progres), dan `stroke` (cincin/SVG).
+ */
+export function scoreTone(v) {
+    if (v == null) return { text: "text-slate-400", bar: "bg-slate-200",  stroke: "stroke-slate-200" };
+    if (v >= KKM)  return { text: "text-blue-600",  bar: "bg-blue-500",   stroke: "stroke-blue-500"  };
+    if (v >= 60)   return { text: "text-amber-600", bar: "bg-amber-500",  stroke: "stroke-amber-500" };
+    return { text: "text-rose-600", bar: "bg-rose-500", stroke: "stroke-rose-500" };
+}
+
 export function SectionTitle({ code, children }) {
     return (
         <div className="text-[11px] font-semibold uppercase tracking-widest text-blue-700 mb-3">

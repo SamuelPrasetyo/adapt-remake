@@ -1,5 +1,5 @@
 import LearningGrowthChart from "./LearningGrowthChart";
-import { KKM, band, fmt, SectionTitle, ReportHeader, BackToPickerLink } from "./reportUi";
+import { KKM, band, fmt, scoreTone, SectionTitle, ReportHeader, BackToPickerLink } from "./reportUi";
 
 const x10 = (v) => (v == null ? null : Number(v) * 10); // 0–10 → 0–100
 
@@ -7,7 +7,7 @@ const x10 = (v) => (v == null ? null : Number(v) * 10); // 0–10 → 0–100
 function ScoreRow({ label, value }) {
     const v = value;
     const pct = v == null ? 0 : Math.max(0, Math.min(100, v));
-    const color = v == null ? "bg-slate-200" : v >= 70 ? "bg-blue-500" : v >= 60 ? "bg-amber-500" : "bg-rose-500";
+    const color = scoreTone(v).bar;
     return (
         <div className="flex items-center gap-3 text-sm">
             <span className="w-32 shrink-0 text-slate-600">{label}</span>
