@@ -22,9 +22,15 @@
     --shadow-card-hover: 0 4px 6px rgba(15, 23, 42, 0.05), 0 10px 15px rgba(15, 23, 42, 0.08);
 }
 
-html {
-    scroll-behavior: smooth;
-}
+/* JANGAN pasang `scroll-behavior: smooth` di sini.
+ *
+ * Properti ini tidak diwariskan, jadi satu-satunya yang terpengaruh adalah scroll
+ * dokumen — dan itu dipakai Inertia untuk me-reset posisi ke atas pada SETIAP navigasi.
+ * Efeknya: membuka detail dari daftar yang sudah di-scroll ke bawah memunculkan animasi
+ * scroll ke atas dulu sebelum halaman berganti.
+ *
+ * Kalau suatu tempat memang butuh scroll halus, minta di call site-nya:
+ * window.scrollTo({ top, behavior: "smooth" }) — bukan dijadikan default global. */
 
 body {
     background: var(--color-background);

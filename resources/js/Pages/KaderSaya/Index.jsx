@@ -2,6 +2,7 @@ import { useMemo, useRef, useState, useEffect } from "react";
 import { Link, router } from "@inertiajs/react";
 import AppLayout from "@/Layouts/AppLayout";
 import KaderAvatar from "@/Components/KaderAvatar";
+import { rememberListScroll, restoreListScroll } from "./listScroll";
 
 const STATUS_META = {
     on_track: {
@@ -375,6 +376,7 @@ function KaderCard({ kader, filterQuery = "" }) {
     return (
         <Link
             href={`/kader-saya/${kader.k_id}${filterQuery}`}
+            onClick={rememberListScroll}
             className="flex flex-col bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 hover:shadow-md hover:ring-blue-300 transition-all group"
         >
             <div className="p-5 flex-1">
@@ -492,6 +494,13 @@ export default function KaderSayaIndex({
     totalKaderInBatch,
 }) {
     const [search, setSearch] = useState("");
+
+    // Kembalikan posisi scroll bila pengguna baru menekan "Kembali ke Daftar Kader".
+    // Ditunda satu frame supaya kartu sudah ter-render & tinggi halaman sudah benar.
+    useEffect(() => {
+        const frame = requestAnimationFrame(restoreListScroll);
+        return () => cancelAnimationFrame(frame);
+    }, []);
 
     // Navigasi dengan mempertahankan filter mentor & batch sekaligus.
     const navigateFilter = (next) => {

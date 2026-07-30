@@ -4,6 +4,7 @@ import AppLayout from "@/Layouts/AppLayout";
 import KaderAvatar from "@/Components/KaderAvatar";
 import { scoreTone } from "@/Components/Report/reportUi";
 import { getFaseLabel, getFaseNum } from "@/constants/fase";
+import { markReturningToList } from "./listScroll";
 import LearningGrowthTab from "./tabs/LearningGrowthTab";
 import KandidatTab from "./tabs/KandidatTab";
 import FeedbackTab from "./tabs/FeedbackTab";
@@ -186,7 +187,7 @@ export default function KaderSayaDetail({
             {/* Back button — hanya untuk Admin/Mentor (Kader tidak punya daftar kader) */}
             {!kaderView && (
                 <div className="mb-5">
-                    <Link href={backHref}
+                    <Link href={backHref} onClick={markReturningToList}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
