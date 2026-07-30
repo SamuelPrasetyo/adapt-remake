@@ -154,15 +154,25 @@ class KaderSayaController extends Controller
         $kader->mentor_name = $assignedMentors->isNotEmpty() ? $assignedMentors->implode(', ') : null;
         $kader->mentors     = $assignedMentors;
 
+        // Mentor boleh membuka kader satu BU dengannya, walau kader itu belum di-assign ke
+        // mentor mana pun — daftar Kader Saya (listAllKadersInBU) memang menampilkan SELURUH
+        // kader BU termasuk yang belum punya mentor, jadi tanpa ini kader tampil di daftar
+        // tapi 403 saat diklik. Jalur assignment tetap dipertahankan supaya mentor yang
+        // membina kader dari BU lain tidak kehilangan akses.
         if ($isMentor) {
-            $hasAccess = ListKaderPerMentor::where('list_kader_per_mentor.kader_id', $kader->id)
-                ->whereNull('list_kader_per_mentor.deleted_at')
-                ->join('mentor', 'list_kader_per_mentor.mentor_id', '=', 'mentor.id')
-                ->whereNull('mentor.deleted_at')
-                ->where('mentor.company_code', $user->company_code)
-                ->exists();
+            $hasAccess = $kader->company_code === $user->company_code
+                || ListKaderPerMentor::where('list_kader_per_mentor.kader_id', $kader->id)
+                    ->whereNull('list_kader_per_mentor.deleted_at')
+                    ->join('mentor', 'list_kader_per_mentor.mentor_id', '=', 'mentor.id')
+                    ->whereNull('mentor.deleted_at')
+                    ->where('mentor.company_code', $user->company_code)
+                    ->exists();
             if (!$hasAccess) abort(403);
         }
+
+        // Peringatan "belum di-assign" untuk Admin/Mentor: detail tetap terbuka, tapi aksi
+        // yang menuntut relasi mentor-kader (mis. simpan Penilaian OJT) akan ditolak.
+        $mentorUnassigned = !$isKader && $assignedMentors->isEmpty();
 
         // Learning Growth/LGS per fase, skor feedback mingguan, daftar feedback mentor, dan
         // Penilaian OJT/FMC dihitung di satu tempat (dipakai bersama Report New).
@@ -366,6 +376,8 @@ class KaderSayaController extends Controller
             'penilaianKomentarMap' => $report['penilaianKomentarMap'],
             'penilaianStructure' => PenilaianOjtStructure::all(),
             'canEditPenilaian'   => $isMentor,
+            // Banner peringatan kader tanpa mentor aktif (Admin/Mentor saja).
+            'mentorUnassigned'   => $mentorUnassigned,
             'allFases'           => $isArsipBatch ? $arsipDetail['allFases'] : $report['allFases'],
             'kaderView'          => $isKader,
             // Upload Weekly Feedback hanya untuk Kader yang melihat dashboard-nya sendiri.
