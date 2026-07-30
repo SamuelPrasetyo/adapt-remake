@@ -22,6 +22,21 @@ const COLS = [
     { key: 'jenis_kelamin', label: 'JK',       align: 'center' },
 ];
 
+// Tab Arsip: kolom operasional (divisi/dept) ditukar dengan info pengarsipan,
+// karena yang dicari admin di sini adalah "siapa yang mengarsipkan, kapan".
+const ARSIP_COLS = [
+    ...COLS.filter((c) => !['divisi_name', 'dept_name', 'nik_ktp'].includes(c.key)),
+    {
+        key: 'deleted_at', label: 'Diarsipkan', sortable: true,
+        render: (v, row) => (
+            <div className="text-xs">
+                <div className="text-slate-600">{v ? String(v).slice(0, 16).replace('T', ' ') : '—'}</div>
+                <div className="text-slate-400">oleh {row.deleted_by_name ?? '—'}</div>
+            </div>
+        ),
+    },
+];
+
 const TEMPLATE_COLS = [
     { name: 'batch',             note: 'Otomatis — jangan diubah', locked: true },
     { name: 'tahun',             note: 'Otomatis — jangan diubah', locked: true },
@@ -50,10 +65,70 @@ function Field({ label, error, children }) {
 }
 
 function ActionBtn({ onClick, color, title, children }) {
-    const colors = { blue: 'text-blue-600 hover:bg-blue-50', red: 'text-red-600 hover:bg-red-50' };
+    const colors = {
+        blue:    'text-blue-600 hover:bg-blue-50',
+        red:     'text-red-600 hover:bg-red-50',
+        amber:   'text-amber-600 hover:bg-amber-50',
+        emerald: 'text-emerald-600 hover:bg-emerald-50',
+    };
     return (
         <button type="button" onClick={onClick} title={title}
             className={`p-1.5 rounded-lg transition ${colors[color]}`}>{children}</button>
+    );
+}
+
+const Icon = {
+    edit: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />,
+    archive: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />,
+    restore: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />,
+    trash: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />,
+};
+
+function Svg({ children, className = 'w-4 h-4' }) {
+    return (
+        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">{children}</svg>
+    );
+}
+
+// Rincian data yang akan ikut terhapus, hasil preflight /kader/{id}/dependencies.
+function ImpactList({ info, title }) {
+    if (!info?.groups?.length) return null;
+    return (
+        <div className="mt-3">
+            {title && (
+                <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</p>
+            )}
+            <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
+                {info.groups.map((g) => (
+                    <li key={g.key} className="flex items-start justify-between gap-3 px-3 py-2 text-sm">
+                        <span className="text-slate-600">{g.label}</span>
+                        <span className="shrink-0 rounded bg-slate-100 px-2 py-0.5 font-mono text-xs font-semibold text-slate-700">
+                            {g.count}
+                        </span>
+                    </li>
+                ))}
+            </ul>
+            <p className="mt-1.5 text-right text-xs text-slate-500">
+                Total <b className="text-slate-700">{info.total}</b> baris data
+                {info.files > 0 && <> + <b className="text-slate-700">{info.files}</b> file upload</>}
+            </p>
+        </div>
+    );
+}
+
+function TabBtn({ active, onClick, children, count }) {
+    return (
+        <button type="button" onClick={onClick}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition ${
+                active ? 'bg-slate-800 text-white' : 'text-slate-600 hover:bg-slate-100'
+            }`}>
+            {children}
+            {count > 0 && (
+                <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                    active ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
+                }`}>{count}</span>
+            )}
+        </button>
     );
 }
 
@@ -259,7 +334,10 @@ const EMPTY_KADER = {
     id_batch: '', id_divisi: '', id_departemen: '', company_code: '',
 };
 
-export default function KaderIndex({ kaders, companys, divisis, departemens, batchs, currentBatch }) {
+export default function KaderIndex({
+    kaders, kadersArsip = [], canViewArsip = false, canPurge = false,
+    companys, divisis, departemens, batchs, currentBatch,
+}) {
     const [createOpen, setCreateOpen] = useState(false);
     const [editOpen, setEditOpen]     = useState(false);
     const [editRow, setEditRow]       = useState(null);
@@ -267,6 +345,68 @@ export default function KaderIndex({ kaders, companys, divisis, departemens, bat
     const [importFile, setImportFile] = useState(null);
     const [exportOpen, setExportOpen] = useState(false);
     const exportRef = useRef(null);
+
+    // ?tab=arsip dipakai UserController::change_status untuk mengarahkan admin
+    // ke sini saat ia mencoba mengaktifkan akun kader yang datanya terarsip.
+    const [tab, setTab] = useState(() => {
+        const wanted = new URLSearchParams(window.location.search).get('tab');
+        return wanted === 'arsip' && canViewArsip ? 'arsip' : 'aktif';
+    });
+    const isArsip = tab === 'arsip';
+
+    // Modal hapus: `info` diisi hasil preflight, jadi admin melihat persis apa
+    // yang akan hilang sebelum memutuskan. null = masih memuat.
+    const [delRow, setDelRow]   = useState(null);
+    const [delInfo, setDelInfo] = useState(null);
+    const [busy, setBusy]       = useState(false);
+
+    // Modal hapus permanen (khusus Admin MAI, dari tab Arsip).
+    const [purgeRow, setPurgeRow]   = useState(null);
+    const [purgeInfo, setPurgeInfo] = useState(null);
+    const [purgeNik, setPurgeNik]   = useState('');
+
+    const loadImpact = async (row, setInfo) => {
+        setInfo(null);
+        try {
+            const res = await fetch(`/kader/${row.id}/dependencies`, {
+                headers: { Accept: 'application/json' },
+            });
+            setInfo(await res.json());
+        } catch {
+            setInfo({ error: true });
+        }
+    };
+
+    const openDelete = (row) => { setDelRow(row); loadImpact(row, setDelInfo); };
+    const closeDelete = () => { setDelRow(null); setDelInfo(null); };
+
+    const openPurge = (row) => { setPurgeRow(row); setPurgeNik(''); loadImpact(row, setPurgeInfo); };
+    const closePurge = () => { setPurgeRow(null); setPurgeInfo(null); setPurgeNik(''); };
+
+    // Server menentukan sendiri arsip vs hapus permanen — tombol ini cuma memicu.
+    const confirmDelete = () => {
+        setBusy(true);
+        router.delete(`/kader/delete/${delRow.id}`, {
+            onFinish: () => { setBusy(false); closeDelete(); },
+        });
+    };
+
+    // Pulihkan sekaligus mengaktifkan akun login — satu aksi, tidak perlu ke Master User.
+    const confirmRestore = (row) => {
+        if (!window.confirm(
+            `Pulihkan kader "${row.nama}" dari arsip?\n\n`
+            + 'Kader akan kembali muncul di daftar aktif dan akun loginnya diaktifkan kembali.'
+        )) return;
+        router.post(`/kader/${row.id}/restore`);
+    };
+
+    const confirmPurge = () => {
+        setBusy(true);
+        router.delete(`/kader/${purgeRow.id}/purge`, {
+            data: { confirm_nik: purgeNik },
+            onFinish: () => { setBusy(false); closePurge(); },
+        });
+    };
 
     // Tutup dropdown export saat klik di luar area tombol.
     useEffect(() => {
@@ -345,21 +485,63 @@ export default function KaderIndex({ kaders, companys, divisis, departemens, bat
 
     return (
         <AppLayout title="MASTER KADER" breadcrumb="Master / Kader">
+            {isArsip && (
+                <div className="mb-3 flex gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                    <Svg className="w-4 h-4 shrink-0 mt-0.5">{Icon.archive}</Svg>
+                    <p>
+                        Kader di arsip tidak muncul di daftar aktif, laporan, maupun penugasan mentor, dan
+                        akun loginnya dinonaktifkan — tapi <b>seluruh datanya masih utuh</b>. Memulihkan kader
+                        sekaligus mengaktifkan kembali akun loginnya, jadi tidak perlu diaktifkan lagi di Master User.
+                        {!canPurge && ' Penghapusan permanen beserta seluruh datanya dilakukan oleh Admin MAI yang ditunjuk.'}
+                    </p>
+                </div>
+            )}
+
             <DataTable
-                columns={COLS}
-                data={kaders}
+                key={tab}
+                columns={isArsip ? ARSIP_COLS : COLS}
+                data={isArsip ? kadersArsip : kaders}
+                emptyMessage={isArsip ? 'Tidak ada kader di arsip' : 'Tidak ada data'}
                 actions={(row) => (
                     <div className="flex items-center justify-end gap-1">
-                        <ActionBtn onClick={() => openEdit(row)} color="blue" title="Edit">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                        </ActionBtn>
+                        {isArsip ? (
+                            <>
+                                <ActionBtn onClick={() => confirmRestore(row)} color="emerald"
+                                    title="Pulihkan kader + aktifkan akun loginnya">
+                                    <Svg>{Icon.restore}</Svg>
+                                </ActionBtn>
+                                {canPurge && (
+                                    <ActionBtn onClick={() => openPurge(row)} color="red" title="Hapus permanen">
+                                        <Svg>{Icon.trash}</Svg>
+                                    </ActionBtn>
+                                )}
+                            </>
+                        ) : (
+                            <>
+                                <ActionBtn onClick={() => openEdit(row)} color="blue" title="Edit">
+                                    <Svg>{Icon.edit}</Svg>
+                                </ActionBtn>
+                                <ActionBtn onClick={() => openDelete(row)} color="red" title="Hapus">
+                                    <Svg>{Icon.trash}</Svg>
+                                </ActionBtn>
+                            </>
+                        )}
                     </div>
                 )}
                 headerActions={
-                    <div className="flex gap-2">
-                        <button onClick={openCreate}
+                    <div className="flex flex-wrap items-center gap-2">
+                        {/* Tab Arsip untuk semua Admin MAI; selain itu datanya tidak
+                            dikirim server sama sekali. Tombol hapus permanennya
+                            terpisah, lihat canPurge. */}
+                        {canViewArsip && (
+                            <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-0.5">
+                                <TabBtn active={!isArsip} onClick={() => setTab('aktif')}>Aktif</TabBtn>
+                                <TabBtn active={isArsip} onClick={() => setTab('arsip')} count={kadersArsip.length}>
+                                    Arsip
+                                </TabBtn>
+                            </div>
+                        )}
+                        {!isArsip && <><button onClick={openCreate}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
@@ -406,7 +588,7 @@ export default function KaderIndex({ kaders, companys, divisis, departemens, bat
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                             </svg>
                             Import
-                        </button>
+                        </button></>}
                     </div>
                 }
             />
@@ -536,6 +718,102 @@ export default function KaderIndex({ kaders, companys, divisis, departemens, bat
                         onChange={(e) => setImportFile(e.target.files[0])} required
                         className="w-full text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100" />
                 </form>
+            </Modal>
+
+            {/* Hapus — tingkatnya ditentukan hasil preflight, bukan pilihan admin.
+                Kader bersih boleh langsung hilang; kader berdata hanya diarsipkan. */}
+            <Modal open={!!delRow} onClose={closeDelete} title="Hapus Kader" size="lg"
+                footer={
+                    <>
+                        <button type="button" onClick={closeDelete}
+                            className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition">Batal</button>
+                        <button type="button" onClick={confirmDelete} disabled={!delInfo || delInfo.error || busy}
+                            className={`px-4 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-50 transition ${
+                                delInfo?.blocking === 0 ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'
+                            }`}>
+                            {delInfo?.blocking === 0 ? 'Hapus Permanen' : 'Arsipkan'}
+                        </button>
+                    </>
+                }
+            >
+                {!delInfo && <p className="text-sm text-slate-500">Memeriksa data terkait…</p>}
+
+                {delInfo?.error && (
+                    <p className="text-sm text-red-600">Gagal memeriksa data terkait. Coba tutup dan ulangi.</p>
+                )}
+
+                {delInfo && !delInfo.error && (
+                    <>
+                        <p className="text-sm text-slate-700">
+                            Anda akan menghapus <b>{delInfo.nama}</b>
+                            <span className="font-mono text-xs text-slate-500"> ({delInfo.nik})</span>.
+                        </p>
+
+                        {delInfo.blocking === 0 ? (
+                            <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+                                Kader ini <b>belum punya data terkait apa pun</b> — tidak ada penilaian, feedback,
+                                dokumen, maupun progress modul. Karena itu kader ini akan
+                                <b> dihapus permanen</b> beserta akun loginnya, dan <b>tidak bisa dipulihkan</b>.
+                            </div>
+                        ) : (
+                            <>
+                                <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                                    Kader ini punya data terkait, jadi akan <b>dipindahkan ke Arsip</b> — belum ada
+                                    yang dihapus sekarang, dan masih bisa dipulihkan. Akun loginnya dinonaktifkan.
+                                </div>
+                                <ImpactList info={delInfo}
+                                    title="Data terkait yang akan ikut terhapus bila nanti dihapus permanen" />
+                                <p className="mt-3 text-xs text-slate-500">
+                                    {delInfo.can_purge
+                                        ? 'Untuk menghapusnya sekaligus datanya, buka tab Arsip lalu pilih Hapus Permanen.'
+                                        : 'Kader bisa dipulihkan lagi dari tab Arsip. Penghapusan permanen beserta data di atas dilakukan oleh Admin MAI yang ditunjuk.'}
+                                </p>
+                            </>
+                        )}
+                    </>
+                )}
+            </Modal>
+
+            {/* Hapus permanen — pengelola Arsip, wajib mengetik ulang NIK kader. */}
+            <Modal open={!!purgeRow} onClose={closePurge} title="Hapus Permanen" size="lg"
+                footer={
+                    <>
+                        <button type="button" onClick={closePurge}
+                            className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition">Batal</button>
+                        <button type="button" onClick={confirmPurge}
+                            disabled={busy || !purgeInfo || purgeNik.trim() !== purgeInfo.nik}
+                            className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                            Hapus Permanen
+                        </button>
+                    </>
+                }
+            >
+                {!purgeInfo && <p className="text-sm text-slate-500">Memeriksa data terkait…</p>}
+
+                {purgeInfo && (
+                    <>
+                        <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+                            <b>Tindakan ini tidak bisa dibatalkan.</b> Kader <b>{purgeInfo.nama}</b>
+                            <span className="font-mono text-xs"> ({purgeInfo.nik})</span>, seluruh data di bawah,
+                            {purgeInfo.files > 0 && <> {purgeInfo.files} file uploadnya,</>} dan akun loginnya akan
+                            dihapus dari sistem. Kader ini tidak akan bisa dipulihkan lagi.
+                        </div>
+
+                        <ImpactList info={purgeInfo} title="Data terkait yang akan ikut terhapus" />
+
+                        <p className="mt-3 text-xs text-slate-500">
+                            Cadangan seluruh baris yang dihapus tetap disimpan sebagai file JSON di
+                            <span className="font-mono"> storage/app/purged-kader/</span> untuk keperluan audit.
+                        </p>
+
+                        <label className="mt-4 block text-sm font-medium text-slate-700">
+                            Ketik NIK <span className="font-mono font-semibold text-red-600">{purgeInfo.nik}</span> untuk mengonfirmasi
+                        </label>
+                        <input type="text" value={purgeNik} onChange={(e) => setPurgeNik(e.target.value)}
+                            autoComplete="off" placeholder={purgeInfo.nik}
+                            className="mt-1 w-full px-3 py-2 font-mono text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500" />
+                    </>
+                )}
             </Modal>
         </AppLayout>
     );

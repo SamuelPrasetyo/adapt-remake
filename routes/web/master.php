@@ -84,7 +84,12 @@ Route::middleware(['can:isAdmin'])->group(function () {
         Route::get('/kader', 'index')->name('kader.index');
         Route::post('/kader/store', 'store')->name('kader.store');
         Route::put('/kader/update/{id}', 'update')->name('kader.update');
+        // destroy = arsipkan (atau hapus permanen bila kader belum punya data apa pun).
+        // purge = hapus permanen kader berdata — Admin MAI 021 + konfirmasi NIK.
+        Route::get('/kader/{id}/dependencies', 'dependencies')->name('kader.dependencies');
         Route::delete('/kader/delete/{id}', 'destroy')->name('kader.delete');
+        Route::post('/kader/{id}/restore', 'restore')->name('kader.restore');
+        Route::delete('/kader/{id}/purge', 'purge')->name('kader.purge');
         Route::post('/kader/import', 'import')->name('kader.import');
         Route::get('/kader/template', 'downloadTemplate')->name('kader.template');
         Route::get('/kader/export', 'export_kader')->name('kader.exportexcel');

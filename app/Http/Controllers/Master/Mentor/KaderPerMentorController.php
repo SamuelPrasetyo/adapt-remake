@@ -172,6 +172,9 @@ class KaderPerMentorController extends Controller
             ->leftJoin('company', 'list_kader_per_mentor.company_code', '=', 'company.company_code')
             ->where('list_kader_per_mentor.mentor_id', $mentor_id)
             ->whereNull('list_kader_per_mentor.deleted_at')
+            // Query dimulai dari ListKaderPerMentor, jadi global scope SoftDeletes
+            // milik model Kader tidak ikut — kader terarsip harus disaring manual.
+            ->whereNull('kader.deleted_at')
             ->when($idBatch, fn($q) => $q->where('list_kader_per_mentor.id_batch', $idBatch))
             ->orderBy('kader.nama', 'asc')
             ->get()

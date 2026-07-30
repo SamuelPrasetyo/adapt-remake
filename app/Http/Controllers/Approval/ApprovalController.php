@@ -25,7 +25,11 @@ class ApprovalController extends Controller
             ->leftJoin('kader', DB::raw('p.kader_id COLLATE utf8mb4_unicode_ci'), '=', DB::raw('kader.id COLLATE utf8mb4_unicode_ci'))
             ->leftJoin('company', DB::raw('kader.company_code COLLATE utf8mb4_unicode_ci'), '=', DB::raw('company.company_code COLLATE utf8mb4_unicode_ci'))
             ->leftJoin('users as creator', DB::raw('p.created_by COLLATE utf8mb4_unicode_ci'), '=', DB::raw('creator.id COLLATE utf8mb4_unicode_ci'))
-            ->whereNotNull('p.final_score');
+            ->whereNotNull('p.final_score')
+            // Kader terarsip tidak boleh muncul di inbox approval. Query ini raw
+            // (bukan lewat model Kader), jadi global scope SoftDeletes tak berlaku.
+            // leftJoin: baris yang kadernya sudah hilang sama sekali tetap tampil.
+            ->whereNull('kader.deleted_at');
 
         $ojtPending = (clone $ojtBase)
             ->where('p.approval_status', 'pending')

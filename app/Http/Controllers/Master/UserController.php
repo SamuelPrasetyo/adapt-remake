@@ -207,6 +207,36 @@ class UserController extends Controller
     {
         $user = User::where('id', $userId)->first();
         $status = $user->status == 'Aktif' ? 'Tidak Aktif' : 'Aktif';
+
+        // Mengaktifkan akun Kader yang data kadernya sudah diarsipkan hanya
+        // menghasilkan akun yang bisa login tapi langsung 404 (DashboardController
+        // ->dashboard_kader() abort saat data kader tidak ditemukan). Pemulihannya
+        // harus lewat Arsip Kader, yang mengembalikan data kader + akunnya sekaligus.
+        if ($status === 'Aktif' && $user->type === 'Kader') {
+            $kaderTerarsip = Kader::onlyTrashed()->where('nik', $user->nik)->first();
+
+            if ($kaderTerarsip) {
+                ActivityLog::activity_log('Aktivasi akun kader diarahkan ke Arsip');
+                Alert::warning(
+                    'Pulihkan dari Arsip Kader',
+                    'Data kader "' . $kaderTerarsip->nama . '" sedang diarsipkan, jadi akunnya belum bisa '
+                        . 'diaktifkan dari sini — kader akan bisa login tapi halamannya kosong. Pulihkan '
+                        . 'kadernya di Master > Kader > tab Arsip; akun loginnya otomatis ikut aktif kembali.'
+                );
+                return redirect()->route('kader.index', ['tab' => 'arsip']);
+            }
+
+            // Akun Kader tanpa data kader sama sekali — juga akan 404 kalau login.
+            if (!Kader::where('nik', $user->nik)->exists()) {
+                Alert::warning(
+                    'Data Kader Tidak Ada',
+                    'Akun ini bertipe Kader tapi tidak punya data kader dengan NIK ' . $user->nik
+                        . '. Lengkapi dulu datanya di Master > Kader, kalau tidak kader tidak bisa memakai akunnya.'
+                );
+                return redirect()->route('user.index');
+            }
+        }
+
         User::where('id', $userId)->update(['status' => $status]);
 
         ActivityLog::activity_log('Berhasil mengubah status user');
