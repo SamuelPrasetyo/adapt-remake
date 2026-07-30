@@ -852,10 +852,10 @@ const FOLDER_COLORS = {
     monthly: { active: "text-amber-500", inactive: "text-slate-400" },
 };
 
-function FolderTabs({ folder, onChange }) {
+function FolderTabs({ folder, onChange, folders = FOLDERS }) {
     return (
         <div className="flex items-end gap-1.5">
-            {FOLDERS.map(f => {
+            {folders.map(f => {
                 const active = folder === f.id;
                 const clr = FOLDER_COLORS[f.id] ?? FOLDER_COLORS.weekly;
                 return (
@@ -901,14 +901,19 @@ function MonthlyFolder({ kader, kaderId, monthlyPeriods, monthlyFeedbackList, sh
     );
 }
 
-export default function FeedbackTab({ kader, weeks, weeksKader = [], refleksi, mentorFeedbackList = [], monthlyPeriods = [], monthlyFeedbackList = [], mentorName, kaderId, showFeedbackForm = true, kaderView = false, weeklyFeedback = null }) {
+export default function FeedbackTab({ kader, weeks, weeksKader = [], refleksi, mentorFeedbackList = [], monthlyPeriods = [], monthlyFeedbackList = [], mentorName, kaderId, showFeedbackForm = true, kaderView = false, weeklyFeedback = null, showMonthly = true }) {
     const [folder, setFolder] = useState("weekly");
+
+    // Kader batch arsip (Batch 1-2) tidak punya Monthly Feedback di sistem — folder-nya
+    // disembunyikan supaya tidak menyisakan tab kosong.
+    const folders = showMonthly ? FOLDERS : FOLDERS.filter(f => f.id !== "monthly");
+    const active  = showMonthly ? folder : "weekly";
 
     return (
         <div>
-            <FolderTabs folder={folder} onChange={setFolder} />
+            <FolderTabs folder={active} onChange={setFolder} folders={folders} />
             <div className="border-2 border-slate-200 rounded-b-2xl rounded-tr-2xl bg-slate-50 p-5">
-            {folder === "monthly" ? (
+            {active === "monthly" ? (
                 <MonthlyFolder
                     kader={kader}
                     kaderId={kaderId}

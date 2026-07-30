@@ -2,7 +2,9 @@ import { useMemo, useState } from "react";
 import { Link } from "@inertiajs/react";
 import AppLayout from "@/Layouts/AppLayout";
 import KaderAvatar from "@/Components/KaderAvatar";
+import { scoreTone } from "@/Components/Report/reportUi";
 import { getFaseLabel, getFaseNum } from "@/constants/fase";
+import { markReturningToList } from "./listScroll";
 import LearningGrowthTab from "./tabs/LearningGrowthTab";
 import KandidatTab from "./tabs/KandidatTab";
 import FeedbackTab from "./tabs/FeedbackTab";
@@ -126,7 +128,12 @@ export default function KaderSayaDetail({
     nikKtp = null,
     kandidatError = null,
     developmentReport = null,
+    arsipDetail = null,
 }) {
+    // Kader batch arsip (Batch 1-2). Overview-nya tetap memakai LearningGrowthTab —
+    // backend sudah menyusun nilai in-class trainingnya sebagai fase Monthly Training —
+    // yang berbeda hanya Penilaian OJT (tanpa form) & tidak adanya Monthly Feedback.
+    const isArsip = arsipDetail !== null;
     // Summary Monthly Feedback = tab khusus Admin MAI; Perjanjian disembunyikan dari Kader.
     // Job Applicant = khusus Admin MAI 021 (backend juga tidak mengirim datanya ke role lain).
     // Report = Admin & Mentor (backend mengirim null untuk Kader, sejalan dengan menu Report).
@@ -168,6 +175,9 @@ export default function KaderSayaDetail({
     const initials = (kader?.nama || "?").split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() || "").join("");
     const doneModuls = faseGroups.reduce((acc, fg) => acc + fg.done, 0);
     const kaderId  = kader?.id;
+    // avgFeedback datang pada skala 0-10 (rata-rata skor mingguan); dinormalisasi ke 0-100
+    // supaya bisa diwarnai dengan band KKM yang sama seperti skor lain.
+    const avgFeedbackScore = avgFeedback != null ? Math.round(avgFeedback * 10) : null;
 
     return (
         <AppLayout
@@ -177,7 +187,7 @@ export default function KaderSayaDetail({
             {/* Back button — hanya untuk Admin/Mentor (Kader tidak punya daftar kader) */}
             {!kaderView && (
                 <div className="mb-5">
-                    <Link href={backHref}
+                    <Link href={backHref} onClick={markReturningToList}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
@@ -241,19 +251,19 @@ export default function KaderSayaDetail({
                     </div>
                 </div>
 
-                {/* Stats row */}
+                {/* Stats row — semua angka di sini skor 0-100, jadi warnanya seragam mengikuti
+                    band KKM (scoreTone), bukan warna tetap per kolom. */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mt-5 pt-5 border-t border-slate-100">
-                    {allFases.map((fase, idx) => {
+                    {allFases.map((fase) => {
                         const faseKey = getFaseNum(fase);
                         const label = getFaseLabel(fase);
                         const fg = faseGroups.find((g) => getFaseNum(g.fase) === faseKey);
-                        const colors = ["text-purple-600","text-blue-600","text-amber-600","text-teal-600"];
                         const notAssigned = !fg;
                         return (
                             <div key={fase} className="text-center">
                                 {notAssigned ? (
                                     <div className="flex items-center justify-center gap-1">
-                                        <div className={`text-2xl font-bold ${colors[idx % 4]}`}>—</div>
+                                        <div className={`text-2xl font-bold ${scoreTone(null).text}`}>—</div>
                                         <div className="relative group">
                                             <svg className="w-4 h-4 text-amber-500 cursor-pointer" fill="currentColor" viewBox="0 0 20 20">
                                                 <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
@@ -265,7 +275,7 @@ export default function KaderSayaDetail({
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className={`text-2xl font-bold ${colors[idx % 4]}`}>
+                                    <div className={`text-2xl font-bold ${scoreTone(fg.avg_score).text}`}>
                                         {fg.avg_score != null ? fg.avg_score : "—"}
                                     </div>
                                 )}
@@ -273,15 +283,17 @@ export default function KaderSayaDetail({
                             </div>
                         );
                     })}
-                    <div className="text-center" title="Final Score Penilaian OJT dari FMC terakhir yang sudah dinilai & di-approve">
-                        <div className="text-2xl font-bold text-blue-600">
+                    <div className="text-center" title={isArsip
+                        ? "Final Score OJT arsip — rata-rata OJT 1–4"
+                        : "Final Score Penilaian OJT dari FMC terakhir yang sudah dinilai & di-approve"}>
+                        <div className={`text-2xl font-bold ${scoreTone(fmcScore).text}`}>
                             {fmcScore != null ? fmcScore : "—"}
                         </div>
                         <div className="text-xs text-slate-500 mt-0.5">FMC</div>
                     </div>
                     <div className="text-center" title="Rata-rata skor feedback mingguan, dinormalisasi ke skala 100">
-                        <div className="text-2xl font-bold text-rose-600">
-                            {avgFeedback != null ? Math.round(avgFeedback * 10) : "—"}
+                        <div className={`text-2xl font-bold ${scoreTone(avgFeedbackScore).text}`}>
+                            {avgFeedbackScore != null ? avgFeedbackScore : "—"}
                         </div>
                         <div className="text-xs text-slate-500 mt-0.5">Avg Feedback</div>
                     </div>
@@ -326,6 +338,7 @@ export default function KaderSayaDetail({
                     showFeedbackForm={!kaderView}
                     kaderView={kaderView}
                     weeklyFeedback={weeklyFeedback}
+                    showMonthly={!isArsip}
                 />
             )}
             {tab === "summary" && canSummarizeMonthly && (
@@ -345,6 +358,7 @@ export default function KaderSayaDetail({
                     structure={penilaianStructure}
                     canEdit={canEditPenilaian}
                     kaderView={kaderView}
+                    arsipOjt={arsipDetail?.ojt ?? null}
                 />
             )}
             {tab === "perjanjian" && (

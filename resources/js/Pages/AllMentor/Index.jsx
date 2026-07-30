@@ -1,6 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
+import { LocalPagination } from '@/Components/DataTable';
+import { consumeMentorList, rememberMentorList } from './listState';
+
+const PER_PAGE = 10;
 
 function StatusPill({ status }) {
     const map = {
@@ -44,8 +48,12 @@ function ProgressBar({ value }) {
 }
 
 export default function AllMentorIndex({ mentors = [], summary = {} }) {
-    const [search, setSearch]   = useState('');
-    const [filter, setFilter]   = useState('all');
+    // Kondisi tabel dipulihkan sekali saat mount bila pengguna baru menekan
+    // "Kembali ke All Mentor" (lazy initializer: consume() menyentuh sessionStorage).
+    const [restored] = useState(() => consumeMentorList());
+    const [search, setSearch] = useState(restored?.q ?? '');
+    const [filter, setFilter] = useState(restored?.filter ?? 'all');
+    const [page, setPage]     = useState(restored?.page ?? 1);
 
     const filtered = useMemo(() => {
         let list = mentors;
@@ -63,6 +71,24 @@ export default function AllMentorIndex({ mentors = [], summary = {} }) {
         }
         return list;
     }, [mentors, search, filter]);
+
+    // Ganti filter/pencarian = daftar baru, jadi balik ke halaman 1. Juga menjaga halaman
+    // tidak menggantung di luar rentang setelah hasilnya menyusut.
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+    useEffect(() => {
+        if (page > totalPages) setPage(1);
+    }, [page, totalPages]);
+
+    const currentPage = Math.min(page, totalPages);
+    const pageRows = useMemo(
+        () => filtered.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE),
+        [filtered, currentPage]
+    );
+
+    const openMentor = (id) => {
+        rememberMentorList({ page: currentPage, q: search, filter });
+        router.visit(`/all-mentor/${id}`);
+    };
 
     const FILTERS = [
         { id: 'all',             label: 'Semua',           count: mentors.length },
@@ -87,7 +113,7 @@ export default function AllMentorIndex({ mentors = [], summary = {} }) {
                     {FILTERS.map((f) => (
                         <button
                             key={f.id}
-                            onClick={() => setFilter(f.id)}
+                            onClick={() => { setFilter(f.id); setPage(1); }}
                             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
                                 filter === f.id
                                     ? 'bg-blue-600 text-white shadow-sm'
@@ -104,7 +130,7 @@ export default function AllMentorIndex({ mentors = [], summary = {} }) {
                 <input
                     type="text"
                     value={search}
-                    onChange={(e) => setSearch(e.target.value)}
+                    onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                     placeholder="Cari mentor, jabatan, atau BU..."
                     className="w-full sm:w-72 px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
                 />
@@ -133,13 +159,16 @@ export default function AllMentorIndex({ mentors = [], summary = {} }) {
                                     </td>
                                 </tr>
                             )}
-                            {filtered.map((m, idx) => (
+                            {pageRows.map((m, idx) => (
                                 <tr
                                     key={m.id}
-                                    onClick={() => router.visit(`/all-mentor/${m.id}`)}
+                                    onClick={() => openMentor(m.id)}
                                     className="border-b border-slate-100 last:border-0 hover:bg-blue-50/50 cursor-pointer transition"
                                 >
-                                    <td className="px-4 py-3 text-slate-500">{idx + 1}</td>
+                                    {/* Nomor urut lanjut antar halaman, bukan mulai 1 lagi. */}
+                                    <td className="px-4 py-3 text-slate-500">
+                                        {(currentPage - 1) * PER_PAGE + idx + 1}
+                                    </td>
                                     <td className="px-4 py-3">
                                         <div className="flex items-center gap-2.5">
                                             {m.foto ? (
@@ -186,6 +215,16 @@ export default function AllMentorIndex({ mentors = [], summary = {} }) {
                         </tbody>
                     </table>
                 </div>
+
+                {filtered.length > PER_PAGE && (
+                    <LocalPagination
+                        page={currentPage}
+                        totalPages={totalPages}
+                        total={filtered.length}
+                        perPage={PER_PAGE}
+                        onPageChange={setPage}
+                    />
+                )}
             </div>
         </AppLayout>
     );

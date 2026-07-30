@@ -1,4 +1,5 @@
 import { getFaseLabel, getFaseNum } from "@/constants/fase";
+import { scoreTone } from "@/Components/Report/reportUi";
 
 export const FASE_PALETTE = [
     { bg: "bg-purple-50", border: "border-purple-200", text: "text-purple-700", bar: "bg-purple-500", badge: "bg-purple-100 text-purple-700" },
@@ -8,12 +9,12 @@ export const FASE_PALETTE = [
     { bg: "bg-pink-50",   border: "border-pink-200",   text: "text-pink-700",   bar: "bg-pink-500",   badge: "bg-pink-100 text-pink-700"   },
 ];
 
-export function scoreColor(score) {
-    if (score == null) return "text-slate-400";
-    if (score >= 80) return "text-emerald-600";
-    if (score >= 60) return "text-amber-600";
-    return "text-rose-600";
-}
+/**
+ * Warna angka nilai mengikuti band KKM di kartu report (lihat scoreTone di reportUi):
+ * >= 70 biru, 60-69 amber, < 60 rose. Sebelumnya ambang batasnya 80 — bikin nilai 74
+ * tampil "kuning" di sini padahal biru (lulus) di report.
+ */
+export const scoreColor = (score) => scoreTone(score).text;
 
 const faseNum = getFaseNum;
 const faseLabel = getFaseLabel;
@@ -59,7 +60,9 @@ export default function LearningGrowthTab({ faseGroups, allFases = [] }) {
                                 <div className={`h-full rounded-full ${pal.bar}`} style={{ width: `${fg.progress}%` }} />
                             </div>
                             <div className="text-xs text-slate-600">
-                                {fg.done}/{fg.total} modul selesai
+                                {/* total 0 = fase yang skornya ada tapi rincian modulnya tidak
+                                    (mis. kader arsip yang tak tercatat di dokumen training). */}
+                                {fg.total > 0 ? `${fg.done}/${fg.total} modul selesai` : "Rincian modul tidak tersedia"}
                                 {fg.avg_score != null && (
                                     <> · Avg <span className={`font-semibold ${scoreColor(fg.avg_score)}`}>{fg.avg_score}</span></>
                                 )}
@@ -107,6 +110,11 @@ export default function LearningGrowthTab({ faseGroups, allFases = [] }) {
                                 )}
                             </div>
                             <div className="divide-y divide-slate-100">
+                                {fg.moduls.length === 0 && (
+                                    <div className="px-5 py-6 text-center text-sm text-slate-400">
+                                        Rincian per modul tidak tersedia untuk kader ini
+                                    </div>
+                                )}
                                 {fg.moduls.map((m, mi) => (
                                     <div key={m.id} className="px-5 py-3 space-y-2">
                                         {/* baris atas: badge + nama + skor bar */}

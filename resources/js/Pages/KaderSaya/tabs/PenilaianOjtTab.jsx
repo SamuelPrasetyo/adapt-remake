@@ -1,7 +1,102 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import PenilaianOjtModal from "../penilaian/PenilaianOjtModal";
+import { scoreTone } from "@/Components/Report/reportUi";
 
 const FMC_LIST = [1, 2, 3];
+
+const fmt1 = (v) => (v == null ? "—" : Number(v).toFixed(1));
+
+/** Panah penghubung antar tahap OJT — disembunyikan saat kartu sudah membungkus ke baris baru. */
+function StepArrow() {
+    return (
+        <svg className="hidden xl:block w-5 h-5 text-slate-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+        </svg>
+    );
+}
+
+/** Cincin progres 0–100 untuk Final Score; warnanya ikut band KKM. */
+function ScoreRing({ value, size = 168, stroke = 14 }) {
+    const pct = value == null ? 0 : Math.max(0, Math.min(100, Number(value)));
+    const r = (size - stroke) / 2;
+    const keliling = 2 * Math.PI * r;
+    const c = size / 2;
+
+    return (
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0">
+            <circle cx={c} cy={c} r={r} fill="none" strokeWidth={stroke} className="stroke-slate-100" />
+            <circle
+                cx={c} cy={c} r={r} fill="none" strokeWidth={stroke} strokeLinecap="round"
+                className={scoreTone(value).stroke}
+                strokeDasharray={`${(pct / 100) * keliling} ${keliling}`}
+                transform={`rotate(-90 ${c} ${c})`}
+            />
+        </svg>
+    );
+}
+
+/**
+ * Penilaian OJT kader batch arsip (Batch 1-2) — read-only.
+ *
+ * Batch arsip tidak pernah mengisi form FMC di sistem; yang tersimpan hanya skor akhir
+ * OJT 1-4 hasil impor Excel (report_arsip). Ditampilkan sebagai alur OJT 1 → 4 yang
+ * bermuara ke Final Score (rata-rata OJT 1-4), tanpa tombol lihat/isi karena memang tidak
+ * ada form penilaian di baliknya.
+ */
+function PenilaianOjtArsip({ ojt }) {
+    return (
+        <div className="space-y-5">
+            {ojt.status === "resign" && (
+                <div className="bg-rose-50 border border-rose-200 rounded-xl px-4 py-3 text-sm text-rose-700 font-medium">
+                    ⚠️ Kader ini tercatat <b>resign</b> di tengah program — sebagian nilai OJT tidak lengkap.
+                </div>
+            )}
+
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                <div className="flex flex-wrap items-center justify-center gap-3 xl:gap-2">
+                    {ojt.list.map((o) => (
+                        <Fragment key={o.label}>
+                            <div className="flex-1 min-w-38 rounded-2xl border border-slate-200 px-4 py-5 text-center">
+                                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{o.label}</div>
+                                {o.score != null ? (
+                                    <>
+                                        <div className={`text-4xl font-bold mt-2 ${scoreTone(o.score).text}`}>{fmt1(o.score)}</div>
+                                        <div className="text-xs text-slate-400 mt-0.5">{scoreLabel(o.score)}</div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="text-4xl font-bold text-slate-300 mt-2">—</div>
+                                        <div className="text-xs text-slate-400 mt-0.5">Belum dinilai</div>
+                                    </>
+                                )}
+                                <div className="mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-400">
+                                    {o.score != null ? "Nilai arsip" : "Tidak ada nilai"}
+                                </div>
+                            </div>
+                            <StepArrow />
+                        </Fragment>
+                    ))}
+
+                    <div className="flex flex-col items-center shrink-0 px-2">
+                        <div className="relative" style={{ width: 168, height: 168 }}>
+                            <ScoreRing value={ojt.final} />
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-8">
+                                <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 leading-tight">
+                                    Final Score OJT
+                                </div>
+                                <div className={`text-4xl font-bold leading-none mt-1 ${scoreTone(ojt.final).text}`}>{fmt1(ojt.final)}</div>
+                                <div className="text-xs text-slate-400 mt-1">{scoreLabel(ojt.final)}</div>
+                            </div>
+                        </div>
+                        <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mt-2">
+                            Rata-rata OJT 1–4
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 function statusFromPenilaian(p) {
     if (!p?.exists) return { label: "Belum mulai", cls: "text-slate-400" };
@@ -31,7 +126,12 @@ export default function PenilaianOjtTab({
     structure,
     canEdit = false,
     kaderView = false,
+    arsipOjt = null,
 }) {
+    // Kader batch arsip: nilainya sudah final di report_arsip, tidak bergantung pada form
+    // FMC yang sedang diperbarui — jadi ditampilkan apa adanya.
+    if (arsipOjt) return <PenilaianOjtArsip ojt={arsipOjt} />;
+
     // ─────────────────────────────────────────────────────────────
     // NOTE: Tampilan Penilaian OJT (kartu FMC-1/2/3) dinonaktifkan
     // sementara karena ada perubahan form Penilaian OJT dari stakeholder.

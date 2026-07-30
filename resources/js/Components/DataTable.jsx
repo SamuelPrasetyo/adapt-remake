@@ -28,7 +28,9 @@ function SortIcon({ active, dir }) {
     );
 }
 
-function LocalPagination({ page, totalPages, total, perPage, onPageChange }) {
+// Diekspor supaya tabel yang disusun manual (mis. All Mentor) memakai pagination yang
+// persis sama dengan tabel berbasis DataTable — jangan bikin varian baru.
+export function LocalPagination({ page, totalPages, total, perPage, onPageChange }) {
     const from = Math.min((page - 1) * perPage + 1, total);
     const to   = Math.min(page * perPage, total);
 

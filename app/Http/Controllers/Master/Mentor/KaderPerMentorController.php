@@ -13,7 +13,10 @@ use App\Models\Modul;
 use App\Models\ModulAssignment;
 use App\Models\ModulReadingProgress;
 use App\Models\ModulTestResult;
+use App\Models\ReportArsip;
 use App\Models\User;
+use App\Support\ArsipKaderDetail;
+use App\Support\HasilTrainingMt;
 use App\Support\KandidatData;
 use App\Support\ModulScore;
 use Illuminate\Http\Request;
@@ -379,7 +382,7 @@ class KaderPerMentorController extends Controller
             }
         }
 
-        return $rows->map(function ($row) use ($userMap, $kaderModuls, $modulFase, $modulFlags, $rpMap, $trMap, $docMap, $paScoreMap) {
+        $stats = $rows->map(function ($row) use ($userMap, $kaderModuls, $modulFase, $modulFlags, $rpMap, $trMap, $docMap, $paScoreMap) {
             $userId   = $userMap[$row->nik_kader] ?? null;
             $modulIds = array_filter(
                 array_keys($kaderModuls[$row->k_id] ?? []),
@@ -472,5 +475,44 @@ class KaderPerMentorController extends Controller
 
             return $row;
         });
+
+        return $this->applyArsipStats($stats);
+    }
+
+    /**
+     * Timpa statistik progres untuk kader batch arsip (Batch 1-2) — dipakai Dashboard
+     * & daftar Kader Saya.
+     *
+     * Kader batch arsip tidak pernah di-assign modul, jadi hitungan checkpoint di atas
+     * selalu 0% + status "Behind Schedule" — menyesatkan untuk program yang sudah tuntas.
+     * Angkanya diambil dari sumber yang sama dengan halaman detail: progress dipatok 100%
+     * (lihat App\Support\ArsipKaderDetail), modul = nilai in-class training pada fase
+     * Monthly Training, dan Avg Score = skor Learning Growth di report_arsip.
+     */
+    protected function applyArsipStats($rows)
+    {
+        $arsip = $rows->filter(fn ($r) => $r->batch_name !== null && (int) $r->batch_name <= 2);
+        if ($arsip->isEmpty()) return $rows;
+
+        $lgByKader = ReportArsip::whereIn('kader_id', $arsip->pluck('k_id')->filter()->values()->all())
+            ->pluck('learning_growth', 'kader_id');
+
+        $fase = ArsipKaderDetail::FASE;
+
+        // Item hasil filter adalah objek yang sama dengan di $rows, jadi cukup diubah di sini.
+        foreach ($arsip as $row) {
+            $lg  = $lgByKader[$row->k_id] ?? null;
+            $avg = $lg === null ? null : (int) round((float) $lg);
+
+            $row->progress_overall = ArsipKaderDetail::PROGRESS;
+            $row->status           = ArsipKaderDetail::STATUS;
+            $row->total_moduls     = HasilTrainingMt::modulCountFor((int) $row->batch_name);
+            $row->fase_aktif       = $fase;
+            $row->fase_aktif_list  = [$fase];
+            $row->avg_score        = $avg;
+            $row->fase_scores      = $avg === null ? [] : [$fase => $avg];
+        }
+
+        return $rows;
     }
 }
