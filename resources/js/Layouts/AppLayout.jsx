@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Link, usePage, router, useForm } from "@inertiajs/react";
 import Modal from "@/Components/Modal";
 import Toast from "@/Components/Toast";
@@ -21,6 +21,9 @@ export default function AppLayout({
     const currentPath = url.split(/[?#]/)[0];
     const user = props?.auth?.user;
     const flash = props?.flash;
+    // Ref flash terbaru — dipakai efek mount untuk menampilkan flash dari redirect antar-halaman.
+    const flashRef = useRef(flash);
+    flashRef.current = flash;
     const mentors = props?.mentors;
     const selectedMentor = props?.selectedMentor;
 
@@ -63,19 +66,17 @@ export default function AppLayout({
         return () => document.removeEventListener("mousedown", handler);
     }, []);
 
-    useEffect(() => {
-        if (flash?.success) {
+    const showFlashToast = useCallback((f) => {
+        if (f?.success) {
             setToast((prev) => ({
                 open: true,
                 type: "success",
-                message: flash.success,
+                message: f.success,
                 key: prev.key + 1,
             }));
-        } else if (flash?.error) {
+        } else if (f?.error) {
             const msg =
-                typeof flash.error === "string"
-                    ? flash.error
-                    : "Terjadi kesalahan.";
+                typeof f.error === "string" ? f.error : "Terjadi kesalahan.";
             setToast((prev) => ({
                 open: true,
                 type: "error",
@@ -83,7 +84,18 @@ export default function AppLayout({
                 key: prev.key + 1,
             }));
         }
-    }, [flash?.success, flash?.error]);
+    }, []);
+
+    // Flash datang dari dua sumber: (1) redirect antar-halaman — props sudah membawa flash
+    // saat mount; (2) aksi di halaman yang sama (mis. update Dokumen berulang) yang pesannya
+    // IDENTIK. Bergantung pada perubahan string prop gagal untuk kasus (2), jadi baca flash
+    // langsung dari response tiap event 'success' Inertia — selalu jalan walau pesan sama.
+    useEffect(() => {
+        showFlashToast(flashRef.current);
+        return router.on("success", (event) => {
+            showFlashToast(event.detail.page.props?.flash);
+        });
+    }, [showFlashToast]);
 
     const handleLogout = async () => {
         const csrf =
@@ -187,6 +199,7 @@ export default function AppLayout({
                                         if (c.requires === "admin021") return isAdmin021;
                                         if (c.requires === "admin") return isAdmin;
                                         if (c.requires === "mentor_only") return isMentor;
+                                        if (c.requires === "mentor_or_admin021") return isMentor || isAdmin021;
                                         return true;
                                     });
                                 }
@@ -286,11 +299,11 @@ export default function AppLayout({
                         {/* Batch berjalan + minggu ke-N (dihitung dari tanggal batch) */}
                         {props?.currentBatchInfo && (
                             <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50 ring-1 ring-slate-200">
-                                <span className="text-xs font-medium text-slate-700">Batch {props.currentBatchInfo.nama_batch}</span>
+                                <span className="text-md font-medium text-slate-700">Batch {props.currentBatchInfo.nama_batch}</span>
                                 {props.currentBatchInfo.currentWeek != null && (
                                     <>
                                         <span className="text-slate-300">|</span>
-                                        <span className="text-xs font-semibold text-blue-600">
+                                        <span className="text-md font-semibold text-blue-600">
                                             Minggu {props.currentBatchInfo.currentWeek}/{props.currentBatchInfo.totalWeeks}
                                         </span>
                                     </>

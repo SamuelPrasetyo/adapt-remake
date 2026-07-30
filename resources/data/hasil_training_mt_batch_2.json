@@ -1,0 +1,392 @@
+{
+    "meta": {
+        "judul": "Hasil Training MT",
+        "batch_no": 2,
+        "batch_roman": "II",
+        "sumber": "Hasil Training MT.pdf",
+        "keterangan": "Nilai Management Trainee Batch 2.",
+        "skala": { "min": 0, "max": 100 },
+        "kkm": 70,
+        "label_avg": "Avg per Kader",
+        "avg_keseluruhan": 85.2
+    },
+    "identitas": [
+        { "key": "bu", "label": "BU" },
+        { "key": "area", "label": "Area" }
+    ],
+    "modul": [
+        { "key": "com_skill", "label": "Com Skill" },
+        { "key": "agile_leadership", "label": "Agile Leadership" },
+        { "key": "supervisory_management", "label": "Supervisory Management" },
+        { "key": "problem_solving_decision_making", "label": "Problem Solving & Decision Making" },
+        { "key": "emotional_intelligence", "label": "Emotional Intelligence" },
+        { "key": "coaching_mentoring", "label": "Coaching & Mentoring" },
+        { "key": "etos_kerja", "label": "Etos Kerja" },
+        { "key": "great_leader", "label": "Great Leader" },
+        { "key": "work_life_plan", "label": "Work Life Plan" }
+    ],
+    "peserta": [
+        {
+            "no": 1,
+            "nama": "Martha Aulia Florencia",
+            "bu": "AAT",
+            "area": "Jabodetabek",
+            "nilai": {
+                "com_skill": 90,
+                "agile_leadership": 100,
+                "supervisory_management": 100,
+                "problem_solving_decision_making": 100,
+                "emotional_intelligence": 100,
+                "coaching_mentoring": 92,
+                "etos_kerja": 70,
+                "great_leader": 95,
+                "work_life_plan": 93.3
+            },
+            "avg": 93.4
+        },
+        {
+            "no": 2,
+            "nama": "Rana Khairunisa",
+            "bu": "AAT",
+            "area": "Jabodetabek",
+            "nilai": {
+                "com_skill": 90,
+                "agile_leadership": 95,
+                "supervisory_management": 100,
+                "problem_solving_decision_making": 80,
+                "emotional_intelligence": 90,
+                "coaching_mentoring": 76,
+                "etos_kerja": 95,
+                "great_leader": 95,
+                "work_life_plan": 93.3
+            },
+            "avg": 90.5
+        },
+        {
+            "no": 3,
+            "nama": "Siti Aminatul Muawanah",
+            "bu": "AAT",
+            "area": "Jabodetabek",
+            "nilai": {
+                "com_skill": 90,
+                "agile_leadership": 95,
+                "supervisory_management": 100,
+                "problem_solving_decision_making": 80,
+                "emotional_intelligence": 90,
+                "coaching_mentoring": 76,
+                "etos_kerja": 85,
+                "great_leader": 95,
+                "work_life_plan": 93.3
+            },
+            "avg": 89.4
+        },
+        {
+            "no": 4,
+            "nama": "Muhammad Ghifari Akbar",
+            "bu": "ISA",
+            "area": "Jabodetabek",
+            "nilai": {
+                "com_skill": 100,
+                "agile_leadership": 95,
+                "supervisory_management": 100,
+                "problem_solving_decision_making": 95,
+                "emotional_intelligence": 90,
+                "coaching_mentoring": 70,
+                "etos_kerja": 80,
+                "great_leader": 70,
+                "work_life_plan": 70
+            },
+            "avg": 85.6
+        },
+        {
+            "no": 5,
+            "nama": "Tri Suryatno",
+            "bu": "MAJ",
+            "area": "Jateng",
+            "nilai": {
+                "com_skill": 95,
+                "agile_leadership": 95,
+                "supervisory_management": 95,
+                "problem_solving_decision_making": 90,
+                "emotional_intelligence": 95,
+                "coaching_mentoring": 92,
+                "etos_kerja": 75,
+                "great_leader": 72,
+                "work_life_plan": 70
+            },
+            "avg": 86.6
+        },
+        {
+            "no": 6,
+            "nama": "Feri Hasan Amirudin",
+            "bu": "MAJ",
+            "area": "Jateng",
+            "nilai": {
+                "com_skill": 90,
+                "agile_leadership": 90,
+                "supervisory_management": 90,
+                "problem_solving_decision_making": 100,
+                "emotional_intelligence": 85,
+                "coaching_mentoring": 84,
+                "etos_kerja": 65,
+                "great_leader": 76,
+                "work_life_plan": 70
+            },
+            "avg": 83.3
+        },
+        {
+            "no": 7,
+            "nama": "Faiz Mulia Rahman",
+            "bu": "MAJ",
+            "area": "Jateng",
+            "nilai": {
+                "com_skill": 95,
+                "agile_leadership": 95,
+                "supervisory_management": 100,
+                "problem_solving_decision_making": 100,
+                "emotional_intelligence": 80,
+                "coaching_mentoring": 88,
+                "etos_kerja": 70,
+                "great_leader": 72,
+                "work_life_plan": 100
+            },
+            "avg": 88.9
+        },
+        {
+            "no": 8,
+            "nama": "Imron Fahrudin",
+            "bu": "MAJ",
+            "area": "Jateng",
+            "nilai": {
+                "com_skill": 75,
+                "agile_leadership": 100,
+                "supervisory_management": 80,
+                "problem_solving_decision_making": 95,
+                "emotional_intelligence": 100,
+                "coaching_mentoring": 88,
+                "etos_kerja": 85,
+                "great_leader": 84,
+                "work_life_plan": 70
+            },
+            "avg": 86.3
+        },
+        {
+            "no": 9,
+            "nama": "Tika Larasati",
+            "bu": "Artos Mall",
+            "area": "Jateng",
+            "nilai": {
+                "com_skill": 85,
+                "agile_leadership": 95,
+                "supervisory_management": 90,
+                "problem_solving_decision_making": 100,
+                "emotional_intelligence": 100,
+                "coaching_mentoring": 100,
+                "etos_kerja": 90,
+                "great_leader": 68,
+                "work_life_plan": 93
+            },
+            "avg": 91.2
+        },
+        {
+            "no": 10,
+            "nama": "Riza Febriandanu",
+            "bu": "Artos Mall",
+            "area": "Jateng",
+            "nilai": {
+                "com_skill": 80,
+                "agile_leadership": 85,
+                "supervisory_management": 80,
+                "problem_solving_decision_making": 70,
+                "emotional_intelligence": 75,
+                "coaching_mentoring": 80,
+                "etos_kerja": 60,
+                "great_leader": 70,
+                "work_life_plan": 86
+            },
+            "avg": 76.2
+        },
+        {
+            "no": 11,
+            "nama": "Amanda Sekar Pujarani",
+            "bu": "Artos Mall",
+            "area": "Jateng",
+            "nilai": {
+                "com_skill": 90,
+                "agile_leadership": 100,
+                "supervisory_management": 100,
+                "problem_solving_decision_making": 100,
+                "emotional_intelligence": 100,
+                "coaching_mentoring": 92,
+                "etos_kerja": 75,
+                "great_leader": 88,
+                "work_life_plan": 100
+            },
+            "avg": 93.9
+        },
+        {
+            "no": 12,
+            "nama": "Allfio Justin Zebaja Ristiand",
+            "bu": "Laras Asri",
+            "area": "Jateng",
+            "nilai": {
+                "com_skill": 65,
+                "agile_leadership": 100,
+                "supervisory_management": 85,
+                "problem_solving_decision_making": 80,
+                "emotional_intelligence": 95,
+                "coaching_mentoring": 84,
+                "etos_kerja": 70,
+                "great_leader": 70,
+                "work_life_plan": 80
+            },
+            "avg": 81.0
+        },
+        {
+            "no": 13,
+            "nama": "Muhammad Dzikron Fadhlurrohman",
+            "nama_db": "Muhammad Dzikron",
+            "bu": "Laras Asri",
+            "area": "Jateng",
+            "nilai": {
+                "com_skill": 90,
+                "agile_leadership": 90,
+                "supervisory_management": 90,
+                "problem_solving_decision_making": 95,
+                "emotional_intelligence": 85,
+                "coaching_mentoring": 80,
+                "etos_kerja": 70,
+                "great_leader": 64,
+                "work_life_plan": 70
+            },
+            "avg": 81.6
+        },
+        {
+            "no": 14,
+            "nama": "Fachri Rahman Irsyad",
+            "bu": "AIM",
+            "area": "Jateng",
+            "nilai": {
+                "com_skill": 95,
+                "agile_leadership": 85,
+                "supervisory_management": 95,
+                "problem_solving_decision_making": 80,
+                "emotional_intelligence": 85,
+                "coaching_mentoring": 84,
+                "etos_kerja": 65,
+                "great_leader": 64,
+                "work_life_plan": 70
+            },
+            "avg": 80.3
+        },
+        {
+            "no": 15,
+            "nama": "Annisa Ayuningtyas",
+            "bu": "AIM",
+            "area": "Jateng",
+            "nilai": {
+                "com_skill": 70,
+                "agile_leadership": 70,
+                "supervisory_management": 70,
+                "problem_solving_decision_making": 70,
+                "emotional_intelligence": 70,
+                "coaching_mentoring": 80,
+                "etos_kerja": 80,
+                "great_leader": 70,
+                "work_life_plan": 93
+            },
+            "avg": 74.8
+        },
+        {
+            "no": 16,
+            "nama": "Mukhammad Faizul Muttaqin",
+            "bu": "AIM",
+            "area": "Jateng",
+            "nilai": {
+                "com_skill": 85,
+                "agile_leadership": 90,
+                "supervisory_management": 70,
+                "problem_solving_decision_making": 100,
+                "emotional_intelligence": 85,
+                "coaching_mentoring": 92,
+                "etos_kerja": 95,
+                "great_leader": 76,
+                "work_life_plan": 93
+            },
+            "avg": 87.3
+        },
+        {
+            "no": 17,
+            "nama": "Eleonora Raras Nirwesthi",
+            "bu": "Artos Hotel",
+            "area": "Jateng",
+            "nilai": {
+                "com_skill": 75,
+                "agile_leadership": 70,
+                "supervisory_management": 85,
+                "problem_solving_decision_making": 70,
+                "emotional_intelligence": 95,
+                "coaching_mentoring": 70,
+                "etos_kerja": 80,
+                "great_leader": 70,
+                "work_life_plan": 93
+            },
+            "avg": 78.7
+        },
+        {
+            "no": 18,
+            "nama": "Ardhita Ayu Pramesti",
+            "bu": "Artos Hotel",
+            "area": "Jateng",
+            "nilai": {
+                "com_skill": 90,
+                "agile_leadership": 70,
+                "supervisory_management": 95,
+                "problem_solving_decision_making": 100,
+                "emotional_intelligence": 100,
+                "coaching_mentoring": 92,
+                "etos_kerja": 70,
+                "great_leader": 80,
+                "work_life_plan": 100
+            },
+            "avg": 88.6
+        },
+        {
+            "no": 19,
+            "nama": "Rivan Haikal",
+            "bu": "Artos Hotel",
+            "area": "Jateng",
+            "nilai": {
+                "com_skill": 65,
+                "agile_leadership": 100,
+                "supervisory_management": 90,
+                "problem_solving_decision_making": 80,
+                "emotional_intelligence": 70,
+                "coaching_mentoring": 84,
+                "etos_kerja": 75,
+                "great_leader": 84,
+                "work_life_plan": 93
+            },
+            "avg": 82.3
+        },
+        {
+            "no": 20,
+            "nama": "Derivan Adam P",
+            "nama_db": "Derivian Adam",
+            "bu": "CCF",
+            "area": "Jateng",
+            "nilai": {
+                "com_skill": 85,
+                "agile_leadership": 95,
+                "supervisory_management": 100,
+                "problem_solving_decision_making": 95,
+                "emotional_intelligence": 75,
+                "coaching_mentoring": 88,
+                "etos_kerja": 70,
+                "great_leader": 76,
+                "work_life_plan": 70
+            },
+            "avg": 83.8
+        }
+    ]
+}

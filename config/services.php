@@ -30,4 +30,19 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    // Base URL storage portal Career MAI untuk menampilkan foto/berkas kandidat.
+    // Berkas ada di {asset_url}/uploads/{folder}/{nama_file} (folder: foto, cv, ijazah,
+    // transkrip, interview, panel, psikogram). Config-cache safe. Pakai nama env khusus
+    // (BUKAN ASSET_URL bawaan Laravel yang dipakai asset()/Vite aplikasi ini sendiri).
+    'career_mai' => [
+        'asset_url' => env('CAREER_MAI_ASSET_URL', 'https://career.mekararmadainvestama.co.id/public'),
+    ],
+
+    // Biner LibreOffice untuk mengonversi CV .doc/.docx kandidat menjadi PDF saat
+    // Export PDF Job Applicant. Kosongkan bila tidak terpasang — konversi otomatis
+    // jatuh ke PhpWord + dompdf (murni PHP, tata letak lebih sederhana).
+    'libreoffice' => [
+        'path' => env('LIBREOFFICE_PATH'),
+    ],
+
 ];

@@ -15,6 +15,19 @@ Route::middleware(['can:isAdmin&Mentor'])->group(function () {
         Route::get('/learning-growth/export-pdf/{nik}', 'exportLearningGrowthPdf')->name('learning.export_pdf');
         Route::post('/export-pdf', 'exportPdf')->name('exportPdf');
 
+        // Report New — Management Trainee Development Report (batch ke-3 ke atas)
+        Route::get('/report-new', 'report_new_index')->name('report.new.index');
+        Route::get('/report-new/{kader}', 'report_new')->name('report.new.show');
+
+        // Report Arsip — Batch 1 & 2 (skor agregat, tanpa historikal sistem)
+        Route::get('/report-arsip/{kader}', 'report_arsip_show')->name('report.arsip.show');
+        // Rincian nilai in-class training dari dokumen arsip (baru tersedia untuk Batch 2)
+        Route::get('/report-arsip/{kader}/hasil-training', 'report_arsip_training')->name('report.arsip.training');
+
+        // Import Arsip Batch 1 & 2 (upload Excel) — Admin MAI
+        Route::get('/report-import-arsip', 'import_arsip_index')->name('report.arsip.import.index');
+        Route::post('/report-import-arsip', 'import_arsip_store')->name('report.arsip.import.store');
+
         Route::get('/reportfeedback-index', 'feedback_index')->name('reportfeedback.index');
         Route::match(['get', 'post'], '/reportfeedback', 'report_feedback')->name('report.feedback');
         Route::match(['get', 'post'], '/reportfeedback-back/{ojt}', 'report_feedback_back')->name('report.feedback.back');

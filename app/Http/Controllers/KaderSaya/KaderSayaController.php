@@ -6,6 +6,7 @@ use App\Constants\PenilaianOjtStructure;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\KaderSaya\PenilaianOjtController;
 use App\Http\Controllers\Master\Mentor\KaderPerMentorController;
+use App\Http\Controllers\Modul\WeeklyFeedbackController;
 use App\Models\Batch;
 use App\Models\Company;
 use App\Models\Dokumen;
@@ -15,14 +16,21 @@ use App\Models\ListKaderPerMentor;
 use App\Models\Mentor;
 use App\Models\Modul;
 use App\Models\ModulAssignment;
+use App\Models\MonthlyFeedbackSummary;
+use App\Models\Pertanyaan;
 use App\Models\ModulReadingProgress;
 use App\Models\ModulTestResult;
 use App\Models\User;
 use App\Models\Week;
 use App\Models\WeekKader;
+use App\Support\ArsipKaderDetail;
+use App\Support\KaderDevelopmentReport;
+use App\Support\KaderReportData;
+use App\Support\KandidatData;
 use App\Support\ModulScore;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
@@ -52,7 +60,7 @@ class KaderSayaController extends Controller
         $mentors = $mentorsQuery->get();
 
         // Filter batch: default ke batch yang sedang berjalan; 'all' = semua batch.
-        $batches      = Batch::orderByDesc('tanggal_mulai')->orderByDesc('id_batch')->get();
+        $batches      = Batch::newestFirst()->get();
         $defaultBatch = optional(Batch::current())->id_batch;
         $batchFilter  = $request->query('batch_id', $defaultBatch);
         $idBatch      = ($batchFilter === 'all') ? null : $batchFilter;
@@ -112,212 +120,66 @@ class KaderSayaController extends Controller
         $kader = Kader::select(
                 'kader.*',
                 'company.company_shortname as bu',
+                'company.company_name as bu_name',
                 'divisis.nama as divisi_name',
                 'departemens.nama as dept_name',
                 'batch.nama_batch as batch_name',
-                'batch.tahun_batch as batch_year',
-                'lkpm.mentor_id',
-                'mentor.nama as mentor_name'
+                'batch.tahun_batch as batch_year'
             )
             ->leftJoin('company', 'kader.company_code', '=', 'company.company_code')
             ->leftJoin('divisis', 'kader.id_divisi', '=', 'divisis.id')
             ->leftJoin('departemens', 'kader.id_departemen', '=', 'departemens.id')
             ->leftJoin('batch', 'kader.id_batch', '=', 'batch.id_batch')
-            ->leftJoin(DB::raw('list_kader_per_mentor lkpm'), function ($j) {
-                $j->on('lkpm.kader_id', '=', 'kader.id')->whereNull('lkpm.deleted_at');
-            })
-            ->leftJoin('mentor', 'lkpm.mentor_id', '=', 'mentor.id')
             ->where('kader.id', $kader_id)
             ->first();
 
         if (!$kader) abort(404);
 
+        // Batch 1-2 = data arsip (diimpor dari Excel, tidak melewati sistem). Kadernya tidak
+        // pernah lewat portal rekrutmen Career MAI dan tidak punya Monthly Feedback di sistem,
+        // jadi tab "Job Applicant" & "Summary Monthly Feedback" tidak relevan — hanya menyisakan
+        // Overview, Feedback, Penilaian OJT, Perjanjian Kerja, dan Report.
+        $isArsipBatch = $kader->batch_name !== null && (int) $kader->batch_name <= 2;
+
+        // Semua mentor aktif kader ini (bisa lebih dari satu).
+        $assignedMentors = ListKaderPerMentor::join('mentor', 'list_kader_per_mentor.mentor_id', '=', 'mentor.id')
+            ->where('list_kader_per_mentor.kader_id', $kader->id)
+            ->whereNull('list_kader_per_mentor.deleted_at')
+            ->whereNull('mentor.deleted_at')
+            ->orderBy('mentor.nama', 'asc')
+            ->pluck('mentor.nama')
+            ->unique()
+            ->values();
+        $kader->mentor_id   = null;
+        $kader->mentor_name = $assignedMentors->isNotEmpty() ? $assignedMentors->implode(', ') : null;
+        $kader->mentors     = $assignedMentors;
+
+        // Mentor boleh membuka kader satu BU dengannya, walau kader itu belum di-assign ke
+        // mentor mana pun — daftar Kader Saya (listAllKadersInBU) memang menampilkan SELURUH
+        // kader BU termasuk yang belum punya mentor, jadi tanpa ini kader tampil di daftar
+        // tapi 403 saat diklik. Jalur assignment tetap dipertahankan supaya mentor yang
+        // membina kader dari BU lain tidak kehilangan akses.
         if ($isMentor) {
-            $hasAccess = ListKaderPerMentor::where('list_kader_per_mentor.kader_id', $kader->id)
-                ->whereNull('list_kader_per_mentor.deleted_at')
-                ->join('mentor', 'list_kader_per_mentor.mentor_id', '=', 'mentor.id')
-                ->whereNull('mentor.deleted_at')
-                ->where('mentor.company_code', $user->company_code)
-                ->exists();
+            $hasAccess = $kader->company_code === $user->company_code
+                || ListKaderPerMentor::where('list_kader_per_mentor.kader_id', $kader->id)
+                    ->whereNull('list_kader_per_mentor.deleted_at')
+                    ->join('mentor', 'list_kader_per_mentor.mentor_id', '=', 'mentor.id')
+                    ->whereNull('mentor.deleted_at')
+                    ->where('mentor.company_code', $user->company_code)
+                    ->exists();
             if (!$hasAccess) abort(403);
         }
 
-        $kaderUser = User::where('nik', $kader->nik)->first();
-        $userId    = $kaderUser ? $kaderUser->id : null;
+        // Peringatan "belum di-assign" untuk Admin/Mentor: detail tetap terbuka, tapi aksi
+        // yang menuntut relasi mentor-kader (mis. simpan Penilaian OJT) akan ditolak.
+        $mentorUnassigned = !$isKader && $assignedMentors->isEmpty();
 
-        $companyId = Company::where('company_code', $kader->company_code)->value('company_id');
+        // Learning Growth/LGS per fase, skor feedback mingguan, daftar feedback mentor, dan
+        // Penilaian OJT/FMC dihitung di satu tempat (dipakai bersama Report New).
+        $report = KaderReportData::build($kader);
 
-        $userModulIds    = $userId
-            ? ModulAssignment::where('assignable_type', 'user')->where('assignable_id', $kader->id)->pluck('modul_id')
-            : collect();
-        $companyModulIds = $companyId
-            ? ModulAssignment::where('assignable_type', 'company')->where('assignable_id', $companyId)->pluck('modul_id')
-            : collect();
-        $allModulIds = $userModulIds->merge($companyModulIds)->unique()->values()->all();
-
-        $moduls = Modul::whereIn('id', $allModulIds)->orderBy('fase')->orderBy('nama_modul')->get(['id', 'nama_modul as nama', 'fase', 'has_test', 'has_post_activity']);
-
-        $testResults = $userId
-            ? ModulTestResult::whereIn('modul_id', $allModulIds)->where('user_id', $userId)->where('is_completed', 1)->get(['modul_id', 'tipe', 'score', 'updated_at'])
-            : collect();
-
-        // $postTimeMap = kapan Post Test diselesaikan → dipakai mengurutkan titik grafik
-        // Learning Growth berdasarkan urutan penyelesaian modul (lihat dokumentasi §10).
-        $testMap     = [];
-        $postTimeMap = [];
-        foreach ($testResults as $t) {
-            $testMap[$t->modul_id][$t->tipe] = (float) $t->score;
-            if ($t->tipe === 'post') $postTimeMap[$t->modul_id] = $t->updated_at;
-        }
-
-        $readMap = $userId
-            ? ModulReadingProgress::whereIn('modul_id', $allModulIds)->where('user_id', $userId)->pluck('progress', 'modul_id')->all()
-            : [];
-
-        $paData = $userId
-            ? Dokumen::where('dokumen.kader_id', $userId)
-                ->whereIn('dokumen.modul_id', $allModulIds)
-                ->where('dokumen.jenis', 'POST_ACTIVITY')
-                ->leftJoin('penilaian_post_activity', 'dokumen.id', '=', 'penilaian_post_activity.dokumen_id')
-                ->select('dokumen.modul_id', 'penilaian_post_activity.nilai as pa_score', 'penilaian_post_activity.dinilai_at as pa_time')
-                ->get()
-            : collect();
-
-        $docIds     = [];
-        $paScoreMap = [];
-        $paTimeMap  = [];
-        foreach ($paData as $d) {
-            $docIds[$d->modul_id] = true;
-            if ($d->pa_score !== null) {
-                $paScoreMap[$d->modul_id] = (float) $d->pa_score;
-                $paTimeMap[$d->modul_id]  = $d->pa_time;
-            }
-        }
-
-        $faseGroups       = [];
-        $doneCheckpoints  = 0;
-        $totalCheckpoints = 0;
-        foreach ($moduls as $modul) {
-            $fase = $modul->fase ?? 'Tanpa Fase';
-            if (!isset($faseGroups[$fase])) {
-                $faseGroups[$fase] = ['fase' => $fase, 'moduls' => [], 'done' => 0, 'total' => 0, 'scores' => []];
-            }
-
-            // Checkpoint hanya dihitung untuk komponen yang dimiliki modul (Materi selalu ada).
-            $needPre  = (bool) $modul->has_test;
-            $needPost = (bool) $modul->has_test;
-            $needPA   = (bool) $modul->has_post_activity;
-
-            $pre  = isset($testMap[$modul->id]['pre']);
-            $mat  = ((int) ($readMap[$modul->id] ?? 0)) >= 100;
-            $post = isset($testMap[$modul->id]['post']);
-            $pa   = isset($docIds[$modul->id]);
-
-            $required = 1 + (int) $needPre + (int) $needPost + (int) $needPA;
-            $done     = (int) $mat
-                + ($needPre  ? (int) $pre  : 0)
-                + ($needPost ? (int) $post : 0)
-                + ($needPA   ? (int) $pa   : 0);
-            $doneCheckpoints  += $done;
-            $totalCheckpoints += $required;
-
-            // Skor Akhir modul = rumus tunggal ModulScore (Post Test + Post Activity, TANPA Pre Test).
-            $modulScoreRaw = ModulScore::finalScore(
-                (bool) $modul->has_test,
-                (bool) $modul->has_post_activity,
-                $testMap[$modul->id]['post'] ?? null,
-                $paScoreMap[$modul->id] ?? null
-            );
-            $modulScore = $modulScoreRaw !== null ? (int) round($modulScoreRaw) : null;
-            if ($modulScore !== null) $faseGroups[$fase]['scores'][] = $modulScore;
-
-            // Learning Growth Score (LGS) — titik grafik Learning Growth (rumus Stakeholder,
-            // berbasis KENAIKAN nilai). KG dari pre→post test; AS dari nilai tugas; LGS
-            // menggabungkannya (60/40) untuk modul ber-tugas, atau = KG bila tanpa tugas.
-            $kgRaw = ModulScore::knowledgeGain(
-                $testMap[$modul->id]['pre']  ?? null,
-                $testMap[$modul->id]['post'] ?? null
-            );
-            $asRaw = $modul->has_post_activity
-                ? ModulScore::applicationScore($paScoreMap[$modul->id] ?? null)
-                : null;
-            $growthRaw   = ModulScore::learningGrowth((bool) $modul->has_post_activity, $kgRaw, $asRaw);
-            $growthScore = $growthRaw !== null ? (int) round($growthRaw) : null;
-
-            // completed_at = saat komponen penilai terakhir selesai → urutan titik di grafik.
-            $completedAt = null;
-            if ($growthScore !== null) {
-                $times = [];
-                if (isset($postTimeMap[$modul->id]))                                 $times[] = $postTimeMap[$modul->id];
-                if ($modul->has_post_activity && isset($paTimeMap[$modul->id]))       $times[] = $paTimeMap[$modul->id];
-                $times = array_filter(array_map(
-                    fn ($t) => $t ? \Illuminate\Support\Carbon::parse($t) : null,
-                    $times
-                ));
-                if (!empty($times)) $completedAt = collect($times)->max()->toIso8601String();
-            }
-
-            $faseGroups[$fase]['moduls'][] = [
-                'id'                => $modul->id,
-                'nama'              => $modul->nama,
-                'pre'               => $pre,
-                'mat'               => $mat,
-                'post'              => $post,
-                'pa'                => $pa,
-                'has_test'          => (bool) $modul->has_test,
-                'has_post_activity' => (bool) $modul->has_post_activity,
-                'need_pre'          => $needPre,
-                'pre_score'         => isset($testMap[$modul->id]['pre'])  ? (int) round($testMap[$modul->id]['pre'])  : null,
-                'post_score'        => isset($testMap[$modul->id]['post']) ? (int) round($testMap[$modul->id]['post']) : null,
-                'pa_score'          => isset($paScoreMap[$modul->id])      ? (int) round($paScoreMap[$modul->id])      : null,
-                'done'              => $done,
-                'required'          => $required,
-                'score'             => $modulScore,
-                // Komponen grafik Learning Growth (rumus Stakeholder, berbasis kenaikan nilai).
-                'kg'                => $kgRaw    !== null ? (int) round($kgRaw)    : null,
-                'as'                => $asRaw    !== null ? (int) round($asRaw)    : null,
-                'growth_score'      => $growthScore,
-                'completed_at'      => $completedAt,
-            ];
-            $faseGroups[$fase]['total']++;
-            if ($done >= $required) $faseGroups[$fase]['done']++;
-        }
-
-        // Avg per fase memakai rumus tunggal ModulScore::average.
-        foreach ($faseGroups as &$fg) {
-            $fg['progress']  = $fg['total'] > 0 ? (int) round(($fg['done'] / $fg['total']) * 100) : 0;
-            $faseAvg         = ModulScore::average($fg['scores'], null);
-            $fg['avg_score'] = $faseAvg !== null ? (int) round($faseAvg) : null;
-            unset($fg['scores']);
-        }
-        unset($fg);
-        uksort($faseGroups, fn($a, $b) => (int) preg_replace('/[^0-9]/', '', $a) <=> (int) preg_replace('/[^0-9]/', '', $b));
-        $faseGroups = array_values($faseGroups);
-
-        $totalModuls     = count($moduls);
-        $totalCp         = $totalCheckpoints;
-        $overallProgress = $totalCp > 0 ? (int) round(($doneCheckpoints / $totalCp) * 100) : 0;
-        $status          = $overallProgress < 40 ? 'kritis' : ($overallProgress < 70 ? 'perlu_perhatian' : 'on_track');
-
-        $weeklyData = [];
-        if ($kader->nik) {
-            $rows = Jawaban::selectRaw('AVG(jawaban) as avg_s, weeks.angka_week as week')
-                ->join('weeks', 'jawaban.id_week', '=', 'weeks.id_week')
-                ->where('nik_kader', $kader->nik)
-                ->whereNotNull('nama_mentor')
-                ->whereIn('id_pertanyaan', ['1', '2', '3', '4'])
-                ->groupBy('weeks.angka_week')
-                ->orderBy('weeks.angka_week')
-                ->get();
-            foreach ($rows as $r) {
-                $weeklyData[] = ['week' => 'W' . $r->week, 'score' => round((float) $r->avg_s, 1)];
-            }
-        }
-
-        // Avg Feedback = rata-rata skor feedback mingguan (rumus tunggal ModulScore::feedbackAverage):
-        // tiap minggu = (Routine Job + Assignment + Pemahaman SOP + Project) / 4, lalu dibagi jumlah minggu.
-        $avgFeedbackRaw = ModulScore::feedbackAverage(array_map(fn ($w) => $w['score'], $weeklyData));
-        $avgFeedback    = $avgFeedbackRaw !== null ? round($avgFeedbackRaw, 1) : null;
+        $weeklyData  = $report['weeklyData'];
+        $avgFeedback = $report['avgFeedback'];
 
         $currentWeek = count($weeklyData);
         $totalWeeks  = $kader->id_batch
@@ -396,46 +258,6 @@ class KaderSayaController extends Controller
         }
         $refleksiList = array_values($refleksiByWeek);
 
-        $mentorFeedbackRaw = Jawaban::whereIn('jawaban.id_pertanyaan', [1, 2, 3, 4, 5, 6])
-            ->where('jawaban.nik_kader', $kader->nik)
-            ->whereNotNull('jawaban.nama_mentor')
-            ->join('weeks', 'jawaban.id_week', '=', 'weeks.id_week')
-            ->select('jawaban.id_week', 'jawaban.id_pertanyaan', 'jawaban.jawaban',
-                     'jawaban.nama_mentor', 'weeks.angka_week', 'weeks.bulan', 'weeks.tahun')
-            ->orderBy('jawaban.id_week', 'desc')
-            ->orderBy('jawaban.id_pertanyaan', 'asc')
-            ->get();
-
-        $motivasiLabel  = [1 => 'Sangat Kurang', 2 => 'Kurang', 3 => 'Cukup', 4 => 'Baik', 5 => 'Sangat Baik'];
-        $feedbackByWeek = [];
-        foreach ($mentorFeedbackRaw as $r) {
-            $wk = $r->id_week;
-            if (!isset($feedbackByWeek[$wk])) {
-                $feedbackByWeek[$wk] = [
-                    'week_id'       => $wk,
-                    'angka_week'    => $r->angka_week,
-                    'bulan'         => $r->bulan,
-                    'tahun'         => $r->tahun,
-                    'nama_mentor'   => $r->nama_mentor,
-                    'routine_job'   => null,
-                    'assignment'    => null,
-                    'pemahaman_sop' => null,
-                    'project'       => null,
-                    'motivasi'      => null,
-                    'area'          => null,
-                ];
-            }
-            $val = strip_tags($r->jawaban ?? '');
-            $idP2 = (int) $r->id_pertanyaan;
-            if ($idP2 === 1)      $feedbackByWeek[$wk]['routine_job']   = $val;
-            elseif ($idP2 === 2)  $feedbackByWeek[$wk]['assignment']    = $val;
-            elseif ($idP2 === 3)  $feedbackByWeek[$wk]['pemahaman_sop'] = $val;
-            elseif ($idP2 === 4)  $feedbackByWeek[$wk]['project']       = $val;
-            elseif ($idP2 === 5)  $feedbackByWeek[$wk]['motivasi']      = $motivasiLabel[(int)$val] ?? $val;
-            elseif ($idP2 === 6)  $feedbackByWeek[$wk]['area']          = $val;
-        }
-        $mentorFeedbackList = array_values($feedbackByWeek);
-
         // Jadwal weeks_kader untuk form isi refleksi kader — hanya relevan saat kaderView.
         $weeksKader = collect();
         if ($kader->id_batch) {
@@ -458,6 +280,22 @@ class KaderSayaController extends Controller
                 ]);
         }
 
+        // Monthly Feedback mentor (pertanyaan 13-15) — sebulan sekali, difilter "Bulan Tahun".
+        // Periode bulan diturunkan dari jadwal weeks batch; tiap bulan di-anchor ke minggu
+        // pertamanya (angka_week terkecil) sebagai id_week penyimpanan jawaban.
+        [$monthlyPeriods, $monthlyFeedbackList] = $this->buildMonthlyFeedback($kader, $today);
+
+        // Summary Monthly Feedback — hanya Admin MAI (021) yang boleh melihat/menulis, dan
+        // tidak untuk batch arsip (tab-nya disembunyikan; batch 1-2 tak punya Monthly Feedback).
+        // Dikirim sebagai map "tahun-bulan" => summary agar tiap kartu Riwayat bisa prefill.
+        $canSummarizeMonthly      = $isAdmin021 && !$isArsipBatch;
+        $monthlyFeedbackSummaries = $canSummarizeMonthly
+            ? MonthlyFeedbackSummary::where('kader_id', $kader->id)
+                ->get(['bulan', 'tahun', 'summary'])
+                ->keyBy(fn ($s) => $s->tahun . '-' . $s->bulan)
+                ->map(fn ($s) => $s->summary)
+            : [];
+
         $perjanjianKerja = Dokumen::where('kader_id', $kader_id)
             ->where('jenis', 'PERJANJIAN_KERJA')
             ->orderBy('created_at', 'desc')
@@ -468,39 +306,62 @@ class KaderSayaController extends Controller
             $perjanjianKerja->uploaded_by_name = $uploader ? $uploader->name : '—';
         }
 
-        $penilaianData = PenilaianOjtController::getDataForKader($kader->id);
+        // Data kandidat (portal rekrutmen Career MAI), ditautkan via kader.nik_ktp = kandidat.ktp.
+        // Dibungkus try/catch: bila DB career_mai tak terjangkau, detail kader tetap tampil.
+        //
+        // KHUSUS Admin MAI 021, dan bukan kader batch arsip. Data ini berisi informasi pribadi
+        // (KTP, alamat, ekspektasi gaji, kontak keluarga, hasil asesmen) — menyembunyikan tab di
+        // frontend saja TIDAK cukup, karena props Inertia terbaca dari view-source. Jadi jangan
+        // dikirim sama sekali ke Kader/Mentor. Sekaligus menghemat query ke career_mai.
+        $canViewKandidat = $isAdmin021 && !$isArsipBatch;
+        $kandidat = null;
+        $kandidatError = null;
+        if ($canViewKandidat && !empty($kader->nik_ktp)) {
+            try {
+                $kandidat = KandidatData::forKtp($kader->nik_ktp);
+            } catch (\Throwable $e) {
+                Log::warning('[KaderSaya::show] gagal ambil data kandidat Career MAI: ' . $e->getMessage());
+                $kandidatError = 'Tidak dapat terhubung ke database Career MAI. Coba lagi nanti.';
+            }
+        }
 
-        // Stat "FMC" di header = rata-rata Final Score Penilaian OJT, HANYA dari FMC yang
-        // sudah dinilai. FMC yang belum dinilai tidak ikut membagi — bila baru FMC-1 yang
-        // terisi, tampilkan nilai FMC-1 utuh (jangan dibagi 2/3 dulu).
-        $fmcScored = array_values(array_filter(
-            array_column($penilaianData['penilaianList'], 'final_score'),
-            fn ($v) => $v !== null
-        ));
-        $fmcScore = !empty($fmcScored) ? round(array_sum($fmcScored) / count($fmcScored), 1) : null;
+        // nik_ktp ikut terbawa select kader.* — sembunyikan dari siapa pun yang tabnya tidak
+        // terbuka agar nomor KTP tidak ikut terserialisasi ke props.
+        if (!$canViewKandidat) {
+            $kader->makeHidden('nik_ktp');
+        }
 
-        $allFases = Modul::distinct()
-            ->whereNotNull('fase')
-            ->pluck('fase')
-            ->filter()
-            ->sortBy(fn($f) => (int) preg_replace('/[^0-9]/', '', $f))
-            ->values()
-            ->all();
+        // Tab "Report" — kartu Management Trainee Development Report yang sama persis dengan
+        // menu Report (Admin & Mentor; menu Report memang tidak dibuka untuk Kader).
+        // Batch 1-2 otomatis memakai varian arsip; null bila tidak ada data report.
+        $developmentReport = $isKader ? null : KaderDevelopmentReport::forTab($kader, $report);
+
+        // Batch arsip: Overview & Penilaian OJT diisi dari dokumen training + report_arsip,
+        // karena kadernya tidak pernah di-assign modul maupun mengisi form FMC di sistem.
+        // faseGroups-nya dibentuk sebagai fase Monthly Training supaya Overview tampil sama
+        // seperti batch sistem; progress/status dipatok 100% & "On Track" (program sudah tuntas).
+        $arsipDetail = $isArsipBatch ? ArsipKaderDetail::build($kader) : null;
 
         return Inertia::render('KaderSaya/Detail', [
             'kader'              => $kader,
-            'faseGroups'         => $faseGroups,
-            'overallProgress'    => $overallProgress,
-            'fmcScore'           => $fmcScore,
-            'status'             => $status,
-            'totalModuls'        => $totalModuls,
+            'faseGroups'         => $isArsipBatch ? $arsipDetail['faseGroups'] : $report['faseGroups'],
+            'overallProgress'    => $isArsipBatch ? ArsipKaderDetail::PROGRESS : $report['overallProgress'],
+            // Stat "FMC" batch arsip = rata-rata OJT 1-4 (report_arsip.fmc_avg), penilaiannya
+            // sudah tuntas. Batch sistem tetap memakai FMC terakhir yang dinilai & di-approve.
+            'fmcScore'           => $isArsipBatch ? ($arsipDetail['ojt']['final'] ?? null) : $report['fmcScore'],
+            'status'             => $isArsipBatch ? ArsipKaderDetail::STATUS : $report['status'],
+            'totalModuls'        => $isArsipBatch ? $arsipDetail['totalModuls'] : $report['totalModuls'],
             'avgFeedback'        => $avgFeedback,
             'currentWeek'        => $currentWeek,
             'totalWeeks'         => $totalWeeks,
             'weeks'              => $weeks,
             'weeksKader'         => $weeksKader,
             'refleksi'           => $refleksiList,
-            'mentorFeedbackList' => $mentorFeedbackList,
+            'mentorFeedbackList' => $report['mentorFeedbackList'],
+            'monthlyPeriods'     => $monthlyPeriods,
+            'monthlyFeedbackList'=> $monthlyFeedbackList,
+            'monthlyFeedbackSummaries' => $monthlyFeedbackSummaries,
+            'canSummarizeMonthly'      => $canSummarizeMonthly,
             'mentorName'         => $user->name,
             'perjanjianKerja'         => $perjanjianKerja,
             'templatePerjanjianKerja' => ($isAdmin021 || $isMentor)
@@ -510,14 +371,52 @@ class KaderSayaController extends Controller
                 ])
                 : null,
             'canUpload'          => $isAdmin021 || $isMentor,
-            'penilaianList'      => $penilaianData['penilaianList'],
-            'penilaianSkorMap'   => $penilaianData['skorMap'],
-            'penilaianKomentarMap' => $penilaianData['komentarMap'],
+            'penilaianList'      => $report['penilaianList'],
+            'penilaianSkorMap'   => $report['penilaianSkorMap'],
+            'penilaianKomentarMap' => $report['penilaianKomentarMap'],
             'penilaianStructure' => PenilaianOjtStructure::all(),
             'canEditPenilaian'   => $isMentor,
-            'allFases'           => $allFases,
+            // Banner peringatan kader tanpa mentor aktif (Admin/Mentor saja).
+            'mentorUnassigned'   => $mentorUnassigned,
+            'allFases'           => $isArsipBatch ? $arsipDetail['allFases'] : $report['allFases'],
             'kaderView'          => $isKader,
+            // Upload Weekly Feedback hanya untuk Kader yang melihat dashboard-nya sendiri.
+            'weeklyFeedback'     => $isKader ? WeeklyFeedbackController::dataFor($user) : null,
+            // Data kandidat rekrutmen (tab Job Applicant) — hanya Admin MAI 021, non-arsip.
+            'canViewKandidat'    => $canViewKandidat,
+            'kandidat'           => $kandidat,
+            'nikKtp'             => $canViewKandidat ? $kader->nik_ktp : null,
+            'kandidatError'      => $kandidatError,
+            // Tab Report — null bila role Kader atau kader tanpa data report.
+            'developmentReport'  => $developmentReport,
+            // Isi tab Overview & Penilaian OJT versi arsip; null untuk batch sistem (3+).
+            'arsipDetail'        => $arsipDetail,
         ]);
+    }
+
+    /**
+     * Cek keberadaan berkas kandidat di portal Career MAI (server-to-server, bebas CORS).
+     * Dipakai tab Kandidat agar berkas yang hilang memunculkan notifikasi di aplikasi,
+     * bukan halaman 404 portal. Anti-SSRF: hanya URL di bawah base storage yang diizinkan.
+     *
+     * @return \Illuminate\Http\JsonResponse status: found | missing | error
+     */
+    public function kandidatFileExists(Request $request)
+    {
+        $url  = (string) $request->query('url', '');
+        $base = rtrim((string) config('services.career_mai.asset_url'), '/');
+
+        if ($base === '' || !str_starts_with($url, $base . '/')) {
+            return response()->json(['status' => 'error'], 422);
+        }
+
+        try {
+            $status = Http::timeout(10)->head($url)->status();
+            return response()->json(['status' => ($status >= 200 && $status < 400) ? 'found' : 'missing']);
+        } catch (\Throwable $e) {
+            Log::warning('[KaderSaya::kandidatFileExists] gagal cek berkas: ' . $e->getMessage());
+            return response()->json(['status' => 'error']);
+        }
     }
 
     public function storeFeedback(Request $request, $kader_id)
@@ -580,6 +479,201 @@ class KaderSayaController extends Controller
         Log::info("[KaderSaya::storeFeedback] done — {$inserted} rows inserted");
 
         return back()->with('feedbackSuccess', true);
+    }
+
+    /**
+     * ID pertanyaan Monthly Feedback mentor (kualitatif, sebulan sekali) — diambil dinamis
+     * dari master Pertanyaan lewat type, BUKAN di-hardcode. Ini menjaga fitur tetap benar
+     * walau ID di produksi berbeda (id_pertanyaan AUTO_INCREMENT). Urutan ascending
+     * id_pertanyaan = urutan pertanyaan m1, m2, m3 sesuai saat di-seed.
+     *
+     * @return int[]
+     */
+    private function monthlyQuestionIds(): array
+    {
+        return Pertanyaan::where('type', 'Mentor Monthly')
+            ->orderBy('id_pertanyaan')
+            ->pluck('id_pertanyaan')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
+    /**
+     * Bangun daftar periode bulan (untuk dropdown "Bulan Tahun") dan riwayat Monthly Feedback.
+     *
+     * @return array{0: array, 1: array} [$monthlyPeriods, $monthlyFeedbackList]
+     */
+    private function buildMonthlyFeedback($kader, string $today): array
+    {
+        $questionIds = $this->monthlyQuestionIds();
+        // Peta id_pertanyaan → posisi (0,1,2) untuk memetakan ke q1/q2/q3 tanpa berpatok ID tetap.
+        $posOf = array_flip($questionIds);
+
+        // Periode bulan diambil dari jadwal weeks batch (yang punya bulan & tahun terisi).
+        $weeks = Week::query()
+            ->when($kader->id_batch, fn ($q) => $q->forBatch($kader->id_batch))
+            ->whereNotNull('bulan')
+            ->whereNotNull('tahun')
+            ->orderBy('tahun')
+            ->orderBy('bulan')
+            ->orderBy('angka_week')
+            ->get(['id_week', 'angka_week', 'bulan', 'tahun', 'tanggal_mulai']);
+
+        // Bulan yang sudah diisi Monthly Feedback (set "tahun-bulan").
+        $filledMonths = Jawaban::where('jawaban.nik_kader', $kader->nik)
+            ->whereNotNull('jawaban.nama_mentor')
+            ->whereIn('jawaban.id_pertanyaan', $questionIds)
+            ->join('weeks', 'jawaban.id_week', '=', 'weeks.id_week')
+            ->select('weeks.bulan', 'weeks.tahun')
+            ->distinct()
+            ->get()
+            ->map(fn ($r) => $r->tahun . '-' . $r->bulan)
+            ->all();
+
+        $periods = [];
+        foreach ($weeks as $w) {
+            $monthKey = $w->tahun . '-' . $w->bulan;
+            if (isset($periods[$monthKey])) continue; // minggu pertama bulan itu jadi anchor
+            $periods[$monthKey] = [
+                'anchor_week_id' => $w->id_week,
+                'bulan'          => (int) $w->bulan,
+                'tahun'          => (int) $w->tahun,
+                'is_available'   => $w->tanggal_mulai && $w->tanggal_mulai->toDateString() <= $today,
+                'is_filled'      => in_array($monthKey, $filledMonths, true),
+            ];
+        }
+        $monthlyPeriods = array_values($periods);
+
+        // Riwayat jawaban Monthly Feedback dikelompokkan per bulan.
+        $monthlyRaw = Jawaban::whereIn('jawaban.id_pertanyaan', $questionIds)
+            ->where('jawaban.nik_kader', $kader->nik)
+            ->whereNotNull('jawaban.nama_mentor')
+            ->join('weeks', 'jawaban.id_week', '=', 'weeks.id_week')
+            ->select('weeks.bulan', 'weeks.tahun', 'jawaban.id_pertanyaan',
+                     'jawaban.jawaban', 'jawaban.nama_mentor', 'jawaban.created_at')
+            ->orderBy('weeks.tahun', 'desc')
+            ->orderBy('weeks.bulan', 'desc')
+            ->get();
+
+        $byMonth = [];
+        foreach ($monthlyRaw as $r) {
+            $monthKey = $r->tahun . '-' . $r->bulan;
+            if (!isset($byMonth[$monthKey])) {
+                $byMonth[$monthKey] = [
+                    'key'         => $monthKey,
+                    'bulan'       => (int) $r->bulan,
+                    'tahun'       => (int) $r->tahun,
+                    'nama_mentor' => $r->nama_mentor,
+                    'q1'          => null,
+                    'q2'          => null,
+                    'q3'          => null,
+                ];
+            }
+            $val = strip_tags($r->jawaban ?? '');
+            $pos = $posOf[(int) $r->id_pertanyaan] ?? null;
+            if ($pos === 0)     $byMonth[$monthKey]['q1'] = $val;
+            elseif ($pos === 1) $byMonth[$monthKey]['q2'] = $val;
+            elseif ($pos === 2) $byMonth[$monthKey]['q3'] = $val;
+        }
+
+        return [$monthlyPeriods, array_values($byMonth)];
+    }
+
+    public function storeMonthlyFeedback(Request $request, $kader_id)
+    {
+        $user  = Auth::user();
+        $kader = Kader::where('id', $kader_id)->first();
+        if (!$kader) abort(404);
+
+        // Anchor week harus milik batch kader & sudah berjalan.
+        $week = Week::where('id_week', $request->id_week)
+            ->when($kader->id_batch, fn ($q) => $q->forBatch($kader->id_batch))
+            ->whereNotNull('tanggal_mulai')
+            ->whereDate('tanggal_mulai', '<=', now()->toDateString())
+            ->first();
+        abort_if(!$week, 422, 'Periode bulan tidak valid atau belum berjalan.');
+
+        $questionIds = $this->monthlyQuestionIds();
+
+        // Satu Monthly Feedback per bulan per kader.
+        $monthFilled = Jawaban::where('jawaban.nik_kader', $kader->nik)
+            ->whereNotNull('jawaban.nama_mentor')
+            ->whereIn('jawaban.id_pertanyaan', $questionIds)
+            ->join('weeks', 'jawaban.id_week', '=', 'weeks.id_week')
+            ->where('weeks.bulan', $week->bulan)
+            ->where('weeks.tahun', $week->tahun)
+            ->exists();
+        abort_if($monthFilled, 422, 'Feedback bulanan untuk periode ini sudah diisi.');
+
+        $base = [
+            'id_week'     => $week->id_week,
+            'nama_mentor' => $user->name,
+            'nik_kader'   => $kader->nik,
+            'created_at'  => now(),
+            'updated_at'  => now(),
+            'created_by'  => $user->id,
+        ];
+
+        // Input m1/m2/m3 dipasangkan ke id_pertanyaan sesuai urutan (posisi), bukan ID tetap.
+        $inputs = [$request->m1, $request->m2, $request->m3];
+
+        $inserted = 0;
+        foreach ($questionIds as $i => $pertanyaan) {
+            $jawaban = $inputs[$i] ?? null;
+            if ($jawaban === null || $jawaban === '') continue;
+            Jawaban::create(array_merge($base, ['id_pertanyaan' => $pertanyaan, 'jawaban' => $jawaban]));
+            $inserted++;
+        }
+
+        Log::info("[KaderSaya::storeMonthlyFeedback] done — {$inserted} rows inserted for kader NIK {$kader->nik} ({$week->bulan}/{$week->tahun})");
+
+        return back()->with('monthlyFeedbackSuccess', true);
+    }
+
+    /**
+     * Simpan/ubah ringkasan Monthly Feedback (Summary) — HANYA Admin MAI (021).
+     * Satu ringkasan per kader per (bulan, tahun); updateOrCreate aman karena
+     * ada UNIQUE(kader_id, bulan, tahun) di tabel. Maks 500 karakter.
+     */
+    public function storeMonthlyFeedbackSummary(Request $request, $kader_id)
+    {
+        $user = Auth::user();
+        abort_unless($user->type === 'Admin' && $user->company_code === '021', 403);
+
+        $kader = Kader::where('id', $kader_id)->first();
+        if (!$kader) abort(404);
+
+        $data = $request->validate([
+            'bulan'   => ['required', 'integer', 'between:1,12'],
+            'tahun'   => ['required', 'integer', 'between:2000,2100'],
+            'summary' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $summary = trim($data['summary'] ?? '');
+
+        if ($summary === '') {
+            // Kosongkan = hapus ringkasan bulan tsb.
+            MonthlyFeedbackSummary::where('kader_id', $kader->id)
+                ->where('bulan', $data['bulan'])
+                ->where('tahun', $data['tahun'])
+                ->delete();
+
+            return back()->with('summaryFeedbackSuccess', true);
+        }
+
+        $row = MonthlyFeedbackSummary::firstOrNew([
+            'kader_id' => $kader->id,
+            'bulan'    => $data['bulan'],
+            'tahun'    => $data['tahun'],
+        ]);
+        if (!$row->exists) $row->created_by = $user->id;
+        $row->summary    = $summary;
+        $row->updated_by = $user->id;
+        $row->save();
+
+        Log::info("[KaderSaya::storeMonthlyFeedbackSummary] saved for kader {$kader->id} ({$data['bulan']}/{$data['tahun']}) by {$user->name}");
+
+        return back()->with('summaryFeedbackSuccess', true);
     }
 
     public function storeRefleksi(Request $request)

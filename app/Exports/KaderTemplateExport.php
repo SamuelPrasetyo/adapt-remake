@@ -20,7 +20,8 @@ class KaderTemplateExport implements FromArray, WithHeadings, WithColumnWidths, 
     public function headings(): array
     {
         // batch & tahun di kiri agar langsung terlihat dan tidak mudah diubah.
-        return ['batch', 'tahun', 'nama', 'nik', 'jenis_kelamin', 'iq', 'ipk', 'company_shortname', 'divisi', 'departemen'];
+        // nik_ktp = No. KTP untuk menautkan kader ke data kandidat (Career MAI).
+        return ['batch', 'tahun', 'nama', 'nik', 'nik_ktp', 'jenis_kelamin', 'iq', 'ipk', 'company_shortname', 'divisi', 'departemen'];
     }
 
     public function array(): array
@@ -30,8 +31,8 @@ class KaderTemplateExport implements FromArray, WithHeadings, WithColumnWidths, 
         $tahunBatch = $batch->tahun_batch ?? '';
 
         return [
-            [$namaBatch, $tahunBatch, 'Budi Santoso', '60320250001', 'L', '110', '3.45', 'MAI', 'PRODUCTION', 'ASSEMBLY'],
-            [$namaBatch, $tahunBatch, 'Siti Aminah',  '60320250002', 'P', '105', '3.60', 'MAI', 'QUALITY',    'QUALITY'],
+            [$namaBatch, $tahunBatch, 'Budi Santoso', '60320250001', '3201234567890001', 'L', '110', '3.45', 'MAI', 'PRODUCTION', 'ASSEMBLY'],
+            [$namaBatch, $tahunBatch, 'Siti Aminah',  '60320250002', '3201234567890002', 'P', '105', '3.60', 'MAI', 'QUALITY',    'QUALITY'],
         ];
     }
 
@@ -42,12 +43,13 @@ class KaderTemplateExport implements FromArray, WithHeadings, WithColumnWidths, 
             'B' => 8,   // tahun
             'C' => 25,  // nama
             'D' => 18,  // nik
-            'E' => 14,  // jenis_kelamin
-            'F' => 8,   // iq
-            'G' => 8,   // ipk
-            'H' => 22,  // company_shortname
-            'I' => 22,  // divisi
-            'J' => 22,  // departemen
+            'E' => 20,  // nik_ktp
+            'F' => 14,  // jenis_kelamin
+            'G' => 8,   // iq
+            'H' => 8,   // ipk
+            'I' => 22,  // company_shortname
+            'J' => 22,  // divisi
+            'K' => 22,  // departemen
         ];
     }
 

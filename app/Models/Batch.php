@@ -30,6 +30,21 @@ class Batch extends Model
     }
 
     /**
+     * Urutan batch terbaru → terlama untuk dropdown/daftar pilihan.
+     *
+     * Jangan pakai tanggal_mulai/id_batch untuk ini: batch arsip (1 & 2)
+     * tanggal_mulai-nya NULL (MySQL menaruh NULL di belakang pada DESC) dan
+     * id_batch mengikuti urutan input — Batch 1 justru di-input paling akhir
+     * sehingga id-nya lebih besar dari Batch 2. Nomor batch dicast ke angka
+     * supaya "10" tidak terurut sebelum "9" saat batch sudah dua digit.
+     */
+    public function scopeNewestFirst($q)
+    {
+        return $q->orderByDesc('tahun_batch')
+                 ->orderByRaw('CAST(nama_batch AS UNSIGNED) DESC');
+    }
+
+    /**
      * Batch yang sedang berjalan. Jika hari ini tidak masuk rentang batch
      * mana pun (mis. ada jeda antar-batch), fallback ke batch terbaru.
      */

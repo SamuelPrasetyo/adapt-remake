@@ -6,17 +6,24 @@ use App\Http\Controllers\Controller;
 use App\Exports\ReportFeedbackExport;
 use App\Exports\ReportFeedbackKaderExport;
 use App\Models\ActivityLog;
+use App\Models\Batch;
 use App\Models\cr;
 use App\Models\FeedbackMai;
 use App\Models\FmDetail;
 use App\Models\Jawaban;
 use App\Models\Kader;
+use App\Models\ListKaderPerMentor;
 use App\Models\PerformanceSum;
 use App\Models\Pertanyaan;
 use App\Models\User;
 use App\Models\Week;
 use App\Models\WeekKader;
+use App\Support\ArsipImporter;
+use App\Support\HasilTrainingMt;
+use App\Support\KaderDevelopmentReport;
+use App\Support\KaderReportData;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -398,6 +405,171 @@ class ReportController extends Controller
     public function feedback_index()
     {
         return Inertia::render('Report/Feedback');
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Report New — "Management Trainee Development Report" (batch ke-3 ke atas).
+    // Satu halaman gabungan per kader; reuse perhitungan LGS/Feedback/FMC dari
+    // App\Support\KaderReportData (sumber yang sama dengan Kader Saya/Detail).
+    // ──────────────────────────────────────────────────────────────────────────
+
+    // ── Import Arsip Batch 1 & 2 (upload Excel) — Admin MAI ───────────────────
+    // Batch 1-2 arsip: skor agregat diimpor dari Excel ke tabel report_arsip
+    // (lihat App\Support\ArsipImporter). Idempotent: upload ulang meng-update.
+    public function import_arsip_index()
+    {
+        if (Auth::user()->type !== 'Admin') abort(403);
+
+        return Inertia::render('Report/ImportArsip', [
+            'result' => session('arsipImportResult'),
+        ]);
+    }
+
+    public function import_arsip_store(Request $request)
+    {
+        if (Auth::user()->type !== 'Admin') abort(403);
+
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls|max:10240',
+        ], [
+            'file.mimes' => 'File harus berformat .xlsx / .xls.',
+        ]);
+
+        try {
+            $result = ArsipImporter::run($request->file('file')->getRealPath(), Auth::id(), true);
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Gagal impor: ' . $e->getMessage());
+        }
+
+        $s   = $result['summary'];
+        $msg = "Impor selesai — Batch 1 dibuat {$s['batch1_created']}, Batch 2 dicocokkan {$s['batch2_matched']}"
+             . ($s['batch2_unmatched'] ? " ({$s['batch2_unmatched']} tak cocok)" : '')
+             . ", mentor baru {$s['mentors_created']}, skor tersimpan {$s['arsip_upserted']}.";
+
+        return redirect()->route('report.arsip.import.index')
+            ->with('arsipImportResult', $result)
+            ->with('success', $msg);
+    }
+
+    // Picker report gabungan: 2 kelompok dalam satu halaman —
+    //   group 'system' = Batch 3+ (report sistem penuh, /report-new/{id})
+    //   group 'arsip'  = Batch 1-2 (report arsip skor saja, /report-arsip/{id})
+    public function report_new_index()
+    {
+        $user     = Auth::user();
+        $isMentor = $user->type === 'Mentor';
+
+        $cols = [
+            'kader.id', 'kader.nik', 'kader.nama', 'kader.jenis_kelamin',
+            'company.company_name as bu', 'divisis.nama as divisi_name', 'departemens.nama as dept_name',
+            'batch.nama_batch', 'batch.tahun_batch',
+        ];
+
+        $base = fn () => Kader::query()
+            ->leftJoin('batch', 'kader.id_batch', '=', 'batch.id_batch')
+            ->leftJoin('company', 'kader.company_code', '=', 'company.company_code')
+            ->leftJoin('divisis', 'kader.id_divisi', '=', 'divisis.id')
+            ->leftJoin('departemens', 'kader.id_departemen', '=', 'departemens.id')
+            ->whereNotNull('batch.nama_batch')
+            ->when($isMentor, fn ($q) => $q->where('kader.company_code', $user->company_code));
+
+        // Batch 3+ : report sistem penuh.
+        $system = $base()
+            ->whereRaw('CAST(batch.nama_batch AS UNSIGNED) >= 3')
+            ->orderByRaw('CAST(batch.nama_batch AS UNSIGNED) DESC')
+            ->orderBy('kader.nama', 'asc')
+            ->get($cols)
+            ->map(fn ($k) => [
+                'id' => $k->id, 'nik' => $k->nik, 'nama' => $k->nama, 'jenis_kelamin' => $k->jenis_kelamin,
+                'bu' => $k->bu, 'divisi_name' => $k->divisi_name, 'dept_name' => $k->dept_name,
+                'nama_batch' => $k->nama_batch, 'tahun_batch' => $k->tahun_batch, 'group' => 'system',
+            ]);
+
+        // Batch 1-2 : hanya kader yang punya baris arsip (report_arsip).
+        $arsip = $base()
+            ->join('report_arsip', 'report_arsip.kader_id', '=', 'kader.id')
+            ->whereRaw('CAST(batch.nama_batch AS UNSIGNED) <= 2')
+            ->orderByRaw('CAST(batch.nama_batch AS UNSIGNED) DESC')
+            ->orderBy('kader.nama', 'asc')
+            ->get($cols)
+            ->map(fn ($k) => [
+                'id' => $k->id, 'nik' => $k->nik, 'nama' => $k->nama, 'jenis_kelamin' => $k->jenis_kelamin,
+                'bu' => $k->bu, 'divisi_name' => $k->divisi_name, 'dept_name' => $k->dept_name,
+                'nama_batch' => $k->nama_batch, 'tahun_batch' => $k->tahun_batch, 'group' => 'arsip',
+            ]);
+
+        return Inertia::render('Report/DevelopmentIndex', [
+            'kaders' => $system->concat($arsip)->values(),
+        ]);
+    }
+
+    // Report Arsip (Batch 1-2) — skor agregat dari report_arsip, tanpa grafik / filter FMC /
+    // Grand Score (data historis tak lengkap; lihat App\Support\ArsipImporter).
+    public function report_arsip_show($kader_id)
+    {
+        $kader = Kader::where('id', $kader_id)->first();
+        if (!$kader) abort(404);
+
+        $this->assertKaderAccess($kader);
+
+        $props = KaderDevelopmentReport::arsip($kader);
+        if (!$props) abort(404);
+
+        // Tombol "Detail Nilai Training" hanya muncul bila batch kader sudah punya dokumennya
+        // (saat ini Batch 2 saja; Batch 1 menyusul).
+        $props['trainingHref'] = HasilTrainingMt::hrefFor($kader->id, $props['scores']['batch_no']);
+
+        return Inertia::render('Report/DevelopmentArsip', $props);
+    }
+
+    /**
+     * Rincian nilai in-class training kader batch arsip — tabel dokumen sumber
+     * (App\Support\HasilTrainingMt), dengan baris kader yang dibuka disorot.
+     */
+    public function report_arsip_training($kader_id)
+    {
+        $kader = Kader::where('id', $kader_id)->first();
+        if (!$kader) abort(404);
+
+        $this->assertKaderAccess($kader);
+
+        $props = HasilTrainingMt::forKader($kader);
+        if (!$props) abort(404); // batch kader belum punya dokumen hasil training
+
+        return Inertia::render('Report/HasilTraining', $props);
+    }
+
+    // Mentor hanya boleh membuka kader di BU-nya (selaras dengan KaderSaya::show).
+    private function assertKaderAccess($kader): void
+    {
+        $user = Auth::user();
+        if ($user->type !== 'Mentor') return;
+
+        $hasAccess = ListKaderPerMentor::where('list_kader_per_mentor.kader_id', $kader->id)
+            ->whereNull('list_kader_per_mentor.deleted_at')
+            ->join('mentor', 'list_kader_per_mentor.mentor_id', '=', 'mentor.id')
+            ->whereNull('mentor.deleted_at')
+            ->where('mentor.company_code', $user->company_code)
+            ->exists();
+
+        abort_if(!$hasAccess, 403);
+    }
+
+    // Report New — "Management Trainee Development Report" (batch 3+). Semua hitungan
+    // (LGS per fase, jendela FMC, Development Progress, catatan bulanan, Grand Score, TTD)
+    // disusun App\Support\KaderDevelopmentReport — dipakai bersama tab "Report" di
+    // KaderSaya/Detail agar kartu reportnya identik di dua tempat.
+    public function report_new($kader_id)
+    {
+        $kader = Kader::where('id', $kader_id)->first();
+        if (!$kader) abort(404);
+
+        $this->assertKaderAccess($kader);
+
+        return Inertia::render(
+            'Report/Development',
+            KaderDevelopmentReport::build($kader, KaderReportData::build($kader))
+        );
     }
 
     public function report_feedback(Request $request)

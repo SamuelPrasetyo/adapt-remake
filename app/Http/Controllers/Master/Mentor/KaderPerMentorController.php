@@ -13,16 +13,23 @@ use App\Models\Modul;
 use App\Models\ModulAssignment;
 use App\Models\ModulReadingProgress;
 use App\Models\ModulTestResult;
+use App\Models\ReportArsip;
 use App\Models\User;
+use App\Support\ArsipKaderDetail;
+use App\Support\HasilTrainingMt;
+use App\Support\KandidatData;
 use App\Support\ModulScore;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use RealRashid\SweetAlert\Facades\Alert;
 
 class KaderPerMentorController extends Controller
 {
+    /** Batas maksimum mentor aktif yang boleh dimiliki satu kader. */
+    public const MAX_MENTORS_PER_KADER = 5;
+
     public function __construct()
     {
         $this->middleware('auth');
@@ -41,17 +48,26 @@ class KaderPerMentorController extends Controller
             ->first();
 
         if (!$mentor) {
-            Alert::warning('Failed', 'Mentor tidak ditemukan.');
-            return back();
+            return back()->with('error', 'Mentor tidak ditemukan.');
         }
 
         $selectedIds = collect($request->kader_ids ?? []);
 
-        // Unassign kader yang tidak dipilih lagi
+        // Unassign kader yang tidak dipilih lagi (khusus mentor ini)
         $unassigned = ListKaderPerMentor::where('mentor_id', $mentor->id)
             ->whereNull('deleted_at')
             ->when($selectedIds->isNotEmpty(), fn($q) => $q->whereNotIn('kader_id', $selectedIds->all()))
             ->update(['deleted_at' => now()]);
+
+        // Jumlah mentor LAIN yang sudah aktif per kader — untuk enforce batas maksimum.
+        $otherMentorCount = $selectedIds->isEmpty()
+            ? collect()
+            : ListKaderPerMentor::whereIn('kader_id', $selectedIds->all())
+                ->whereNull('deleted_at')
+                ->where('mentor_id', '!=', $mentor->id)
+                ->select('kader_id', DB::raw('COUNT(DISTINCT mentor_id) as c'))
+                ->groupBy('kader_id')
+                ->pluck('c', 'kader_id');
 
         // Assign kader baru yang belum ada
         $kaders = Kader::whereIn('id', $selectedIds->all())
@@ -59,12 +75,19 @@ class KaderPerMentorController extends Controller
             ->get();
 
         $inserted = 0;
+        $skipped  = [];
         foreach ($kaders as $kader) {
             $existing = ListKaderPerMentor::where('kader_id', $kader->id)
                 ->where('mentor_id', $mentor->id)
                 ->first();
 
             if ($existing && is_null($existing->deleted_at)) {
+                continue; // sudah ter-assign ke mentor ini
+            }
+
+            // Tolak bila kader sudah mencapai batas maksimum mentor (dari mentor lain).
+            if ((int) ($otherMentorCount[$kader->id] ?? 0) >= self::MAX_MENTORS_PER_KADER) {
+                $skipped[] = $kader->nama;
                 continue;
             }
 
@@ -87,9 +110,16 @@ class KaderPerMentorController extends Controller
             $inserted++;
         }
 
-        ActivityLog::activity_log("Sync assign Mentor {$mentor->nama}: +{$inserted} kader, -{$unassigned} unassign.");
-        Alert::success('Success', "Assign berhasil diperbarui.");
-        return back();
+        $skipNote = count($skipped) ? ", skip " . count($skipped) : "";
+        ActivityLog::activity_log("Sync assign Mentor {$mentor->nama}: +{$inserted} kader, -{$unassigned} unassign{$skipNote}.");
+
+        if (!empty($skipped)) {
+            return back()->with('error',
+                count($skipped) . " kader sudah mencapai batas " . self::MAX_MENTORS_PER_KADER
+                    . " mentor dan dilewati: " . implode(', ', $skipped) . ".");
+        }
+
+        return back()->with('success', 'Assign berhasil diperbarui.');
     }
 
     public function listByMentor($mentor_id)
@@ -127,28 +157,79 @@ class KaderPerMentorController extends Controller
                 'kader.id as k_id',
                 'kader.nama as nama_kader',
                 'kader.nik as nik_kader',
+                'kader.nik_ktp as nik_ktp',
                 'kader.company_code as company_code',
                 'batch.nama_batch as batch_name',
                 'batch.tahun_batch as batch_year',
                 'divisis.nama as divisi_name',
                 'departemens.nama as dept_name',
-                'company.company_shortname as bu',
-                'mentor.nama as mentor_name',
-                'mentor.jabatan as mentor_jabatan'
+                'company.company_shortname as bu'
             )
             ->join('kader', 'list_kader_per_mentor.kader_id', '=', 'kader.id')
-            ->leftJoin('mentor', 'list_kader_per_mentor.mentor_id', '=', 'mentor.id')
             ->leftJoin('batch', 'list_kader_per_mentor.id_batch', '=', 'batch.id_batch')
             ->leftJoin('divisis', 'list_kader_per_mentor.id_divisi', '=', 'divisis.id')
             ->leftJoin('departemens', 'list_kader_per_mentor.id_department', '=', 'departemens.id')
             ->leftJoin('company', 'list_kader_per_mentor.company_code', '=', 'company.company_code')
             ->where('list_kader_per_mentor.mentor_id', $mentor_id)
             ->whereNull('list_kader_per_mentor.deleted_at')
+            // Query dimulai dari ListKaderPerMentor, jadi global scope SoftDeletes
+            // milik model Kader tidak ikut — kader terarsip harus disaring manual.
+            ->whereNull('kader.deleted_at')
             ->when($idBatch, fn($q) => $q->where('list_kader_per_mentor.id_batch', $idBatch))
             ->orderBy('kader.nama', 'asc')
-            ->get();
+            ->get()
+            // Satu kader bisa punya >1 assignment ke mentor ini secara historis; jaga tetap unik.
+            ->unique('k_id')
+            ->values();
+
+        // Tampilkan SEMUA mentor kader (bukan hanya mentor yang difilter) agar kartu konsisten.
+        $this->attachMentors($rows, $idBatch);
+        $this->attachKandidatPhotos($rows);
 
         return $this->attachProgressStats($rows);
+    }
+
+    /**
+     * Menempelkan daftar mentor (bisa >1) tiap kader ke setiap baris:
+     *  - $row->mentors      : array [{ id, nama, jabatan }]
+     *  - $row->mentor_count : jumlah mentor aktif
+     *  - $row->mentor_name  : nama mentor digabung koma (backward compatible)
+     *  - $row->mentor_id    : mentor pertama (backward compatible)
+     */
+    protected function attachMentors($rows, $idBatch = null)
+    {
+        if ($rows->isEmpty()) return;
+
+        $kaderIds = $rows->pluck('k_id')->unique()->filter()->values()->all();
+
+        $byKader = ListKaderPerMentor::select(
+                'list_kader_per_mentor.kader_id',
+                'mentor.id as mentor_id',
+                'mentor.nama as mentor_name',
+                'mentor.jabatan as mentor_jabatan'
+            )
+            ->join('mentor', 'list_kader_per_mentor.mentor_id', '=', 'mentor.id')
+            ->whereIn('list_kader_per_mentor.kader_id', $kaderIds)
+            ->whereNull('list_kader_per_mentor.deleted_at')
+            ->whereNull('mentor.deleted_at')
+            ->when($idBatch, fn($q) => $q->where('list_kader_per_mentor.id_batch', $idBatch))
+            ->orderBy('mentor.nama', 'asc')
+            ->get()
+            ->unique(fn($r) => $r->kader_id . '|' . $r->mentor_id)
+            ->groupBy('kader_id');
+
+        $rows->each(function ($row) use ($byKader) {
+            $list = $byKader->get($row->k_id, collect());
+            $row->mentors = $list->map(fn($m) => [
+                'id'      => $m->mentor_id,
+                'nama'    => $m->mentor_name,
+                'jabatan' => $m->mentor_jabatan,
+            ])->values()->all();
+            $row->mentor_count   = $list->count();
+            $row->mentor_name    = $list->pluck('mentor_name')->implode(', ') ?: null;
+            $row->mentor_id      = $list->first()->mentor_id ?? null;
+            $row->mentor_jabatan = $list->first()->mentor_jabatan ?? null;
+        });
     }
 
     /**
@@ -157,30 +238,25 @@ class KaderPerMentorController extends Controller
      */
     public function listAllKadersInBU($companyCode = null, $idBatch = null)
     {
+        // Query murni kader (tanpa join mentor) agar satu kader = satu baris,
+        // walau punya >1 mentor. Daftar mentor ditempel via attachMentors().
         $kadersQuery = Kader::select(
                 'kader.id as k_id',
                 'kader.id as kader_id',
                 'kader.nik as nik_kader',
+                'kader.nik_ktp as nik_ktp',
                 'kader.nama as nama_kader',
                 'kader.company_code',
                 'company.company_shortname as bu',
                 'divisis.nama as divisi_name',
                 'departemens.nama as dept_name',
                 'batch.nama_batch as batch_name',
-                'batch.tahun_batch as batch_year',
-                'lkpm.mentor_id as mentor_id',
-                'mentor.nama as mentor_name',
-                'mentor.jabatan as mentor_jabatan'
+                'batch.tahun_batch as batch_year'
             )
             ->leftJoin('company', 'kader.company_code', '=', 'company.company_code')
             ->leftJoin('divisis', 'kader.id_divisi', '=', 'divisis.id')
             ->leftJoin('departemens', 'kader.id_departemen', '=', 'departemens.id')
             ->leftJoin('batch', 'kader.id_batch', '=', 'batch.id_batch')
-            ->leftJoin(DB::raw('list_kader_per_mentor lkpm'), function ($j) {
-                $j->on('lkpm.kader_id', '=', 'kader.id')
-                  ->whereNull('lkpm.deleted_at');
-            })
-            ->leftJoin('mentor', 'lkpm.mentor_id', '=', 'mentor.id')
             ->orderBy('kader.nama', 'asc');
 
         if ($companyCode) {
@@ -192,7 +268,38 @@ class KaderPerMentorController extends Controller
         }
 
         $rows = $kadersQuery->get();
+
+        $this->attachMentors($rows, $idBatch);
+        $this->attachKandidatPhotos($rows);
+
         return $this->attachProgressStats($rows);
+    }
+
+    /**
+     * Menempelkan `$row->foto` (URL foto kandidat Career MAI) tiap kader yang sudah
+     * ditautkan lewat nik_ktp. Satu query untuk seluruh daftar.
+     *
+     * Sengaja dibungkus try/catch: Dashboard & daftar kader TIDAK boleh ikut tumbang
+     * hanya karena DB portal rekrutmen tak terjangkau — foto sekadar pemanis, kader
+     * tanpa foto jatuh ke avatar inisial.
+     */
+    protected function attachKandidatPhotos($rows)
+    {
+        if ($rows->isEmpty()) return;
+
+        $photos = [];
+        try {
+            $photos = KandidatData::photosForKtps(
+                $rows->pluck('nik_ktp')->filter()->unique()->values()->all()
+            );
+        } catch (\Throwable $e) {
+            Log::warning('[KaderPerMentor] gagal ambil foto kandidat Career MAI: ' . $e->getMessage());
+        }
+
+        $rows->each(function ($r) use ($photos) {
+            $ktp = trim((string) ($r->nik_ktp ?? ''));
+            $r->foto = ($ktp !== '' && isset($photos[$ktp])) ? $photos[$ktp] : null;
+        });
     }
 
     protected function attachProgressStats($rows)
@@ -278,7 +385,7 @@ class KaderPerMentorController extends Controller
             }
         }
 
-        return $rows->map(function ($row) use ($userMap, $kaderModuls, $modulFase, $modulFlags, $rpMap, $trMap, $docMap, $paScoreMap) {
+        $stats = $rows->map(function ($row) use ($userMap, $kaderModuls, $modulFase, $modulFlags, $rpMap, $trMap, $docMap, $paScoreMap) {
             $userId   = $userMap[$row->nik_kader] ?? null;
             $modulIds = array_filter(
                 array_keys($kaderModuls[$row->k_id] ?? []),
@@ -371,5 +478,44 @@ class KaderPerMentorController extends Controller
 
             return $row;
         });
+
+        return $this->applyArsipStats($stats);
+    }
+
+    /**
+     * Timpa statistik progres untuk kader batch arsip (Batch 1-2) — dipakai Dashboard
+     * & daftar Kader Saya.
+     *
+     * Kader batch arsip tidak pernah di-assign modul, jadi hitungan checkpoint di atas
+     * selalu 0% + status "Behind Schedule" — menyesatkan untuk program yang sudah tuntas.
+     * Angkanya diambil dari sumber yang sama dengan halaman detail: progress dipatok 100%
+     * (lihat App\Support\ArsipKaderDetail), modul = nilai in-class training pada fase
+     * Monthly Training, dan Avg Score = skor Learning Growth di report_arsip.
+     */
+    protected function applyArsipStats($rows)
+    {
+        $arsip = $rows->filter(fn ($r) => $r->batch_name !== null && (int) $r->batch_name <= 2);
+        if ($arsip->isEmpty()) return $rows;
+
+        $lgByKader = ReportArsip::whereIn('kader_id', $arsip->pluck('k_id')->filter()->values()->all())
+            ->pluck('learning_growth', 'kader_id');
+
+        $fase = ArsipKaderDetail::FASE;
+
+        // Item hasil filter adalah objek yang sama dengan di $rows, jadi cukup diubah di sini.
+        foreach ($arsip as $row) {
+            $lg  = $lgByKader[$row->k_id] ?? null;
+            $avg = $lg === null ? null : (int) round((float) $lg);
+
+            $row->progress_overall = ArsipKaderDetail::PROGRESS;
+            $row->status           = ArsipKaderDetail::STATUS;
+            $row->total_moduls     = HasilTrainingMt::modulCountFor((int) $row->batch_name);
+            $row->fase_aktif       = $fase;
+            $row->fase_aktif_list  = [$fase];
+            $row->avg_score        = $avg;
+            $row->fase_scores      = $avg === null ? [] : [$fase => $avg];
+        }
+
+        return $rows;
     }
 }

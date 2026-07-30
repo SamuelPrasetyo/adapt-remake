@@ -3,6 +3,7 @@ import { useForm, router } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import DataTable from '@/Components/DataTable';
 import Modal from '@/Components/Modal';
+import ModulReorder from './ModulReorder';
 import { FASE_LABELS } from '@/constants/fase';
 
 const FASE_OPTIONS = [
@@ -47,15 +48,24 @@ const COLS = [
     },
     {
         key: 'file_materi', label: 'File',
-        render: (v) => v ? (
-            <a href={`/${v}`} target="_blank" rel="noreferrer"
-                className="inline-flex items-center gap-1 text-blue-600 hover:underline text-xs">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13l-3 3m0 0l-3-3m3 3V8m0 13a9 9 0 110-18 9 9 0 010 18z" />
-                </svg>
-                Unduh
-            </a>
-        ) : <span className="text-slate-400 text-xs">-</span>,
+        render: (v, row) => {
+            const link = (href, label) => (
+                <a href={href} target="_blank" rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-blue-600 hover:underline text-xs">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13l-3 3m0 0l-3-3m3 3V8m0 13a9 9 0 110-18 9 9 0 010 18z" />
+                    </svg>
+                    {label}
+                </a>
+            );
+            if (!v && !row.file_template_pa) return <span className="text-slate-400 text-xs">-</span>;
+            return (
+                <div className="flex flex-col gap-1">
+                    {v && link(`/${v}`, 'Materi')}
+                    {row.file_template_pa && link(`/${row.file_template_pa}`, 'Template PA')}
+                </div>
+            );
+        },
     },
 ];
 
@@ -71,6 +81,30 @@ function Field({ label, error, children }) {
     );
 }
 
+/** Kartu upload berbingkai — tiap file punya zona visual sendiri agar tidak tertukar. */
+function UploadCard({ iconWrapCls, icon, title, hint, badge, badgeCls, error, children }) {
+    return (
+        <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+            <div className="flex items-start gap-3">
+                <div className={`shrink-0 w-9 h-9 rounded-lg flex items-center justify-center ${iconWrapCls}`}>
+                    {icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="text-sm font-semibold text-slate-800">{title}</h4>
+                        {badge && (
+                            <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${badgeCls}`}>{badge}</span>
+                        )}
+                    </div>
+                    <p className="text-xs text-slate-400 mt-0.5 mb-2">{hint}</p>
+                    {children}
+                    {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function ActionBtn({ onClick, color, title, children }) {
     const colors = { blue: 'text-blue-600 hover:bg-blue-50', red: 'text-red-600 hover:bg-red-50' };
     return (
@@ -79,7 +113,7 @@ function ActionBtn({ onClick, color, title, children }) {
     );
 }
 
-function ModulForm({ form, formId, onSubmit, currentFile }) {
+function ModulForm({ form, formId, onSubmit, currentFile, currentTemplatePa }) {
     const isMentor = form.data.tipe === 'MENTOR';
     return (
         <form id={formId} onSubmit={onSubmit}>
@@ -140,41 +174,115 @@ function ModulForm({ form, formId, onSubmit, currentFile }) {
                     )}
                 </div>
             </Field>
-            <Field label="File Materi (PDF, maks 8MB)" error={form.errors.file_materi}>
-                <input type="file" accept=".pdf"
-                    onChange={(e) => {
-                        const file = e.target.files[0];
-                        if (!file) return;
-                        if (file.size > 8 * 1024 * 1024) {
-                            form.setError('file_materi', 'Ukuran file terlalu besar. Maksimal 8 MB.');
-                            e.target.value = '';
-                            return;
-                        }
-                        form.setData('file_materi', file);
-                    }}
-                    className="w-full text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
-                {currentFile && !form.data.file_materi && (
-                    <div className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
-                        <svg className="w-3.5 h-3.5 text-green-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        <span>File saat ini:&nbsp;</span>
-                        <a href={`/${currentFile}`} target="_blank" rel="noreferrer"
-                            className="text-blue-600 hover:underline truncate max-w-xs">
-                            {currentFile.split('/').pop().replace(/^\d+_/, '')}
-                        </a>
-                        <span className="text-slate-400">(kosongkan jika tidak ingin mengganti)</span>
-                    </div>
+            {/* ── Dokumen: tiap upload jadi kartu terpisah agar tidak tertukar ── */}
+            <div className="mt-5 mb-3 flex items-center gap-3">
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Dokumen</span>
+                <div className="flex-1 h-px bg-slate-200" />
+            </div>
+            <div className="space-y-3">
+                <UploadCard
+                    iconWrapCls="bg-blue-100 text-blue-600"
+                    icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>}
+                    title="File Materi"
+                    hint="Materi pembelajaran modul — Format PDF · maksimal 8MB"
+                    badge="Wajib"
+                    badgeCls="bg-blue-100 text-blue-700"
+                    error={form.errors.file_materi}
+                >
+                    <input type="file" accept=".pdf"
+                        onChange={(e) => {
+                            const file = e.target.files[0];
+                            if (!file) return;
+                            if (file.size > 8 * 1024 * 1024) {
+                                form.setError('file_materi', 'Ukuran file terlalu besar. Maksimal 8 MB.');
+                                e.target.value = '';
+                                return;
+                            }
+                            form.setData('file_materi', file);
+                        }}
+                        className="w-full text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200" />
+                    {currentFile && !form.data.file_materi && (
+                        <div className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
+                            <svg className="w-3.5 h-3.5 text-green-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <span>File saat ini:&nbsp;</span>
+                            <a href={`/${currentFile}`} target="_blank" rel="noreferrer"
+                                className="text-blue-600 hover:underline truncate max-w-xs">
+                                {currentFile.split('/').pop().replace(/^\d+_/, '')}
+                            </a>
+                            <span className="text-slate-400">(kosongkan jika tidak ingin mengganti)</span>
+                        </div>
+                    )}
+                    {form.data.file_materi && (
+                        <p className="mt-1.5 text-xs text-emerald-600 flex items-center gap-1">
+                            <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                            File baru dipilih: {form.data.file_materi.name}
+                        </p>
+                    )}
+                </UploadCard>
+
+                {form.data.has_post_activity && (
+                    <UploadCard
+                        iconWrapCls="bg-orange-100 text-orange-600"
+                        icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>}
+                        title="Template Post Activity"
+                        hint="Acuan pengisian Post Activity, diunduh Kader/Mentor — Excel/PDF/DOCX · maksimal 2MB"
+                        badge="Opsional"
+                        badgeCls="bg-slate-200 text-slate-500"
+                        error={form.errors.file_template_pa}
+                    >
+                        <input type="file" accept=".xlsx,.xls,.pdf,.docx"
+                            onChange={(e) => {
+                                const file = e.target.files[0];
+                                if (!file) return;
+                                if (file.size > 2 * 1024 * 1024) {
+                                    form.setError('file_template_pa', 'Ukuran file terlalu besar. Maksimal 2 MB.');
+                                    e.target.value = '';
+                                    return;
+                                }
+                                form.setData((d) => ({ ...d, file_template_pa: file, remove_template_pa: false }));
+                            }}
+                            className="w-full text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-orange-100 file:text-orange-700 hover:file:bg-orange-200" />
+                        {currentTemplatePa && !form.data.file_template_pa && !form.data.remove_template_pa && (
+                            <div className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
+                                <svg className="w-3.5 h-3.5 text-green-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                <span>Template saat ini:&nbsp;</span>
+                                <a href={`/${currentTemplatePa}`} target="_blank" rel="noreferrer"
+                                    className="text-blue-600 hover:underline truncate max-w-xs">
+                                    {currentTemplatePa.split('/').pop()}
+                                </a>
+                                <button type="button" onClick={() => form.setData('remove_template_pa', true)}
+                                    className="text-rose-600 hover:underline font-medium">
+                                    Hapus
+                                </button>
+                            </div>
+                        )}
+                        {currentTemplatePa && form.data.remove_template_pa && !form.data.file_template_pa && (
+                            <p className="mt-1.5 text-xs text-rose-600 flex items-center gap-1.5">
+                                Template akan dihapus saat disimpan.
+                                <button type="button" onClick={() => form.setData('remove_template_pa', false)}
+                                    className="text-blue-600 hover:underline font-medium">
+                                    Batalkan
+                                </button>
+                            </p>
+                        )}
+                        {form.data.file_template_pa && (
+                            <p className="mt-1.5 text-xs text-emerald-600 flex items-center gap-1">
+                                <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                File baru dipilih: {form.data.file_template_pa.name}
+                                {currentTemplatePa && <span className="text-slate-400">(template lama akan diganti)</span>}
+                            </p>
+                        )}
+                    </UploadCard>
                 )}
-                {form.data.file_materi && (
-                    <p className="mt-1.5 text-xs text-emerald-600 flex items-center gap-1">
-                        <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                        </svg>
-                        File baru dipilih: {form.data.file_materi.name}
-                    </p>
-                )}
-            </Field>
+            </div>
         </form>
     );
 }
@@ -191,12 +299,13 @@ function BtnRow({ onCancel, formId, processing }) {
 }
 
 export default function ModulIndex({ moduls }) {
+    const [tab, setTab]               = useState('list'); // 'list' | 'reorder'
     const [tambahOpen, setTambahOpen] = useState(false);
     const [editOpen, setEditOpen]     = useState(false);
     const [editRow, setEditRow]       = useState(null);
 
-    const addForm  = useForm({ kode_modul: '', nama_modul: '', tipe: 'KADER', fase: '', tag_kompetensi: '', has_test: true, has_post_activity: true, file_materi: null });
-    const editForm = useForm({ kode_modul: '', nama_modul: '', tipe: 'KADER', fase: '', tag_kompetensi: '', has_test: true, has_post_activity: true, file_materi: null });
+    const addForm  = useForm({ kode_modul: '', nama_modul: '', tipe: 'KADER', fase: '', tag_kompetensi: '', has_test: true, has_post_activity: true, file_materi: null, file_template_pa: null, remove_template_pa: false });
+    const editForm = useForm({ kode_modul: '', nama_modul: '', tipe: 'KADER', fase: '', tag_kompetensi: '', has_test: true, has_post_activity: true, file_materi: null, file_template_pa: null, remove_template_pa: false });
 
     const submitAdd = (e) => {
         e.preventDefault();
@@ -217,6 +326,8 @@ export default function ModulIndex({ moduls }) {
             has_test:          row.has_test          ?? true,
             has_post_activity: row.has_post_activity ?? true,
             file_materi:       null,
+            file_template_pa:  null,
+            remove_template_pa: false,
         });
         setEditOpen(true);
     };
@@ -234,8 +345,25 @@ export default function ModulIndex({ moduls }) {
         router.delete(`/modul/delete/${row.id}`);
     };
 
+    const TabBtn = ({ id, children }) => (
+        <button type="button" onClick={() => setTab(id)}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition ${
+                tab === id ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'
+            }`}>
+            {children}
+        </button>
+    );
+
     return (
         <AppLayout title="MODUL PEMBELAJARAN" breadcrumb="Modul / Modul Pembelajaran">
+            <div className="mb-4 inline-flex items-center gap-1 p-1 bg-white border border-slate-200 rounded-xl">
+                <TabBtn id="list">Daftar Modul</TabBtn>
+                <TabBtn id="reorder">Urutkan Modul</TabBtn>
+            </div>
+
+            {tab === 'reorder' ? (
+                <ModulReorder moduls={moduls} />
+            ) : (
             <DataTable
                 columns={COLS}
                 data={moduls}
@@ -263,6 +391,7 @@ export default function ModulIndex({ moduls }) {
                     </button>
                 }
             />
+            )}
 
             {/* ===== TAMBAH MODAL ===== */}
             <Modal open={tambahOpen} onClose={() => { setTambahOpen(false); addForm.reset(); }}
@@ -274,7 +403,7 @@ export default function ModulIndex({ moduls }) {
             {/* ===== EDIT MODAL ===== */}
             <Modal open={editOpen} onClose={() => setEditOpen(false)} title="Edit Modul" size="2xl"
                 footer={<BtnRow onCancel={() => setEditOpen(false)} formId="edit-form" processing={editForm.processing} />}>
-                <ModulForm form={editForm} formId="edit-form" onSubmit={submitEdit} currentFile={editRow?.file_materi} />
+                <ModulForm form={editForm} formId="edit-form" onSubmit={submitEdit} currentFile={editRow?.file_materi} currentTemplatePa={editRow?.file_template_pa} />
             </Modal>
         </AppLayout>
     );

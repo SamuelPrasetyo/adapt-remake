@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 const V = {
     success: {
@@ -35,11 +36,12 @@ export default function Toast({ open, type = 'success', message, onClose, durati
     }, [open, message, onClose, duration]);
 
     if (!open || !message) return null;
+    if (typeof document === 'undefined') return null;
 
     const v = V[type] ?? V.success;
 
-    return (
-        <div className="fixed top-5 right-5 z-[9999] w-80 pointer-events-none">
+    return createPortal(
+        <div className="fixed top-5 right-5 z-9999 w-80 pointer-events-none">
             <div className={`toast-enter pointer-events-auto border rounded-xl shadow-lg overflow-hidden ${v.wrap}`}>
                 <div className={`flex items-center gap-3 px-4 py-3.5 ${v.text}`}>
                     <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -58,6 +60,7 @@ export default function Toast({ open, type = 'success', message, onClose, durati
                         style={{ '--toast-duration': `${duration}ms` }} />
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

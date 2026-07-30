@@ -63,7 +63,7 @@ class DashboardController extends Controller
             $mentors = $mentorsQuery->get();
 
             // Filter batch: default ke batch yang sedang berjalan; 'all' = semua batch.
-            $batches      = Batch::orderByDesc('tanggal_mulai')->orderByDesc('id_batch')->get();
+            $batches      = Batch::newestFirst()->get();
             $defaultBatch = optional(Batch::current())->id_batch;
             $batchFilter  = $request->query('batch_id', $defaultBatch);
             $idBatch      = ($batchFilter === 'all') ? null : $batchFilter;
@@ -204,12 +204,16 @@ class DashboardController extends Controller
         }
         $idpBelum = $idpQuery->count();
 
-        // Jumlah mentor aktif (belum dihapus).
-        $mentorQuery = Mentor::whereNull('deleted_at');
+        // Jumlah mentor = mentor unik yang di-assign ke kader pada batch berjalan.
+        // Mentor yang sama membina beberapa kader tetap dihitung satu.
+        $mentorQuery = \App\Models\ListKaderPerMentor::join('mentor', 'list_kader_per_mentor.mentor_id', '=', 'mentor.id')
+            ->whereIn('list_kader_per_mentor.id_batch', $runningBatchIds)
+            ->whereNull('list_kader_per_mentor.deleted_at')
+            ->whereNull('mentor.deleted_at');
         if ($companyCode) {
-            $mentorQuery->where('company_code', $companyCode);
+            $mentorQuery->where('mentor.company_code', $companyCode);
         }
-        $mentorCount = $mentorQuery->count();
+        $mentorCount = $mentorQuery->distinct()->count('list_kader_per_mentor.mentor_id');
 
         return [
             'mentorCount'   => $mentorCount,

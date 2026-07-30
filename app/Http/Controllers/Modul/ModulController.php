@@ -16,11 +16,50 @@ class ModulController extends Controller
 {
     public function index()
     {
-        $moduls = Modul::get();
+        // Urut per fase lalu `urutan` (diatur admin) — fallback id agar stabil bila urutan null.
+        $moduls = Modul::orderByRaw('fase IS NULL, fase')
+            ->orderByRaw('urutan IS NULL, urutan')
+            ->orderBy('id')
+            ->get();
 
         return Inertia::render('Modul/Index', [
             'moduls' => $moduls,
         ]);
+    }
+
+    /**
+     * Simpan urutan baru modul dalam SATU fase (drag & drop di tab "Urutkan").
+     * Hanya mengubah kolom `urutan` — aman, tidak menyentuh id/relasi apa pun.
+     */
+    public function reorder(Request $request)
+    {
+        $data = $request->validate([
+            'ids'   => 'required|array|min:1',
+            'ids.*' => 'integer|exists:modul,id',
+        ]);
+
+        DB::transaction(function () use ($data) {
+            foreach ($data['ids'] as $i => $id) {
+                Modul::where('id', $id)->update(['urutan' => $i + 1]);
+            }
+        });
+
+        return back()->with('success', 'Urutan modul berhasil disimpan');
+    }
+
+    /** Urutan berikutnya (terakhir) dalam satu fase, untuk modul yang baru dibuat/pindah fase. */
+    private function nextUrutan($fase): int
+    {
+        $max = Modul::where('fase', $fase)->max('urutan');
+        return (int) $max + 1;
+    }
+
+    /** Simpan file template Post Activity modul, kembalikan path publiknya. */
+    private function storeTemplatePa(Request $request, string $kodeModul): string
+    {
+        $fileName = UploadName::stored(['template_pa', $kodeModul], $request->file_template_pa->extension());
+        $request->file_template_pa->move(public_path('uploads/template_pa'), $fileName);
+        return 'uploads/template_pa/' . $fileName;
     }
 
     public function store(Request $request)
@@ -33,7 +72,8 @@ class ModulController extends Controller
             'tag_kompetensi'    => 'required|in:FOUNDATION,SELF_LEARNING,LEADERSHIP,MENTOR',
             'has_test'          => 'boolean',
             'has_post_activity' => 'boolean',
-            'file_materi'       => 'required|mimes:pdf|max:10240'
+            'file_materi'       => 'required|mimes:pdf|max:10240',
+            'file_template_pa'  => 'nullable|file|mimes:xlsx,xls,pdf,docx|max:2048',
         ]);
         // Format nama: modul_kodemodul (materi PDF, diakses via URL publik)
         $fileName = UploadName::stored(['modul', $request->kode_modul], $request->file_materi->extension());
@@ -46,11 +86,15 @@ class ModulController extends Controller
             'nama_modul'        => $request->nama_modul,
             'tipe'              => $request->tipe,
             'fase'              => $faseValue,
+            'urutan'            => $this->nextUrutan($faseValue),
             'batch'             => $request->batch,
             'tag_kompetensi'    => $request->tag_kompetensi,
             'has_test'          => $request->boolean('has_test'),
             'has_post_activity' => $request->boolean('has_post_activity'),
-            'file_materi'       => 'uploads/modul/' . $fileName
+            'file_materi'       => 'uploads/modul/' . $fileName,
+            'file_template_pa'  => $request->hasFile('file_template_pa')
+                ? $this->storeTemplatePa($request, $request->kode_modul)
+                : null,
         ]);
         Alert::success('Success', 'Modul berhasil ditambahkan!');
         return back()->with('success', 'Modul berhasil ditambahkan');
@@ -68,7 +112,8 @@ class ModulController extends Controller
             'tag_kompetensi'    => 'required|in:FOUNDATION,SELF_LEARNING,LEADERSHIP,MENTOR',
             'has_test'          => 'boolean',
             'has_post_activity' => 'boolean',
-            'file_materi'       => 'nullable|mimes:pdf|max:10240'
+            'file_materi'       => 'nullable|mimes:pdf|max:10240',
+            'file_template_pa'  => 'nullable|file|mimes:xlsx,xls,pdf,docx|max:2048',
         ]);
 
         if ($request->hasFile('file_materi')) {
@@ -83,18 +128,36 @@ class ModulController extends Controller
             $modul->file_materi = 'uploads/modul/' . $fileName;
         }
 
+        // Template PA: upload baru menggantikan yang lama; flag remove_template_pa menghapus tanpa pengganti.
+        if ($request->hasFile('file_template_pa') || $request->boolean('remove_template_pa')) {
+            if ($modul->file_template_pa && file_exists(public_path($modul->file_template_pa))) {
+                unlink(public_path($modul->file_template_pa));
+            }
+            $modul->file_template_pa = $request->hasFile('file_template_pa')
+                ? $this->storeTemplatePa($request, $request->kode_modul)
+                : null;
+        }
+
         $tipe = $request->tipe ?? $modul->tipe;
         $faseValue = $tipe === 'MENTOR' ? null : preg_replace('/[^0-9]/', '', (string) $request->fase);
+
+        // Pindah fase → taruh di urutan terakhir fase baru; fase sama → pertahankan urutan.
+        $urutan = (string) $modul->fase === (string) $faseValue
+            ? $modul->urutan
+            : $this->nextUrutan($faseValue);
+
         $modul->update([
             'kode_modul'        => $request->kode_modul,
             'nama_modul'        => $request->nama_modul,
             'tipe'              => $tipe,
             'fase'              => $faseValue,
+            'urutan'            => $urutan,
             'batch'             => $request->batch,
             'tag_kompetensi'    => $request->tag_kompetensi,
             'has_test'          => $request->boolean('has_test'),
             'has_post_activity' => $request->boolean('has_post_activity'),
-            'file_materi'       => $modul->file_materi
+            'file_materi'       => $modul->file_materi,
+            'file_template_pa'  => $modul->file_template_pa,
         ]);
         Alert::success('Success', 'Modul berhasil diupdate!');
         return back()->with('success', 'Modul berhasil diupdate');
@@ -106,6 +169,10 @@ class ModulController extends Controller
 
         if ($modul->file_materi && file_exists(public_path($modul->file_materi))) {
             unlink(public_path($modul->file_materi));
+        }
+
+        if ($modul->file_template_pa && file_exists(public_path($modul->file_template_pa))) {
+            unlink(public_path($modul->file_template_pa));
         }
 
         $modul->delete();

@@ -2,6 +2,10 @@ import { useRef, useState } from "react";
 import { router } from "@inertiajs/react";
 import Toast from "@/Components/Toast";
 
+const MAX_SIZE_MB    = 8;
+const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
+const ALLOWED_EXT    = ["pdf", "doc", "docx"];
+
 function formatDate(dateStr) {
     if (!dateStr) return "—";
     const d = new Date(dateStr);
@@ -56,7 +60,7 @@ function UploadZone({ hasDoc, uploading, onClick }) {
                         </svg>
                         Klik untuk upload dokumen
                     </div>
-                    <p className="text-xs text-slate-400">PDF, DOC, atau DOCX · Maks. 5 MB</p>
+                    <p className="text-xs text-slate-400">PDF, DOC, atau DOCX · Maks. 8 MB</p>
                 </div>
             )}
         </button>
@@ -74,6 +78,21 @@ export default function PerjanjianKerjaTab({ kader, perjanjianKerja, canUpload, 
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
+
+        const resetInput = () => { if (fileRef.current) fileRef.current.value = ""; };
+
+        const ext = file.name.split(".").pop().toLowerCase();
+        if (!ALLOWED_EXT.includes(ext)) {
+            showToast("Format dokumen harus PDF, DOC, atau DOCX.", "error");
+            resetInput();
+            return;
+        }
+        if (file.size > MAX_SIZE_BYTES) {
+            showToast(`Ukuran dokumen maksimal ${MAX_SIZE_MB} MB.`, "error");
+            resetInput();
+            return;
+        }
+
         setUploading(true);
         const formData = new FormData();
         formData.append("file", file);
@@ -81,8 +100,8 @@ export default function PerjanjianKerjaTab({ kader, perjanjianKerja, canUpload, 
             forceFormData: true,
             preserveScroll: true,
             onSuccess: () => showToast("Dokumen berhasil diupload."),
-            onError:   () => showToast("Gagal mengupload dokumen.", "error"),
-            onFinish:  () => { setUploading(false); if (fileRef.current) fileRef.current.value = ""; },
+            onError:   (errors) => showToast(errors?.file || "Gagal mengupload dokumen.", "error"),
+            onFinish:  () => { setUploading(false); resetInput(); },
         });
     };
 
@@ -99,8 +118,8 @@ export default function PerjanjianKerjaTab({ kader, perjanjianKerja, canUpload, 
         <>
         <Toast open={toast.open} type={toast.type} message={toast.message} onClose={closeToast} />
         <div className="space-y-4">
-            {/* Template download */}
-            {templatePerjanjianKerja && (
+            {/* Template download / notif belum tersedia (hanya untuk Mentor/Admin) */}
+            {templatePerjanjianKerja ? (
                 <div className="flex items-center justify-between p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
                     <div>
                         <p className="text-sm font-semibold text-emerald-800">Template Perjanjian Kerja</p>
@@ -118,6 +137,20 @@ export default function PerjanjianKerjaTab({ kader, perjanjianKerja, canUpload, 
                         </svg>
                         Unduh Template
                     </a>
+                </div>
+            ) : canUpload && (
+                <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                    <svg className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                            d="M12 9v2m0 4h.01M5.07 19h13.86a2 2 0 001.75-2.98l-6.93-12a2 2 0 00-3.5 0l-6.93 12A2 2 0 005.07 19z" />
+                    </svg>
+                    <div>
+                        <p className="text-sm font-semibold text-amber-800">Template Perjanjian Kerja belum tersedia</p>
+                        <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
+                            Admin MAI belum mengunggah template Perjanjian Kerja. Anda tetap bisa mengupload
+                            dokumen, namun disarankan menunggu template resmi sebagai acuan pengisian.
+                        </p>
+                    </div>
                 </div>
             )}
 

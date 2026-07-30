@@ -1,11 +1,15 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
+import { LocalPagination } from '@/Components/DataTable';
+import { consumeMentorList, rememberMentorList } from './listState';
+
+const PER_PAGE = 10;
 
 function StatusPill({ status }) {
     const map = {
         'On Track':        { dot: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50',  ring: 'ring-emerald-200' },
-        'Perlu Perhatian': { dot: 'bg-amber-500',   text: 'text-amber-700',   bg: 'bg-amber-50',    ring: 'ring-amber-200'   },
+        'Slightly Delayed': { dot: 'bg-amber-500',   text: 'text-amber-700',   bg: 'bg-amber-50',    ring: 'ring-amber-200'   },
         'Belum Ada Modul': { dot: 'bg-slate-400',   text: 'text-slate-600',   bg: 'bg-slate-50',    ring: 'ring-slate-200'   },
     };
     const s = map[status] ?? map['Belum Ada Modul'];
@@ -44,8 +48,12 @@ function ProgressBar({ value }) {
 }
 
 export default function AllMentorIndex({ mentors = [], summary = {} }) {
-    const [search, setSearch]   = useState('');
-    const [filter, setFilter]   = useState('all');
+    // Kondisi tabel dipulihkan sekali saat mount bila pengguna baru menekan
+    // "Kembali ke All Mentor" (lazy initializer: consume() menyentuh sessionStorage).
+    const [restored] = useState(() => consumeMentorList());
+    const [search, setSearch] = useState(restored?.q ?? '');
+    const [filter, setFilter] = useState(restored?.filter ?? 'all');
+    const [page, setPage]     = useState(restored?.page ?? 1);
 
     const filtered = useMemo(() => {
         let list = mentors;
@@ -64,10 +72,28 @@ export default function AllMentorIndex({ mentors = [], summary = {} }) {
         return list;
     }, [mentors, search, filter]);
 
+    // Ganti filter/pencarian = daftar baru, jadi balik ke halaman 1. Juga menjaga halaman
+    // tidak menggantung di luar rentang setelah hasilnya menyusut.
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+    useEffect(() => {
+        if (page > totalPages) setPage(1);
+    }, [page, totalPages]);
+
+    const currentPage = Math.min(page, totalPages);
+    const pageRows = useMemo(
+        () => filtered.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE),
+        [filtered, currentPage]
+    );
+
+    const openMentor = (id) => {
+        rememberMentorList({ page: currentPage, q: search, filter });
+        router.visit(`/all-mentor/${id}`);
+    };
+
     const FILTERS = [
         { id: 'all',             label: 'Semua',           count: mentors.length },
         { id: 'On Track',        label: 'On Track',        count: summary.on_track },
-        { id: 'Perlu Perhatian', label: 'Perlu Perhatian', count: summary.perlu_perhatian },
+        { id: 'Slightly Delayed', label: 'Slightly Delayed', count: summary.perlu_perhatian },
         { id: 'Belum Ada Modul', label: 'Belum Ada Modul', count: summary.belum_mulai },
     ];
 
@@ -77,7 +103,7 @@ export default function AllMentorIndex({ mentors = [], summary = {} }) {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
                 <SummaryCard label="Total Mentor"    value={summary.total_mentor ?? 0} />
                 <SummaryCard label="On Track"        value={summary.on_track ?? 0}        accent="text-emerald-600" />
-                <SummaryCard label="Perlu Perhatian" value={summary.perlu_perhatian ?? 0} accent="text-amber-600"  />
+                <SummaryCard label="Slightly Delayed" value={summary.perlu_perhatian ?? 0} accent="text-amber-600"  />
                 <SummaryCard label="Avg Progress"    value={`${summary.avg_progress ?? 0}%`} accent="text-blue-600" />
             </div>
 
@@ -87,7 +113,7 @@ export default function AllMentorIndex({ mentors = [], summary = {} }) {
                     {FILTERS.map((f) => (
                         <button
                             key={f.id}
-                            onClick={() => setFilter(f.id)}
+                            onClick={() => { setFilter(f.id); setPage(1); }}
                             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
                                 filter === f.id
                                     ? 'bg-blue-600 text-white shadow-sm'
@@ -104,7 +130,7 @@ export default function AllMentorIndex({ mentors = [], summary = {} }) {
                 <input
                     type="text"
                     value={search}
-                    onChange={(e) => setSearch(e.target.value)}
+                    onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                     placeholder="Cari mentor, jabatan, atau BU..."
                     className="w-full sm:w-72 px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
                 />
@@ -133,13 +159,16 @@ export default function AllMentorIndex({ mentors = [], summary = {} }) {
                                     </td>
                                 </tr>
                             )}
-                            {filtered.map((m, idx) => (
+                            {pageRows.map((m, idx) => (
                                 <tr
                                     key={m.id}
-                                    onClick={() => router.visit(`/all-mentor/${m.id}`)}
+                                    onClick={() => openMentor(m.id)}
                                     className="border-b border-slate-100 last:border-0 hover:bg-blue-50/50 cursor-pointer transition"
                                 >
-                                    <td className="px-4 py-3 text-slate-500">{idx + 1}</td>
+                                    {/* Nomor urut lanjut antar halaman, bukan mulai 1 lagi. */}
+                                    <td className="px-4 py-3 text-slate-500">
+                                        {(currentPage - 1) * PER_PAGE + idx + 1}
+                                    </td>
                                     <td className="px-4 py-3">
                                         <div className="flex items-center gap-2.5">
                                             {m.foto ? (
@@ -186,6 +215,16 @@ export default function AllMentorIndex({ mentors = [], summary = {} }) {
                         </tbody>
                     </table>
                 </div>
+
+                {filtered.length > PER_PAGE && (
+                    <LocalPagination
+                        page={currentPage}
+                        totalPages={totalPages}
+                        total={filtered.length}
+                        perPage={PER_PAGE}
+                        onPageChange={setPage}
+                    />
+                )}
             </div>
         </AppLayout>
     );

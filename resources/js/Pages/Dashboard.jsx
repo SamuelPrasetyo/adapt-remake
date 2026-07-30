@@ -4,11 +4,12 @@ import { router } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import StatsCard from '@/Components/StatsCard';
 import ProgressBar from '@/Components/ProgressBar';
+import KaderAvatar from '@/Components/KaderAvatar';
 
 const STATUS_META = {
     on_track:        { label: 'On Track',        cls: 'bg-emerald-50 text-emerald-700 ring-emerald-200',  dot: 'bg-emerald-500' },
-    perlu_perhatian: { label: 'Perlu Perhatian', cls: 'bg-amber-50 text-amber-700 ring-amber-200',        dot: 'bg-amber-500'   },
-    kritis:          { label: 'Kritis',          cls: 'bg-rose-50 text-rose-700 ring-rose-200',           dot: 'bg-rose-500'    },
+    perlu_perhatian: { label: 'Slightly Delayed', cls: 'bg-amber-50 text-amber-700 ring-amber-200',        dot: 'bg-amber-500'   },
+    kritis:          { label: 'Behind Schedule',          cls: 'bg-rose-50 text-rose-700 ring-rose-200',           dot: 'bg-rose-500'    },
 };
 
 const AVATAR_COLORS = [
@@ -332,6 +333,7 @@ function KaderTable({ kaders, mentorFilter, mentors, onMentorFilter, batches, ba
                             <thead>
                                 <tr className="text-left text-[11px] uppercase tracking-wider text-slate-500 bg-slate-50">
                                     <th className="px-6 py-3 font-medium whitespace-nowrap">Nama Kader</th>
+                                    <th className="px-4 py-3 font-medium whitespace-nowrap">BU</th>
                                     <th className="px-4 py-3 font-medium whitespace-nowrap">Mentor</th>
                                     <th className="px-4 py-3 font-medium whitespace-nowrap">Fase Aktif</th>
                                     <th className="px-4 py-3 font-medium whitespace-nowrap min-w-40">Progress Overall</th>
@@ -348,26 +350,43 @@ function KaderTable({ kaders, mentorFilter, mentors, onMentorFilter, batches, ba
                                             className="hover:bg-slate-50/60 transition cursor-pointer"
                                             onClick={() => router.visit(`/kader-saya/${k.k_id || k.kader_id}`)}>
 
-                                            <td className="px-6 py-3 whitespace-nowrap">
+                                            <td className="px-6 py-3">
                                                 <div className="flex items-center gap-3">
-                                                    <div className={`w-9 h-9 rounded-full bg-linear-to-br ${avatarColor(k.nik_kader || k.nama_kader || '')} flex items-center justify-center text-xs font-bold text-white shrink-0`}>
-                                                        {initials || '?'}
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                        <div className="font-medium text-slate-900 truncate max-w-40">{k.nama_kader}</div>
-                                                        <div className="text-[11px] text-slate-500 truncate max-w-40">
+                                                    <KaderAvatar
+                                                        src={k.foto}
+                                                        initials={initials}
+                                                        alt={k.nama_kader}
+                                                        className="w-9 h-9 rounded-full text-xs"
+                                                        fallbackClass={`bg-linear-to-br ${avatarColor(k.nik_kader || k.nama_kader || '')}`}
+                                                    />
+                                                    <div className="min-w-0 max-w-56">
+                                                        <div className="font-medium text-slate-900">{k.nama_kader}</div>
+                                                        <div className="text-[11px] text-slate-500 leading-snug">
                                                             {k.divisi_name || '—'}{k.dept_name ? ` · ${k.dept_name}` : ''}
                                                         </div>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td className="px-4 py-3 whitespace-nowrap">
-                                                {k.mentor_name ? (
-                                                    <div>
-                                                        <div className="text-sm font-medium text-slate-700">{k.mentor_name}</div>
-                                                        {k.mentor_jabatan && (
-                                                            <div className="text-[11px] text-slate-400 truncate max-w-36">{k.mentor_jabatan}</div>
-                                                        )}
+                                                {k.bu ? (
+                                                    <span className="text-sm text-slate-700">{k.bu}</span>
+                                                ) : (
+                                                    <span className="text-slate-300">—</span>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                {k.mentors?.length > 0 ? (
+                                                    <div className="space-y-2.5 max-w-64">
+                                                        {k.mentors.map((m) => (
+                                                            <div key={m.id} className="min-w-0">
+                                                                <div className="text-sm font-medium text-slate-700">{m.nama}</div>
+                                                                {m.jabatan && (
+                                                                    <span className="inline-flex items-center mt-0.5 px-2 py-0.5 rounded-full text-[11px] font-medium ring-1 ring-inset bg-blue-50 text-blue-700 ring-blue-200">
+                                                                        {m.jabatan}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        ))}
                                                     </div>
                                                 ) : (
                                                     <span className="text-slate-400 italic text-sm">Belum di-assign</span>
@@ -554,7 +573,7 @@ export default function Dashboard({
             </div> */}
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <StatsCard title="Jumlah Mentor" value={s.mentorCount} subtitle="Mentor terdaftar" color="blue" />
+                <StatsCard title="Jumlah Mentor" value={s.mentorCount} subtitle="Membina kader batch berjalan" color="blue" />
                 <StatsCard title="Kader Aktif" value={s.kaderAktif} subtitle={`${s.batchBerjalan} batch berjalan`} color="green" />
                 <StatsCard title="Feedback Belum Terisi" value={s.feedbackBelum} subtitle="Perlu diisi mentor" color="amber" />
                 <StatsCard title="IDP Belum Lengkap" value={s.idpBelum} subtitle="Menunggu approve mentor" color="red" />

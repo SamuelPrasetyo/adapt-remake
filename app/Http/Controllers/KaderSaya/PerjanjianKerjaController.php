@@ -21,7 +21,10 @@ class PerjanjianKerjaController extends Controller
     public function store(Request $request, $kader_id)
     {
         $request->validate([
-            'file' => 'required|file|mimes:pdf,docx,xlsx|max:2048',
+            'file' => 'required|file|mimes:pdf,doc,docx|max:8192',
+        ], [
+            'file.mimes' => 'Format dokumen harus PDF, DOC, atau DOCX.',
+            'file.max'   => 'Ukuran dokumen maksimal 8 MB.',
         ]);
 
         $user  = Auth::user();

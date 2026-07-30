@@ -4,6 +4,7 @@
             <tr>
                 <th style="text-align: left;border:1px solid #000">nama</th>
                 <th style="text-align: left;border:1px solid #000">nik</th>
+                <th style="text-align: left;border:1px solid #000">nik_ktp</th>
                 <th style="text-align: left;border:1px solid #000">jenis_kelamin</th>
                 <th style="text-align: left;border:1px solid #000">iq</th>
                 <th style="text-align: left;border:1px solid #000">ipk</th>
@@ -19,6 +20,7 @@
             <tr>
                 <td style="text-align: left;border:1px solid #000">{{$kader->nama}}</td>
                 <td style="text-align: left;border:1px solid #000">{{$kader->nik}}</td>
+                <td style="text-align: left;border:1px solid #000">{{$kader->nik_ktp}}</td>
                 <td style="text-align: left;border:1px solid #000">{{$kader->jenis_kelamin}}</td>
                 <td style="text-align: left;border:1px solid #000">{{$kader->iq}}</td>
                 <td style="text-align: left;border:1px solid #000">{{$kader->ipk}}</td>

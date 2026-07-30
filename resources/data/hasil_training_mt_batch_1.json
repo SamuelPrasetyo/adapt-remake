@@ -1,0 +1,524 @@
+{
+    "meta": {
+        "judul": "Hasil Training MT",
+        "batch_no": 1,
+        "batch_roman": "I",
+        "sumber": "Hasil Training MT Batch 1.pdf",
+        "keterangan": "Nilai Management Trainee Batch 1. Dokumen sumber sudah terurut dari Learning Growth tertinggi. Mentor/jabatan ganda ditulis dipisah koma (di dokumen aslinya bernomor 1./2.).",
+        "skala": { "min": 0, "max": 100 },
+        "kkm": 70,
+        "label_avg": "Learning Growth (avg)"
+    },
+    "identitas": [
+        { "key": "bu", "label": "Business Unit" },
+        { "key": "mentor", "label": "Mentor" },
+        { "key": "jabatan_mentor", "label": "Jabatan Mentor" }
+    ],
+    "modul": [
+        { "key": "com_skill", "label": "Com Skill" },
+        { "key": "agile_leadership", "label": "Agile Leadership" },
+        { "key": "supervisory_management", "label": "Supervisory Management" },
+        { "key": "problem_solving_decision_making", "label": "Problem Solving & Decision Making" },
+        { "key": "emotional_intelligence", "label": "Emotional Intelligence" },
+        { "key": "coaching_mentoring", "label": "Coaching & Mentoring" },
+        { "key": "etos_kerja", "label": "Etos Kerja" },
+        { "key": "great_leader", "label": "Great Leader" },
+        { "key": "work_life_plan", "label": "Work Life Plan" }
+    ],
+    "peserta": [
+        {
+            "no": 1,
+            "nama": "Ferry Setiawan",
+            "bu": "PT Mekar Armada Jaya",
+            "mentor": "R Irwan Y, Bambang Sulistyo",
+            "jabatan_mentor": null,
+            "nilai": {
+                "com_skill": 87.0,
+                "agile_leadership": 96.0,
+                "supervisory_management": 93.3,
+                "problem_solving_decision_making": 87.5,
+                "emotional_intelligence": 99.1,
+                "coaching_mentoring": 94.4,
+                "etos_kerja": 91.0,
+                "great_leader": 95.5,
+                "work_life_plan": 98.6
+            },
+            "avg": 93.6
+        },
+        {
+            "no": 2,
+            "nama": "Teguh Candra Maulana",
+            "bu": "PT Armada Auto Tara",
+            "mentor": "Meike Ernawati",
+            "jabatan_mentor": "Staff Training",
+            "nilai": {
+                "com_skill": 88.4,
+                "agile_leadership": 95.3,
+                "supervisory_management": 86.0,
+                "problem_solving_decision_making": 87.9,
+                "emotional_intelligence": 94.2,
+                "coaching_mentoring": 98.9,
+                "etos_kerja": 100.0,
+                "great_leader": 96.4,
+                "work_life_plan": 89.9
+            },
+            "avg": 93.0
+        },
+        {
+            "no": 3,
+            "nama": "Alva Heru Wibowo",
+            "bu": "PT Armindo Perkasa",
+            "mentor": "Harris Fadillah",
+            "jabatan_mentor": "Workshop Head",
+            "nilai": {
+                "com_skill": 87.9,
+                "agile_leadership": 100.0,
+                "supervisory_management": 92.6,
+                "problem_solving_decision_making": 92.7,
+                "emotional_intelligence": 91.9,
+                "coaching_mentoring": 94.7,
+                "etos_kerja": 87.5,
+                "great_leader": 91.6,
+                "work_life_plan": 96.3
+            },
+            "avg": 92.8
+        },
+        {
+            "no": 4,
+            "nama": "Sabila Choirunnisa",
+            "bu": "PT Armada Tunas Jaya",
+            "mentor": "Lilyanawati",
+            "jabatan_mentor": "General Manager Finance, tax, Accounting",
+            "nilai": {
+                "com_skill": 87.2,
+                "agile_leadership": 94.3,
+                "supervisory_management": 100.0,
+                "problem_solving_decision_making": 89.7,
+                "emotional_intelligence": 91.4,
+                "coaching_mentoring": 97.3,
+                "etos_kerja": 95.3,
+                "great_leader": 87.7,
+                "work_life_plan": 91.4
+            },
+            "avg": 92.7
+        },
+        {
+            "no": 5,
+            "nama": "Doni Hariyawan",
+            "bu": "PT Tunas Mobil",
+            "mentor": "Agung Gunarto",
+            "jabatan_mentor": "Service Manager",
+            "nilai": {
+                "com_skill": 74.6,
+                "agile_leadership": 85.1,
+                "supervisory_management": 98.5,
+                "problem_solving_decision_making": 98.1,
+                "emotional_intelligence": 97.8,
+                "coaching_mentoring": 93.0,
+                "etos_kerja": 93.2,
+                "great_leader": 94.9,
+                "work_life_plan": 98.2
+            },
+            "avg": 92.6
+        },
+        {
+            "no": 6,
+            "nama": "Felix William Marpaung",
+            "bu": "PT Armada Auto Tara",
+            "mentor": "Anggi Fitrah Nurilham",
+            "jabatan_mentor": "HRD Manager",
+            "nilai": {
+                "com_skill": 93.2,
+                "agile_leadership": 92.2,
+                "supervisory_management": 100.0,
+                "problem_solving_decision_making": 98.8,
+                "emotional_intelligence": 91.1,
+                "coaching_mentoring": 98.6,
+                "etos_kerja": 63.7,
+                "great_leader": 100.0,
+                "work_life_plan": 92.2
+            },
+            "avg": 92.2
+        },
+        {
+            "no": 7,
+            "nama": "Destri Wahyu Trapsilo",
+            "bu": "PT Ito Seisakusho Armada",
+            "mentor": "Hendi Cholid",
+            "jabatan_mentor": "Plant Division Head",
+            "nilai": {
+                "com_skill": 90.1,
+                "agile_leadership": 89.0,
+                "supervisory_management": 93.2,
+                "problem_solving_decision_making": 92.3,
+                "emotional_intelligence": 86.5,
+                "coaching_mentoring": 90.2,
+                "etos_kerja": 86.1,
+                "great_leader": 95.9,
+                "work_life_plan": 93.9
+            },
+            "avg": 90.8
+        },
+        {
+            "no": 8,
+            "nama": "Zudik Hermantiyo",
+            "bu": "PT Armada Tunas Jaya",
+            "mentor": "Christian Ady",
+            "jabatan_mentor": "Manager H1 Marketing",
+            "nilai": {
+                "com_skill": 93.8,
+                "agile_leadership": 84.3,
+                "supervisory_management": 99.8,
+                "problem_solving_decision_making": 96.4,
+                "emotional_intelligence": 85.4,
+                "coaching_mentoring": 89.2,
+                "etos_kerja": 94.3,
+                "great_leader": 88.0,
+                "work_life_plan": 83.3
+            },
+            "avg": 90.5
+        },
+        {
+            "no": 9,
+            "nama": "Stephani Chandra",
+            "bu": "PT Armindo Perkasa",
+            "mentor": "Edmund Eko Lesmana",
+            "jabatan_mentor": "Deputy GM Finance",
+            "nilai": {
+                "com_skill": 66.2,
+                "agile_leadership": 90.0,
+                "supervisory_management": 99.7,
+                "problem_solving_decision_making": 100.0,
+                "emotional_intelligence": 98.2,
+                "coaching_mentoring": 87.0,
+                "etos_kerja": 88.0,
+                "great_leader": 93.5,
+                "work_life_plan": 91.0
+            },
+            "avg": 90.4
+        },
+        {
+            "no": 10,
+            "nama": "Sarif Aji Gumelar",
+            "bu": "PT Ito Seisakusho Armada",
+            "mentor": "Hendi Cholid",
+            "jabatan_mentor": "Plant Division Head",
+            "nilai": {
+                "com_skill": 90.4,
+                "agile_leadership": 92.7,
+                "supervisory_management": 88.1,
+                "problem_solving_decision_making": 91.9,
+                "emotional_intelligence": 90.2,
+                "coaching_mentoring": 94.1,
+                "etos_kerja": 79.0,
+                "great_leader": 88.1,
+                "work_life_plan": 93.7
+            },
+            "avg": 89.8
+        },
+        {
+            "no": 11,
+            "nama": "Muhammad Fatchurrozaqi",
+            "bu": "PT Armada Auto Tara",
+            "mentor": "Muchlis Ja'far",
+            "jabatan_mentor": "Development and Training Workshop",
+            "nilai": {
+                "com_skill": 100.0,
+                "agile_leadership": 84.8,
+                "supervisory_management": 91.2,
+                "problem_solving_decision_making": 92.6,
+                "emotional_intelligence": 90.9,
+                "coaching_mentoring": 93.3,
+                "etos_kerja": 70.3,
+                "great_leader": 90.8,
+                "work_life_plan": 90.7
+            },
+            "avg": 89.4
+        },
+        {
+            "no": 12,
+            "nama": "M.Seger",
+            "bu": "PT Armindo Perkasa",
+            "mentor": "NG Yuliati",
+            "jabatan_mentor": "HRD Manager",
+            "nilai": {
+                "com_skill": 93.6,
+                "agile_leadership": 92.7,
+                "supervisory_management": 84.4,
+                "problem_solving_decision_making": 96.5,
+                "emotional_intelligence": 85.8,
+                "coaching_mentoring": 85.8,
+                "etos_kerja": 85.9,
+                "great_leader": 95.6,
+                "work_life_plan": 83.4
+            },
+            "avg": 89.3
+        },
+        {
+            "no": 13,
+            "nama": "Harera El Muhalla",
+            "bu": "PT Citra Classic Furniture",
+            "mentor": "Aprianto Setiawan",
+            "jabatan_mentor": "Manager Akuntansi",
+            "nilai": {
+                "com_skill": 87.5,
+                "agile_leadership": 88.1,
+                "supervisory_management": 85.9,
+                "problem_solving_decision_making": 84.7,
+                "emotional_intelligence": 90.3,
+                "coaching_mentoring": 90.4,
+                "etos_kerja": 89.3,
+                "great_leader": 90.5,
+                "work_life_plan": 97.0
+            },
+            "avg": 89.3
+        },
+        {
+            "no": 14,
+            "nama": "Muhammad Habib Amrullah",
+            "bu": "PT Armindo Perkasa",
+            "mentor": "Reinaldo Brahmantyo",
+            "jabatan_mentor": "HOYU Manager",
+            "nilai": {
+                "com_skill": 85.5,
+                "agile_leadership": 89.2,
+                "supervisory_management": 80.9,
+                "problem_solving_decision_making": 82.9,
+                "emotional_intelligence": 99.9,
+                "coaching_mentoring": 91.3,
+                "etos_kerja": 88.2,
+                "great_leader": 98.8,
+                "work_life_plan": 86.1
+            },
+            "avg": 89.2
+        },
+        {
+            "no": 15,
+            "nama": "Chusnada Choirul Hikmah",
+            "bu": "PT Armada Tunas Jaya",
+            "mentor": "Ferry Parulian Panjaitan",
+            "jabatan_mentor": "Manager H23 Service",
+            "nilai": {
+                "com_skill": 91.9,
+                "agile_leadership": 89.9,
+                "supervisory_management": 89.9,
+                "problem_solving_decision_making": 66.4,
+                "emotional_intelligence": 94.3,
+                "coaching_mentoring": 87.9,
+                "etos_kerja": 92.3,
+                "great_leader": 100.0,
+                "work_life_plan": 86.6
+            },
+            "avg": 88.8
+        },
+        {
+            "no": 16,
+            "nama": "Andri Bustanul Arifin",
+            "bu": "PT Armindo Perkasa",
+            "mentor": "Harris Fadillah",
+            "jabatan_mentor": "Workshop Head",
+            "nilai": {
+                "com_skill": 81.7,
+                "agile_leadership": 93.5,
+                "supervisory_management": 81.6,
+                "problem_solving_decision_making": 86.7,
+                "emotional_intelligence": 84.6,
+                "coaching_mentoring": 90.1,
+                "etos_kerja": 88.7,
+                "great_leader": 80.3,
+                "work_life_plan": 82.3
+            },
+            "avg": 85.5
+        },
+        {
+            "no": 17,
+            "nama": "Firly Aprilia Aninda",
+            "bu": "PT Artos Laundry",
+            "mentor": "Yonia Kurniawati Tri Ananto",
+            "jabatan_mentor": "Direktur FA",
+            "nilai": {
+                "com_skill": 82.3,
+                "agile_leadership": 86.9,
+                "supervisory_management": 84.8,
+                "problem_solving_decision_making": 91.0,
+                "emotional_intelligence": 85.8,
+                "coaching_mentoring": 90.0,
+                "etos_kerja": 79.7,
+                "great_leader": 83.4,
+                "work_life_plan": 84.7
+            },
+            "avg": 85.4
+        },
+        {
+            "no": 18,
+            "nama": "Greselda",
+            "bu": "PT Armindo Perkasa",
+            "mentor": "Irene Natalia",
+            "jabatan_mentor": "Accounting Manager",
+            "nilai": {
+                "com_skill": 80.7,
+                "agile_leadership": 77.5,
+                "supervisory_management": 91.8,
+                "problem_solving_decision_making": 89.1,
+                "emotional_intelligence": 89.3,
+                "coaching_mentoring": 92.7,
+                "etos_kerja": 77.6,
+                "great_leader": 79.2,
+                "work_life_plan": 89.8
+            },
+            "avg": 85.3
+        },
+        {
+            "no": 19,
+            "nama": "Astana Aji Wikantara",
+            "bu": "PT Grand Artos Hotel",
+            "mentor": "M Fatkun Mujahidin",
+            "jabatan_mentor": null,
+            "nilai": {
+                "com_skill": 80.4,
+                "agile_leadership": 98.8,
+                "supervisory_management": 95.5,
+                "problem_solving_decision_making": 83.4,
+                "emotional_intelligence": 95.0,
+                "coaching_mentoring": 65.6,
+                "etos_kerja": 76.5,
+                "great_leader": 83.1,
+                "work_life_plan": 87.6
+            },
+            "avg": 85.1
+        },
+        {
+            "no": 20,
+            "nama": "Ahadi Bagus Harisman",
+            "bu": "PT Grand Artos Hotel",
+            "mentor": "Chef Tunggul, Chef Ali Sabani",
+            "jabatan_mentor": "Sous Chef, Executive Chef",
+            "nilai": {
+                "com_skill": 61.4,
+                "agile_leadership": 85.6,
+                "supervisory_management": 87.0,
+                "problem_solving_decision_making": 86.5,
+                "emotional_intelligence": 88.4,
+                "coaching_mentoring": 93.2,
+                "etos_kerja": 79.2,
+                "great_leader": 88.9,
+                "work_life_plan": 93.9
+            },
+            "avg": 84.9
+        },
+        {
+            "no": 21,
+            "nama": "Relian Tegar L",
+            "bu": "PT Artos Mall",
+            "mentor": "Deviana Wahyuningrum",
+            "jabatan_mentor": "HR Supervisor",
+            "nilai": {
+                "com_skill": 87.4,
+                "agile_leadership": 80.7,
+                "supervisory_management": 93.1,
+                "problem_solving_decision_making": 83.1,
+                "emotional_intelligence": 66.4,
+                "coaching_mentoring": 80.6,
+                "etos_kerja": 90.9,
+                "great_leader": 88.3,
+                "work_life_plan": 80.1
+            },
+            "avg": 83.4
+        },
+        {
+            "no": 22,
+            "nama": "Andriyanto Budi Ekosaputro",
+            "bu": "PT Citra Classic Furniture",
+            "mentor": "Aprianto Setiawan",
+            "jabatan_mentor": "Manager Akuntansi",
+            "nilai": {
+                "com_skill": 89.7,
+                "agile_leadership": 82.3,
+                "supervisory_management": 81.0,
+                "problem_solving_decision_making": 77.8,
+                "emotional_intelligence": 88.5,
+                "coaching_mentoring": 82.0,
+                "etos_kerja": 75.9,
+                "great_leader": 82.5,
+                "work_life_plan": 89.1
+            },
+            "avg": 83.2
+        },
+        {
+            "no": 23,
+            "nama": "Ahmad Al Khafid",
+            "bu": "PT Armada Tunas Jaya",
+            "mentor": "Roby Indra Mardany",
+            "jabatan_mentor": "Manager Accounting",
+            "nilai": {
+                "com_skill": 81.8,
+                "agile_leadership": 74.7,
+                "supervisory_management": 86.8,
+                "problem_solving_decision_making": 86.1,
+                "emotional_intelligence": 87.0,
+                "coaching_mentoring": 79.8,
+                "etos_kerja": 83.5,
+                "great_leader": 87.7,
+                "work_life_plan": 80.5
+            },
+            "avg": 83.1
+        },
+        {
+            "no": 24,
+            "nama": "Rahma Dwi Lestari",
+            "bu": "PT Artos Mall",
+            "mentor": "Meita Fitriyani",
+            "jabatan_mentor": "Sales & Marketing Manager",
+            "nilai": {
+                "com_skill": 80.3,
+                "agile_leadership": 82.1,
+                "supervisory_management": 83.5,
+                "problem_solving_decision_making": 86.6,
+                "emotional_intelligence": 79.9,
+                "coaching_mentoring": 89.9,
+                "etos_kerja": 80.8,
+                "great_leader": 80.7,
+                "work_life_plan": 77.8
+            },
+            "avg": 82.4
+        },
+        {
+            "no": 25,
+            "nama": "Hariadi Wahyu Nugroho",
+            "bu": "PT BPR AMI",
+            "mentor": "Wahyu Nugroho",
+            "jabatan_mentor": "Dempul POS 3, 4 Support",
+            "nilai": {
+                "com_skill": 70.2,
+                "agile_leadership": 80.6,
+                "supervisory_management": 72.4,
+                "problem_solving_decision_making": 77.2,
+                "emotional_intelligence": 79.9,
+                "coaching_mentoring": 71.8,
+                "etos_kerja": 69.6,
+                "great_leader": 71.9,
+                "work_life_plan": 94.9
+            },
+            "avg": 76.5
+        },
+        {
+            "no": 26,
+            "nama": "Yessica Rachel Wibowo",
+            "bu": "PT KJJ",
+            "mentor": "Yonia Kurniawati Tri Ananto",
+            "jabatan_mentor": "Direktur FA",
+            "nilai": {
+                "com_skill": 69.0,
+                "agile_leadership": 74.4,
+                "supervisory_management": 70.9,
+                "problem_solving_decision_making": 70.0,
+                "emotional_intelligence": 77.0,
+                "coaching_mentoring": 53.0,
+                "etos_kerja": 65.2,
+                "great_leader": 66.3,
+                "work_life_plan": 69.8
+            },
+            "avg": 68.4
+        }
+    ]
+}

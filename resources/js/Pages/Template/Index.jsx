@@ -27,12 +27,22 @@ function StatusBadge({ status }) {
 
 /* ─── reusable template card ───────────────────────────────────────────── */
 
-function TemplateCard({ title, description, template, uploadRoute }) {
+function TemplateCard({ title, description, template, uploadRoute, deleteRoute }) {
     const { data, setData, post, processing, errors, reset } = useForm({ file: null });
+    const [deleting, setDeleting] = useState(false);
 
     const submit = (e) => {
         e.preventDefault();
         post(uploadRoute, { forceFormData: true, onSuccess: () => reset() });
+    };
+
+    const handleDelete = () => {
+        if (!deleteRoute || !confirm('Hapus template ini? File akan dihapus permanen dan pengguna tidak lagi bisa mengunduhnya.')) return;
+        router.delete(deleteRoute, {
+            preserveScroll: true,
+            onStart:  () => setDeleting(true),
+            onFinish: () => setDeleting(false),
+        });
     };
 
     return (
@@ -51,18 +61,41 @@ function TemplateCard({ title, description, template, uploadRoute }) {
                         <p className="text-sm font-medium text-emerald-800">{template.nama_file}</p>
                         <p className="text-xs text-emerald-600 mt-0.5">Diupload {fmtDate(template.created_at)}</p>
                     </div>
-                    <a
-                        href={`/${template.path_file}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 hover:underline shrink-0"
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                        Unduh
-                    </a>
+                    <div className="flex items-center gap-2 shrink-0">
+                        <a
+                            href={`/${template.path_file}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-emerald-700 bg-white border border-emerald-300 rounded-lg hover:bg-emerald-100 transition"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            Unduh
+                        </a>
+                        {deleteRoute && (
+                            <button
+                                type="button"
+                                onClick={handleDelete}
+                                disabled={deleting}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-rose-600 bg-white border border-rose-300 rounded-lg hover:bg-rose-50 disabled:opacity-50 transition"
+                            >
+                                {deleting ? (
+                                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                    </svg>
+                                ) : (
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                )}
+                                Hapus
+                            </button>
+                        )}
+                    </div>
                 </div>
             )}
 
@@ -316,6 +349,7 @@ export default function TemplateIndex({
                                 description="Diunduh oleh Mentor sebagai acuan pengisian Perjanjian Kerja Kader"
                                 template={templatePerjanjianKerja}
                                 uploadRoute="/template-dokumen/perjanjian-kerja"
+                                deleteRoute="/template-dokumen/perjanjian-kerja"
                             />
                         </div>
                     )}
@@ -328,6 +362,7 @@ export default function TemplateIndex({
                                 description="Diunduh oleh Kader sebagai acuan pengisian laporan mingguan"
                                 template={templateWeeklyFeedback}
                                 uploadRoute="/template-dokumen/weekly-feedback"
+                                deleteRoute="/template-dokumen/weekly-feedback"
                             />
                         </div>
                     )}
@@ -339,6 +374,7 @@ export default function TemplateIndex({
                                 title="Template File IDP"
                                 template={templateIdp}
                                 uploadRoute="/form-idp/admin/upload-template"
+                                deleteRoute="/template-dokumen/idp"
                             />
                         </div>
                     )}

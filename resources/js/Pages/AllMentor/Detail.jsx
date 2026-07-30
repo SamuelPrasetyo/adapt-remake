@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
+import { markReturningToMentorList } from './listState';
 
 /* ─── Avatar ─────────────────────────────────────────────── */
 function Avatar({ nama, foto }) {
@@ -37,7 +38,7 @@ function StatusBadge({ progress, total }) {
                 : 'border-amber-400 text-amber-700 bg-amber-50'
         }`}>
             <span className={`w-1.5 h-1.5 rounded-full ${onTrack ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-            {onTrack ? 'ON TRACK' : 'PERLU PERHATIAN'}
+            {onTrack ? 'ON TRACK' : 'SLIGHTLY DELAYED'}
         </span>
     );
 }
@@ -194,6 +195,7 @@ export default function AllMentorDetail({ mentor = {}, moduls = [], summary = {}
             <div className="mb-4">
                 <Link
                     href="/all-mentor"
+                    onClick={markReturningToMentorList}
                     className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition"
                 >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

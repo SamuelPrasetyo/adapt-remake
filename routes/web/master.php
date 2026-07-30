@@ -84,7 +84,12 @@ Route::middleware(['can:isAdmin'])->group(function () {
         Route::get('/kader', 'index')->name('kader.index');
         Route::post('/kader/store', 'store')->name('kader.store');
         Route::put('/kader/update/{id}', 'update')->name('kader.update');
+        // destroy = arsipkan (atau hapus permanen bila kader belum punya data apa pun).
+        // purge = hapus permanen kader berdata — Admin MAI 021 + konfirmasi NIK.
+        Route::get('/kader/{id}/dependencies', 'dependencies')->name('kader.dependencies');
         Route::delete('/kader/delete/{id}', 'destroy')->name('kader.delete');
+        Route::post('/kader/{id}/restore', 'restore')->name('kader.restore');
+        Route::delete('/kader/{id}/purge', 'purge')->name('kader.purge');
         Route::post('/kader/import', 'import')->name('kader.import');
         Route::get('/kader/template', 'downloadTemplate')->name('kader.template');
         Route::get('/kader/export', 'export_kader')->name('kader.exportexcel');
@@ -118,15 +123,19 @@ Route::middleware(['can:isAdmin'])->group(function () {
         Route::get('/modul/assign/locked', 'getLockedModuls')->name('modul.locked');
         Route::post('/modul/assign/update', 'updateAssign')->name('modul.updateAssign');
         Route::post('/modul/store', 'store')->name('modul.store');
+        Route::post('/modul/reorder', 'reorder')->name('modul.reorder');
         Route::post('/modul/update/{id}', 'update')->name('modul.update');
         Route::delete('/modul/delete/{id}', 'destroy')->name('modul.destroy');
     });
     Route::post('/modul/assign', [ModulController::class, 'assign'])->name('modul.assign');
 
-    Route::controller(DokumenController::class)->group(function () {
-        Route::get('/dokumen', 'index')->name('dokumen.index');
-        Route::post('/dokumen/store', 'store')->name('dokumen.store');
-        Route::put('/dokumen/update/{id}', 'update')->name('dokumen.update');
-        Route::delete('/dokumen/delete/{id}', 'destroy')->name('dokumen.destroy');
-    });
+});
+
+// Upload Dokumen — dipakai Admin & Mentor; daftar difilter per role di controller
+// (Admin → tipe 'admin', Mentor → tipe 'mentor' miliknya sendiri).
+Route::middleware(['can:isAdmin&Mentor'])->controller(DokumenController::class)->group(function () {
+    Route::get('/dokumen', 'index')->name('dokumen.index');
+    Route::post('/dokumen/store', 'store')->name('dokumen.store');
+    Route::put('/dokumen/update/{id}', 'update')->name('dokumen.update');
+    Route::delete('/dokumen/delete/{id}', 'destroy')->name('dokumen.destroy');
 });
