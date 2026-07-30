@@ -62,6 +62,7 @@ export default function MentorIndex({ mentors, companys, kaders = [], assignment
     const [assignSearch, setAssignSearch] = useState('');
     const [assignKaderIds, setAssignKaderIds] = useState([]);
     const [assignProcessing, setAssignProcessing] = useState(false);
+    const [showOtherBU, setShowOtherBU] = useState(false);
 
     const [addPhotoPreview, setAddPhotoPreview]   = useState(null);
     const [editPhotoPreview, setEditPhotoPreview] = useState(null);
@@ -135,23 +136,45 @@ export default function MentorIndex({ mentors, companys, kaders = [], assignment
             .map((a) => a.kader_id);
         setAssignKaderIds(alreadyAssigned);
         setAssignSearch('');
+        setShowOtherBU(false);
         setAssignOpen(true);
     };
 
-    const filteredKaders = useMemo(() => {
-        let list = kaders;
-        if (assignMentor?.company_code) {
-            list = list.filter((k) => k.company_code === assignMentor.company_code);
-        }
-        if (!assignSearch.trim()) return list;
-        const q = assignSearch.toLowerCase();
-        return list.filter(
+    // Kader yang tercatat di DB untuk mentor ini — bukan pilihan kerja yang sedang
+    // diedit, supaya baris lintas BU tidak hilang begitu centangnya dilepas.
+    const assignedHere = useMemo(
+        () => assignments.filter((a) => a.mentor_id === assignMentor?.id).map((a) => a.kader_id),
+        [assignments, assignMentor]
+    );
+
+    const isCrossBU = (k) =>
+        !!assignMentor?.company_code && k.company_code !== assignMentor.company_code;
+
+    // Default hanya kader se-BU mentor supaya list ringkas. Kader BU lain tampil
+    // bila toggle dinyalakan, ATAU bila sudah ter-assign ke mentor ini — kalau
+    // disembunyikan, admin tidak punya cara untuk meng-unassign-nya.
+    const { filteredKaders, hiddenOtherBU } = useMemo(() => {
+        const q = assignSearch.trim().toLowerCase();
+        const matched = kaders.filter(
             (k) =>
+                !q ||
                 k.nama?.toLowerCase().includes(q) ||
                 k.nik?.toLowerCase().includes(q) ||
                 k.bu?.toLowerCase().includes(q)
         );
-    }, [kaders, assignSearch, assignMentor]);
+
+        const sameBU  = matched.filter((k) => !isCrossBU(k));
+        const otherBU = matched.filter((k) => isCrossBU(k));
+        const shownOther = showOtherBU
+            ? otherBU
+            : otherBU.filter((k) => assignedHere.includes(k.id));
+
+        return {
+            // Kader se-BU didahulukan, yang lintas BU menyusul di bawah.
+            filteredKaders: [...sameBU, ...shownOther],
+            hiddenOtherBU: otherBU.length - shownOther.length,
+        };
+    }, [kaders, assignSearch, assignMentor, showOtherBU, assignedHere]);
 
     // Jumlah mentor LAIN (selain mentor yang sedang di-assign) untuk satu kader.
     const otherMentorCount = (kaderId) =>
@@ -407,19 +430,38 @@ export default function MentorIndex({ mentors, companys, kaders = [], assignment
                             onChange={(e) => setAssignSearch(e.target.value)}
                             className={inputCls} />
                     </div>
-                    <div className="text-xs text-slate-500 mb-2">
-                        {filteredKaders.length} kader · {assignKaderIds.length} dipilih
+                    <div className="flex items-center justify-between gap-3 mb-2">
+                        <div className="text-xs text-slate-500">
+                            {filteredKaders.length} kader · {assignKaderIds.length} dipilih
+                        </div>
+                        <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer shrink-0">
+                            <input type="checkbox" checked={showOtherBU}
+                                onChange={(e) => setShowOtherBU(e.target.checked)}
+                                className="w-3.5 h-3.5 accent-amber-500" />
+                            Tampilkan kader BU lain
+                        </label>
                     </div>
                     <div className="space-y-1.5 max-h-80 overflow-y-auto pr-1 border border-slate-200 rounded-lg p-2">
                         {filteredKaders.length === 0 ? (
                             <div className="text-center py-8 text-sm text-slate-400">
-                                Tidak ada kader yang cocok.
+                                Tidak ada kader yang cocok
+                                {assignMentor && ` di BU ${assignMentor.bu || assignMentor.company_code}`}.
+                                {hiddenOtherBU > 0 && (
+                                    <div className="mt-1.5 text-slate-500">
+                                        <span className="font-medium text-slate-600">{hiddenOtherBU} kader</span> cocok di BU lain —{' '}
+                                        <button type="button" onClick={() => setShowOtherBU(true)}
+                                            className="font-medium text-amber-600 hover:text-amber-700 underline underline-offset-2">
+                                            Tampilkan
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         ) : filteredKaders.map((k) => {
                             const checked    = assignKaderIds.includes(k.id);
                             const allMentors = mentorsByKader[k.id] || [];
                             const otherMentors = allMentors.filter((m) => m.id !== assignMentor?.id);
                             const locked     = isKaderLocked(k.id);
+                            const crossBU    = isCrossBU(k);
                             // Jumlah mentor bila assign ini disimpan (mentor lain + mentor ini bila dicentang).
                             const effectiveCount = otherMentors.length + (checked ? 1 : 0);
                             return (
@@ -446,8 +488,13 @@ export default function MentorIndex({ mentors, companys, kaders = [], assignment
                                             }`}>
                                                 {effectiveCount}/{MAX_MENTORS_PER_KADER} mentor
                                             </span>
+                                            {crossBU && (
+                                                <span className="inline-flex items-center shrink-0 px-1.5 py-0.5 rounded-full text-[10px] font-semibold ring-1 ring-inset bg-amber-50 text-amber-700 ring-amber-200">
+                                                    Lintas BU
+                                                </span>
+                                            )}
                                         </div>
-                                        <div className="text-xs text-slate-500 truncate">
+                                        <div className={`text-xs truncate ${crossBU ? 'text-amber-700' : 'text-slate-500'}`}>
                                             {k.nik} · {k.bu || k.company_code} {k.divisi_name ? `· ${k.divisi_name}` : ''}
                                         </div>
                                         {otherMentors.length > 0 && (
@@ -461,6 +508,17 @@ export default function MentorIndex({ mentors, companys, kaders = [], assignment
                             );
                         })}
                     </div>
+                    {/* Hasil ada tapi masih ada yang cocok di BU lain — tawarkan saat
+                        admin sedang mencari, bukan sebagai noise permanen. */}
+                    {filteredKaders.length > 0 && hiddenOtherBU > 0 && assignSearch.trim() && (
+                        <div className="mt-2 text-xs text-slate-500">
+                            <span className="font-medium text-slate-600">{hiddenOtherBU} kader</span> lain yang cocok ada di BU lain —{' '}
+                            <button type="button" onClick={() => setShowOtherBU(true)}
+                                className="font-medium text-amber-600 hover:text-amber-700 underline underline-offset-2">
+                                Tampilkan
+                            </button>
+                        </div>
+                    )}
                 </form>
             </Modal>
         </AppLayout>

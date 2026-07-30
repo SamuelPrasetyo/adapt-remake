@@ -93,8 +93,10 @@ class KaderSayaController extends Controller
         // memakai rumus tunggal ModulScore (Post Test + Post Activity, TANPA Pre Test).
 
         // Jumlah SEMUA kader di batch yang dipilih (termasuk yang belum di-assign ke mentor).
-        $totalKaderInBatch = Kader::when($idBatch, fn($q) => $q->where('id_batch', $idBatch))
-            ->when($isMentor, fn($q) => $q->where('company_code', $user->company_code))
+        $totalKaderInBatch = Kader::when($idBatch, fn($q) => $q->where('kader.id_batch', $idBatch))
+            // Scope yang sama dengan $kaders di atas, supaya kader lintas BU ikut
+            // terhitung dan angkanya tidak berbeda dari isi daftarnya.
+            ->when($isMentor, fn($q) => $perMentor->scopeKaderToBU($q, $user->company_code))
             ->count();
 
         return Inertia::render('KaderSaya/Index', [

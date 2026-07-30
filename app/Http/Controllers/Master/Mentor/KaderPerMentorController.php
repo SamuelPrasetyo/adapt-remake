@@ -69,13 +69,14 @@ class KaderPerMentorController extends Controller
                 ->groupBy('kader_id')
                 ->pluck('c', 'kader_id');
 
-        // Assign kader baru yang belum ada
-        $kaders = Kader::whereIn('id', $selectedIds->all())
-            ->where('company_code', $mentor->company_code)
-            ->get();
+        // Assign kader baru yang belum ada. Kader lintas BU diizinkan — ada kasus
+        // nyata kader BU lain dibina mentor BU ini — tapi dicatat terpisah di
+        // ActivityLog karena bukan pola normal.
+        $kaders = Kader::whereIn('id', $selectedIds->all())->get();
 
         $inserted = 0;
         $skipped  = [];
+        $crossBu  = [];
         foreach ($kaders as $kader) {
             $existing = ListKaderPerMentor::where('kader_id', $kader->id)
                 ->where('mentor_id', $mentor->id)
@@ -108,10 +109,20 @@ class KaderPerMentorController extends Controller
                 ]);
             }
             $inserted++;
+
+            if ($kader->company_code !== $mentor->company_code) {
+                $crossBu[] = "{$kader->nama} ({$kader->company_code})";
+            }
         }
 
         $skipNote = count($skipped) ? ", skip " . count($skipped) : "";
         ActivityLog::activity_log("Sync assign Mentor {$mentor->nama}: +{$inserted} kader, -{$unassigned} unassign{$skipNote}.");
+
+        if (!empty($crossBu)) {
+            ActivityLog::activity_log(
+                "Assign lintas BU ke Mentor {$mentor->nama} ({$mentor->company_code}): " . implode(', ', $crossBu) . "."
+            );
+        }
 
         if (!empty($skipped)) {
             return back()->with('error',
@@ -233,6 +244,35 @@ class KaderPerMentorController extends Controller
     }
 
     /**
+     * Batasi query kader ke satu BU — plus kader BU lain yang dibina mentor BU ini.
+     *
+     * Assign lintas BU diizinkan, jadi memfilter `kader.company_code` saja tidak
+     * cukup: kader BU lain akan hilang dari daftar "semua kader" dan baru muncul
+     * kalau mentornya dipilih satu per satu. Dipakai bersama oleh daftar kader dan
+     * penghitung totalnya supaya keduanya tidak pernah berbeda isi.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Query\Builder  $query
+     */
+    public function scopeKaderToBU($query, string $companyCode)
+    {
+        $mentoredKaderIds = ListKaderPerMentor::query()
+            ->join('mentor', 'list_kader_per_mentor.mentor_id', '=', 'mentor.id')
+            ->whereNull('list_kader_per_mentor.deleted_at')
+            ->whereNull('mentor.deleted_at')
+            ->where('mentor.company_code', $companyCode)
+            ->pluck('list_kader_per_mentor.kader_id')
+            ->unique()
+            ->all();
+
+        return $query->where(function ($q) use ($companyCode, $mentoredKaderIds) {
+            $q->where('kader.company_code', $companyCode);
+            if (!empty($mentoredKaderIds)) {
+                $q->orWhereIn('kader.id', $mentoredKaderIds);
+            }
+        });
+    }
+
+    /**
      * Daftar semua kader dalam satu BU (atau seluruh BU jika $companyCode = null),
      * lengkap dengan mentor (jika ada) dan stats progress modul.
      */
@@ -260,7 +300,7 @@ class KaderPerMentorController extends Controller
             ->orderBy('kader.nama', 'asc');
 
         if ($companyCode) {
-            $kadersQuery->where('kader.company_code', $companyCode);
+            $this->scopeKaderToBU($kadersQuery, $companyCode);
         }
 
         if ($idBatch) {

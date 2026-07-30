@@ -129,8 +129,13 @@ class DashboardController extends Controller
         // Jumlah SEMUA kader di batch yang dipilih (termasuk yang belum di-assign ke mentor).
         $totalKaderInBatch = 0;
         if ($showMentorPanel) {
-            $totalKaderInBatch = Kader::when($idBatch, fn($q) => $q->where('id_batch', $idBatch))
-                ->when($targetCompanyCode ?? null, fn($q, $cc) => $q->where('company_code', $cc))
+            $totalKaderInBatch = Kader::when($idBatch, fn($q) => $q->where('kader.id_batch', $idBatch))
+                ->when(
+                    $targetCompanyCode ?? null,
+                    // Pakai scope yang sama dengan daftar kadernya supaya kader lintas
+                    // BU ikut terhitung — kalau tidak, angkanya beda dari isi tabel.
+                    fn($q, $cc) => app(KaderPerMentorController::class)->scopeKaderToBU($q, $cc)
+                )
                 ->count();
         }
 
@@ -162,9 +167,11 @@ class DashboardController extends Controller
         $runningBatchIds = Batch::active()->pluck('id_batch');
 
         // Kader aktif = kader pada batch yang sedang berjalan (BU difilter untuk Mentor).
-        $kaderQuery = Kader::whereIn('id_batch', $runningBatchIds);
+        $kaderQuery = Kader::whereIn('kader.id_batch', $runningBatchIds);
         if ($companyCode) {
-            $kaderQuery->where('company_code', $companyCode);
+            // Ikut menyertakan kader lintas BU yang dibina mentor BU ini — kalau tidak,
+            // kartu Kader Aktif & Feedback Belum Terisi mengabaikan mereka.
+            app(KaderPerMentorController::class)->scopeKaderToBU($kaderQuery, $companyCode);
         }
         $activeKaders = $kaderQuery->get(['nik', 'id_batch']);
 
