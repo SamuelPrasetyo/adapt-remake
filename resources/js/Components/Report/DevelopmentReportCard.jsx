@@ -336,9 +336,8 @@ export default function DevelopmentReportCard({
                                 )}
                                 <div className="space-y-2 text-sm">
                                     {[
-                                        { c: "bg-blue-400", label: "OJT Performance", v: penApproved ? pen?.ojt_score : null },
-                                        { c: "bg-emerald-400", label: "Value", v: penApproved ? pen?.value_score : null },
-                                        { c: "bg-amber-400", label: "Test & Presentation", v: penApproved ? pen?.presentation_score : null },
+                                        { c: "bg-blue-400", label: "Hard Competency (70%)", v: penApproved ? pen?.hard_score : null },
+                                        { c: "bg-emerald-400", label: "Soft Competency (30%)", v: penApproved ? pen?.soft_score : null },
                                     ].map((r) => (
                                         <div key={r.label} className="flex items-center justify-between">
                                             <span className="flex items-center gap-2 text-slate-600"><span className={`w-2.5 h-2.5 rounded-full ${r.c}`} /> {r.label}</span>

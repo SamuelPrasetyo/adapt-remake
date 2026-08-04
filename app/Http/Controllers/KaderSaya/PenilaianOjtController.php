@@ -39,17 +39,24 @@ class PenilaianOjtController extends Controller
 
         $this->authorizeWrite($user, $kader_id);
 
+        // Nama kedua panelis wajib — form assessment ini memang milik panel, bukan 1 penilai.
+        // Skor divalidasi lewat closure, bukan rule 'skor.*': item_code mengandung titik
+        // (mis. "hard.1") sehingga Laravel akan salah membacanya sebagai path bersarang.
         $validated = $request->validate([
-            'skor'                       => 'nullable|array',
-            'skor.*'                     => 'nullable|integer|min:0|max:100',
-            'komentar'                   => 'nullable|array',
-            'komentar.*'                 => 'nullable|string',
-            'final_report'               => 'nullable|array',
-            'final_report.overview'      => 'nullable|string',
-            'final_report.strengths'     => 'nullable|string',
-            'final_report.weakness'      => 'nullable|string',
-            'final_report.mentor_comments' => 'nullable|string',
+            'skor'                  => ['required', 'array', $this->skorLengkapRule()],
+            'komentar'              => 'nullable|array',
+            'komentar.*'            => 'nullable|string',
+            'panelis'               => 'required|array',
+            'panelis.1.nama'        => 'required|string|max:150',
+            'panelis.1.peran'       => 'nullable|string|max:150',
+            'panelis.2.nama'        => 'required|string|max:150',
+            'panelis.2.peran'       => 'nullable|string|max:150',
+            'final_report'                      => 'nullable|array',
             'final_report.final_recommendation' => 'nullable|in:recommended,not_recommended',
+        ], [
+            'skor.required'           => 'Semua nilai kompetensi wajib diisi.',
+            'panelis.1.nama.required' => 'Nama Panelis 1 wajib diisi.',
+            'panelis.2.nama.required' => 'Nama Panelis 2 wajib diisi.',
         ]);
 
         $validItemCodes = array_flip(PenilaianOjtStructure::validItemCodes());
@@ -97,21 +104,22 @@ class PenilaianOjtController extends Controller
                 );
             }
 
-            // Final report fields
-            if (isset($validated['final_report']) && is_array($validated['final_report'])) {
-                $fr = $validated['final_report'];
-                // Gunakan array_key_exists agar nilai null (field dikosongkan user) tetap tersimpan.
-                // Operator ?? akan memilih fallback ke nilai lama ketika nilai baru adalah null,
-                // padahal null di sini artinya user sengaja menghapus isi field.
-                $penilaian->fill([
-                    'overview'             => array_key_exists('overview', $fr)             ? $fr['overview']             : $penilaian->overview,
-                    'strengths'            => array_key_exists('strengths', $fr)            ? $fr['strengths']            : $penilaian->strengths,
-                    'weakness'             => array_key_exists('weakness', $fr)             ? $fr['weakness']             : $penilaian->weakness,
-                    'mentor_comments'      => array_key_exists('mentor_comments', $fr)      ? $fr['mentor_comments']      : $penilaian->mentor_comments,
-                    'final_recommendation' => array_key_exists('final_recommendation', $fr) ? $fr['final_recommendation'] : $penilaian->final_recommendation,
-                ]);
-                $penilaian->save();
+            // Identitas panel (bagian A form) + rekomendasi akhir.
+            $penilaian->fill([
+                'panelis1_nama'  => $validated['panelis'][1]['nama'],
+                'panelis1_peran' => $validated['panelis'][1]['peran'] ?? null,
+                'panelis2_nama'  => $validated['panelis'][2]['nama'],
+                'panelis2_peran' => $validated['panelis'][2]['peran'] ?? null,
+            ]);
+
+            // Gunakan array_key_exists agar nilai null (field dikosongkan user) tetap tersimpan.
+            // Operator ?? akan memilih fallback ke nilai lama ketika nilai baru adalah null,
+            // padahal null di sini artinya user sengaja menghapus isi field.
+            $fr = $validated['final_report'] ?? [];
+            if (array_key_exists('final_recommendation', $fr)) {
+                $penilaian->final_recommendation = $fr['final_recommendation'];
             }
+            $penilaian->save();
 
             // Edit ulang dari Mentor (mis. setelah ditolak) mengembalikan ke antrian review.
             if ($penilaian->approval_status === 'rejected') {
@@ -134,8 +142,36 @@ class PenilaianOjtController extends Controller
     }
 
     /**
-     * Hitung ulang ojt_score, value_score, presentation_score, final_score
-     * berdasarkan semua skor yang ada di DB.
+     * Semua kompetensi (8 Hard + 8 Soft) wajib dinilai 0-100 — penilaian tidak boleh
+     * disimpan setengah jalan karena skor kompositnya jadi menyesatkan.
+     */
+    private function skorLengkapRule(): callable
+    {
+        return function ($attribute, $value, $fail) {
+            $belum = [];
+
+            foreach (PenilaianOjtStructure::validItemCodes() as $code) {
+                $skor = is_array($value) ? ($value[$code] ?? null) : null;
+
+                if ($skor === null || $skor === '') {
+                    $belum[] = $code;
+                    continue;
+                }
+
+                if (!is_numeric($skor) || (int) $skor != $skor || $skor < 0 || $skor > 100) {
+                    $fail('Setiap nilai kompetensi harus berupa angka bulat 0-100.');
+                    return;
+                }
+            }
+
+            if (!empty($belum)) {
+                $fail('Semua nilai kompetensi wajib diisi — ' . count($belum) . ' kompetensi belum dinilai.');
+            }
+        };
+    }
+
+    /**
+     * Hitung ulang skor komposit Hard/Soft + nilai akhir FMC dari skor yang ada di DB.
      */
     private function recomputeScores(PenilaianOjt $penilaian): void
     {
@@ -144,78 +180,38 @@ class PenilaianOjtController extends Controller
             ->pluck('skor', 'item_code')
             ->all();
 
-        $ojtScore   = self::computeOjtGrand($skorMap);
-        $valueScore = self::computeValueGrand($skorMap);
-        $presScore  = self::computePresentationGrand($skorMap);
-
-        $weights = PenilaianOjtStructure::WEIGHTS;
-        $parts = [];
-        $weightSum = 0;
-        if ($ojtScore   !== null) { $parts[] = $ojtScore   * $weights['ojt'];          $weightSum += $weights['ojt']; }
-        if ($valueScore !== null) { $parts[] = $valueScore * $weights['value'];        $weightSum += $weights['value']; }
-        if ($presScore  !== null) { $parts[] = $presScore  * $weights['presentation']; $weightSum += $weights['presentation']; }
-        $finalScore = $weightSum > 0 ? round(array_sum($parts) / $weightSum * 1, 2) : null;
-        // Note: kalau 3 sheet lengkap, $weightSum = 1.0, jadi finalScore = sum(parts). Kalau partial, normalize.
+        $scores = self::computeScores($skorMap);
 
         $penilaian->update([
-            'ojt_score'          => $ojtScore   !== null ? round($ojtScore, 2)   : null,
-            'value_score'        => $valueScore !== null ? round($valueScore, 2) : null,
-            'presentation_score' => $presScore  !== null ? round($presScore, 2)  : null,
-            'final_score'        => $finalScore,
+            'hard_score'  => self::round2($scores['hard']),
+            'soft_score'  => self::round2($scores['soft']),
+            'final_score' => self::round2($scores['final']),
         ]);
     }
 
-    public static function computeOjtGrand(array $skorMap): ?float
+    /** Skor komposit hard/soft + nilai akhir (hard 70% + soft 30%). */
+    public static function computeScores(array $skorMap): array
     {
-        $aspekScores = [];
-        foreach (PenilaianOjtStructure::ojt() as $aspek) {
-            $vals = [];
-            foreach ($aspek['subs'] as $sub) {
-                foreach ($sub['indicators'] as $ind) {
-                    $code = "ojt.{$aspek['no']}.{$sub['code']}.{$ind['no']}";
-                    if (isset($skorMap[$code])) $vals[] = (float) $skorMap[$code];
-                }
-            }
-            if (!empty($vals)) $aspekScores[] = array_sum($vals) / count($vals);
-        }
-        return empty($aspekScores) ? null : array_sum($aspekScores) / count($aspekScores);
+        $hard = PenilaianOjtStructure::composite($skorMap, 'hard');
+        $soft = PenilaianOjtStructure::composite($skorMap, 'soft');
+
+        return [
+            'hard'  => $hard,
+            'soft'  => $soft,
+            'final' => PenilaianOjtStructure::finalScore($hard, $soft),
+        ];
     }
 
-    public static function computeValueGrand(array $skorMap): ?float
+    private static function round2(?float $v): ?float
     {
-        $aspekScores = [];
-        foreach (PenilaianOjtStructure::value() as $aspek) {
-            $vals = [];
-            foreach ($aspek['indicators'] as $ind) {
-                $code = "value.{$aspek['no']}.{$ind['no']}";
-                if (isset($skorMap[$code])) $vals[] = (float) $skorMap[$code];
-            }
-            if (!empty($vals)) $aspekScores[] = array_sum($vals) / count($vals);
-        }
-        return empty($aspekScores) ? null : array_sum($aspekScores) / count($aspekScores);
+        return $v === null ? null : round($v, 2);
     }
 
-    public static function computePresentationGrand(array $skorMap): ?float
-    {
-        $sectionScores = [];
-        foreach (PenilaianOjtStructure::presentation() as $section) {
-            $vals = [];
-            foreach ($section['indicators'] as $ind) {
-                $code = "pres.{$section['code']}.{$ind['no']}";
-                if (isset($skorMap[$code])) $vals[] = (float) $skorMap[$code];
-            }
-            if (!empty($vals)) $sectionScores[] = array_sum($vals) / count($vals);
-        }
-        return empty($sectionScores) ? null : array_sum($sectionScores) / count($sectionScores);
-    }
-
+    /** item_code: hard.{no} / soft.{no} — sub_code catatan: catatan.kekuatan / catatan.pengembangan */
     private function sheetFromCode(string $code): ?string
     {
-        $prefix = explode('.', $code, 2)[0] ?? '';
-        if ($prefix === 'ojt')   return 'ojt';
-        if ($prefix === 'value') return 'value';
-        if ($prefix === 'pres')  return 'presentation';
-        return null;
+        $prefix = explode('.', $code)[0] ?? '';
+        return in_array($prefix, ['hard', 'soft', 'catatan'], true) ? $prefix : null;
     }
 
     /**
@@ -262,14 +258,13 @@ class PenilaianOjtController extends Controller
             $penilaianList[] = [
                 'fmc'                  => $fmc,
                 'exists'               => (bool) $rec,
-                'ojt_score'            => ($rec && $rec->ojt_score !== null)          ? (float) $rec->ojt_score          : null,
-                'value_score'          => ($rec && $rec->value_score !== null)        ? (float) $rec->value_score        : null,
-                'presentation_score'   => ($rec && $rec->presentation_score !== null) ? (float) $rec->presentation_score : null,
-                'final_score'          => ($rec && $rec->final_score !== null)        ? (float) $rec->final_score        : null,
-                'overview'             => $rec ? $rec->overview : null,
-                'strengths'            => $rec ? $rec->strengths : null,
-                'weakness'             => $rec ? $rec->weakness : null,
-                'mentor_comments'      => $rec ? $rec->mentor_comments : null,
+                'hard_score'           => ($rec && $rec->hard_score !== null)  ? (float) $rec->hard_score  : null,
+                'soft_score'           => ($rec && $rec->soft_score !== null)  ? (float) $rec->soft_score  : null,
+                'final_score'          => ($rec && $rec->final_score !== null) ? (float) $rec->final_score : null,
+                'panelis1_nama'        => $rec ? $rec->panelis1_nama : null,
+                'panelis1_peran'       => $rec ? $rec->panelis1_peran : null,
+                'panelis2_nama'        => $rec ? $rec->panelis2_nama : null,
+                'panelis2_peran'       => $rec ? $rec->panelis2_peran : null,
                 'final_recommendation' => $rec ? $rec->final_recommendation : null,
                 'approval_status'      => $rec ? ($rec->approval_status ?? 'pending') : 'pending',
                 'approved_at'          => ($rec && $rec->approved_at) ? $rec->approved_at->toIso8601String() : null,

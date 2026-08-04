@@ -11,6 +11,7 @@ Route::middleware(['can:isAdmin021'])->group(function () {
     Route::get('/approval', [ApprovalController::class, 'index'])->name('approval.index');
 
     // Penilaian OJT
+    Route::get('/approval/ojt/{kader_id}/{fmc}/detail', [ApprovalController::class, 'ojtDetail'])->name('approval.ojt.detail');
     Route::post('/approval/ojt/{kader_id}/{fmc}/approve', [ApprovalController::class, 'approveOjt'])->name('approval.ojt.approve');
     Route::post('/approval/ojt/{kader_id}/{fmc}/reject', [ApprovalController::class, 'rejectOjt'])->name('approval.ojt.reject');
 

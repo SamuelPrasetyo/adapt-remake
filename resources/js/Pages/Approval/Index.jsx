@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { router, Link } from "@inertiajs/react";
+import { router } from "@inertiajs/react";
 import AppLayout from "@/Layouts/AppLayout";
 import FilterableTable from "@/Components/FilterableTable";
+import PenilaianOjtModal from "@/Pages/KaderSaya/penilaian/PenilaianOjtModal";
 
 const VALID_TABS = ["ojt", "pa", "idp", "history"];
 
@@ -73,6 +74,24 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
             onSuccess: () => setApprovePa(null),
             onFinish: () => setBusy(false),
         });
+    };
+
+    // "Lihat" pada baris Penilaian OJT membuka form penilaian FMC terkait langsung di halaman
+    // Approval (read-only) — Admin MAI tidak perlu mampir ke halaman Kader Saya lebih dulu.
+    const [ojtView, setOjtView] = useState(null); // { loading, error, fmc, kader, structure, ... }
+
+    const openOjtView = async (kaderId, fmc) => {
+        setOjtView({ loading: true, fmc });
+        try {
+            const res = await fetch(`/approval/ojt/${kaderId}/${fmc}/detail`, {
+                headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
+                credentials: "same-origin",
+            });
+            if (!res.ok) throw new Error(res.status);
+            setOjtView({ loading: false, ...(await res.json()) });
+        } catch {
+            setOjtView({ loading: false, error: "Gagal memuat form penilaian. Coba lagi." });
+        }
     };
 
     const openReject = (type, url, isHistory = false) => { setReject({ type, url, isHistory }); setReason(""); };
@@ -157,8 +176,8 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
                     filters={[BU_FILTER]}
                     actions={(r) => (
                         <div className="flex items-center justify-end gap-2">
-                            <Link href={`/kader-saya/${r.kader_id}`}
-                                className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap border border-slate-300 text-slate-600 hover:bg-slate-50">Lihat</Link>
+                            <button disabled={busy} onClick={() => openOjtView(r.kader_id, r.fmc_number)}
+                                className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap border border-slate-300 text-slate-600 hover:bg-slate-50 disabled:opacity-50">Lihat</button>
                             <button disabled={busy} onClick={() => doApprove(`/approval/ojt/${r.kader_id}/${r.fmc_number}/approve`)}
                                 className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">Approve</button>
                             <button disabled={busy} onClick={() => openReject("ojt", `/approval/ojt/${r.kader_id}/${r.fmc_number}/reject`)}
@@ -223,8 +242,12 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
                             emptyMessage="Belum ada penilaian OJT yang disetujui."
                             filters={[BU_FILTER]}
                             actions={(r) => (
-                                <button disabled={busy} onClick={() => openReject("ojt", `/approval/ojt/${r.kader_id}/${r.fmc_number}/reject`, true)}
-                                    className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">Reject</button>
+                                <div className="flex items-center justify-end gap-2">
+                                    <button disabled={busy} onClick={() => openOjtView(r.kader_id, r.fmc_number)}
+                                        className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap border border-slate-300 text-slate-600 hover:bg-slate-50 disabled:opacity-50">Lihat</button>
+                                    <button disabled={busy} onClick={() => openReject("ojt", `/approval/ojt/${r.kader_id}/${r.fmc_number}/reject`, true)}
+                                        className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">Reject</button>
+                                </div>
                             )}
                         />
                     </div>
@@ -257,6 +280,42 @@ export default function ApprovalIndex({ ojtPending = [], paPending = [], ojtAppr
                         />
                     </div>
                 </div>
+            )}
+
+            {ojtView?.loading && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-xl px-6 py-5 flex items-center gap-3">
+                        <svg className="w-5 h-5 animate-spin text-blue-600" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                        </svg>
+                        <span className="text-sm font-medium text-slate-700">Memuat form penilaian FMC-{ojtView.fmc}...</span>
+                    </div>
+                </div>
+            )}
+
+            {ojtView?.error && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setOjtView(null)}>
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 text-center" onClick={(e) => e.stopPropagation()}>
+                        <p className="text-sm text-slate-700">{ojtView.error}</p>
+                        <button onClick={() => setOjtView(null)}
+                            className="mt-4 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">Tutup</button>
+                    </div>
+                </div>
+            )}
+
+            {ojtView && !ojtView.loading && !ojtView.error && (
+                <PenilaianOjtModal
+                    fmc={ojtView.fmc}
+                    kader={ojtView.kader}
+                    kaderId={ojtView.kaderId}
+                    structure={ojtView.structure}
+                    initialSkor={ojtView.skor || {}}
+                    initialKomentar={ojtView.komentar || {}}
+                    initialFinalReport={ojtView.penilaian || {}}
+                    canEdit={false}
+                    onClose={() => setOjtView(null)}
+                />
             )}
 
             {approvePa && (
