@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers\Approval;
 
+use App\Constants\PenilaianOjtStructure;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\KaderSaya\PenilaianOjtController;
 use App\Models\ActivityLog;
 use App\Models\Dokumen;
+use App\Models\Kader;
 use App\Models\PenilaianOjt;
 use App\Models\PenilaianPostActivity;
 use Illuminate\Http\Request;
@@ -107,6 +110,45 @@ class ApprovalController extends Controller
             'paApproved'  => $paApproved,
             'idpPending'  => $idpPending,
             'idpApproved' => $idpApproved,
+        ]);
+    }
+
+    /**
+     * GET (JSON) detail 1 penilaian OJT — dipakai tombol "Lihat" di halaman Approval agar
+     * Admin MAI langsung membuka form penilaian FMC terkait tanpa mampir ke halaman Kader Saya.
+     */
+    public function ojtDetail($kader_id, $fmc)
+    {
+        $fmc = (int) $fmc;
+
+        if (!in_array($fmc, PenilaianOjtStructure::FMC_NUMBERS, true)) {
+            abort(404, 'FMC tidak valid.');
+        }
+
+        $kader = Kader::select(
+                'kader.id', 'kader.nama', 'kader.nik',
+                'company.company_shortname as bu',
+                'company.company_name as bu_name',
+                'divisis.nama as divisi_name',
+                'departemens.nama as dept_name'
+            )
+            ->leftJoin('company', 'kader.company_code', '=', 'company.company_code')
+            ->leftJoin('divisis', 'kader.id_divisi', '=', 'divisis.id')
+            ->leftJoin('departemens', 'kader.id_departemen', '=', 'departemens.id')
+            ->where('kader.id', $kader_id)
+            ->firstOrFail();
+
+        $data      = PenilaianOjtController::getDataForKader($kader->id);
+        $penilaian = collect($data['penilaianList'])->firstWhere('fmc', $fmc);
+
+        return response()->json([
+            'kader'     => $kader,
+            'kaderId'   => $kader->id,
+            'fmc'       => $fmc,
+            'structure' => PenilaianOjtStructure::all(),
+            'penilaian' => $penilaian,
+            'skor'      => $data['skorMap'][$fmc]     ?? (object) [],
+            'komentar'  => $data['komentarMap'][$fmc] ?? (object) [],
         ]);
     }
 
