@@ -2,6 +2,7 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
+import Modal from '@/Components/Modal';
 import StatsCard from '@/Components/StatsCard';
 import ProgressBar from '@/Components/ProgressBar';
 import KaderAvatar from '@/Components/KaderAvatar';
@@ -486,6 +487,120 @@ function KaderTable({ kaders, mentorFilter, mentors, onMentorFilter, batches, ba
     );
 }
 
+// Detail kartu "Feedback Belum Terisi": kader mana saja yang feedback mingguannya
+// belum diisi mentor, lengkap dengan minggu-minggu yang kosong. Datanya di-scope
+// server-side (Admin MAI = semua BU, Mentor = BU-nya + kader lintas BU binaannya).
+function FeedbackBelumModal({ open, onClose }) {
+    const [state, setState] = useState({ loading: true });
+    const [q, setQ] = useState('');
+
+    useEffect(() => {
+        if (!open) return;
+        let alive = true;
+        setState({ loading: true });
+        setQ('');
+        (async () => {
+            try {
+                const res = await fetch('/dashboard/feedback-belum', {
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    credentials: 'same-origin',
+                });
+                if (!res.ok) throw new Error(res.status);
+                const data = await res.json();
+                if (alive) setState({ loading: false, ...data });
+            } catch {
+                if (alive) setState({ loading: false, error: 'Gagal memuat data. Coba lagi.' });
+            }
+        })();
+        return () => { alive = false; };
+    }, [open]);
+
+    const kaders = state.kaders || [];
+    const filtered = useMemo(() => {
+        const s = q.trim().toLowerCase();
+        if (!s) return kaders;
+        return kaders.filter(k =>
+            k.nama?.toLowerCase().includes(s) ||
+            k.bu?.toLowerCase().includes(s) ||
+            k.bu_full?.toLowerCase().includes(s) ||
+            (k.mentors || []).some(m => m.toLowerCase().includes(s))
+        );
+    }, [kaders, q]);
+
+    return (
+        <Modal open={open} onClose={onClose} title="Feedback Belum Terisi" size="2xl">
+            {state.loading ? (
+                <div className="py-10 text-center text-sm text-slate-500">Memuat data…</div>
+            ) : state.error ? (
+                <div className="py-10 text-center text-sm text-rose-600">{state.error}</div>
+            ) : (
+                <>
+                    <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                        <div className="text-sm text-slate-600">
+                            <span className="font-semibold text-amber-600">{state.total}</span> feedback belum terisi dari{' '}
+                            <span className="font-semibold text-slate-900">{kaders.length}</span> kader
+                            {state.scope === 'bu' && <span className="text-slate-400"> · BU Anda</span>}
+                        </div>
+                        {kaders.length > 0 && (
+                            <input
+                                type="text"
+                                value={q}
+                                onChange={(e) => setQ(e.target.value)}
+                                placeholder="Cari kader / BU / mentor..."
+                                className="px-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
+                            />
+                        )}
+                    </div>
+
+                    {filtered.length === 0 ? (
+                        <div className="py-10 text-center text-sm text-slate-500">
+                            {kaders.length === 0
+                                ? 'Semua feedback minggu berjalan sudah terisi. 🎉'
+                                : 'Tidak ada kader yang cocok dengan pencarian.'}
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            {filtered.map((k) => (
+                                <div key={k.kader_id} className="rounded-xl ring-1 ring-slate-200 p-3.5 hover:bg-slate-50/70 transition">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="font-semibold text-slate-900">{k.nama}</span>
+                                                <span className="px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[11px] font-medium">
+                                                    {k.bu || '—'}
+                                                </span>
+                                                {k.batch && <span className="text-[11px] text-slate-400">{k.batch}</span>}
+                                            </div>
+                                            <div className="mt-0.5 text-xs text-slate-500 truncate">
+                                                Mentor: {k.mentors?.length ? k.mentors.join(', ') : <span className="text-rose-500">belum di-assign</span>}
+                                            </div>
+                                        </div>
+                                        <span className="shrink-0 px-2 py-1 rounded-lg bg-amber-50 text-amber-700 ring-1 ring-amber-200 text-xs font-semibold">
+                                            {k.missing_count} / {k.total_weeks} minggu
+                                        </span>
+                                    </div>
+
+                                    <div className="mt-2.5 flex flex-wrap gap-1">
+                                        {k.weeks.map((w) => (
+                                            <span
+                                                key={w.id_week}
+                                                title={w.tanggal_mulai ? `Mulai ${w.tanggal_mulai}` : undefined}
+                                                className="px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-600 ring-1 ring-rose-100 text-[11px] font-medium"
+                                            >
+                                                W{w.angka_week}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </>
+            )}
+        </Modal>
+    );
+}
+
 export default function Dashboard({
     stats,
     departemenProgress,
@@ -503,6 +618,7 @@ export default function Dashboard({
     totalKaderInBatch,
 }) {
     const s = stats || { kaderAktif: 0, batchBerjalan: 0, feedbackBelum: 0, idpBelum: 0 };
+    const [feedbackDetail, setFeedbackDetail] = useState(false);
 
     // Navigasi dengan mempertahankan filter mentor & batch sekaligus.
     const navigateFilter = (next) => {
@@ -575,9 +691,17 @@ export default function Dashboard({
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <StatsCard title="Jumlah Mentor" value={s.mentorCount} subtitle="Membina kader batch berjalan" color="blue" />
                 <StatsCard title="Kader Aktif" value={s.kaderAktif} subtitle={`${s.batchBerjalan} batch berjalan`} color="green" />
-                <StatsCard title="Feedback Belum Terisi" value={s.feedbackBelum} subtitle="Perlu diisi mentor" color="amber" />
+                <StatsCard
+                    title="Feedback Belum Terisi"
+                    value={s.feedbackBelum}
+                    subtitle="Perlu diisi mentor"
+                    color="amber"
+                    onClick={() => setFeedbackDetail(true)}
+                />
                 <StatsCard title="IDP Belum Lengkap" value={s.idpBelum} subtitle="Menunggu approve mentor" color="red" />
             </div>
+
+            <FeedbackBelumModal open={feedbackDetail} onClose={() => setFeedbackDetail(false)} />
 
             {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
                 <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">

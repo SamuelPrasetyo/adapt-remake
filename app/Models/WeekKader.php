@@ -4,10 +4,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * Jadwal refleksi kader per batch (dwi-mingguan: angka_week genap 2,4,..).
+ *
+ * Soft delete: minggu ganjil sisa era jadwal mingguan diarsipkan bersama refleksi
+ * di dalamnya, jadi masih bisa dipulihkan bila suatu saat dibutuhkan.
+ */
 class WeekKader extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
     protected $table = 'weeks_kader';
     protected $primaryKey = 'id_week';
     protected $guarded = [];

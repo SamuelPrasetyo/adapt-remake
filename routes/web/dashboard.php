@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['can:isAll'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
+    // Detail kartu "Feedback Belum Terisi" (JSON, dimuat saat kartunya diklik).
+    Route::get('/dashboard/feedback-belum', [DashboardController::class, 'feedbackBelum'])->name('dashboard.feedback-belum');
     Route::post('/user/change_password/{id}', [UserController::class, 'change_password'])->name('user.change_password');
 });
 

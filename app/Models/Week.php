@@ -4,10 +4,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * Jadwal feedback mentor per batch (dwi-mingguan: angka_week genap 2,4,..).
+ *
+ * Soft delete: minggu ganjil sisa era jadwal mingguan diarsipkan (bukan dihapus)
+ * supaya jawaban yang ikut diarsipkan tetap punya minggu acuan bila dipulihkan.
+ */
 class Week extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
     protected $table = 'weeks';
     protected $primaryKey = 'id_week';
     protected $guarded = [];

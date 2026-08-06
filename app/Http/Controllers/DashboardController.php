@@ -166,43 +166,9 @@ class DashboardController extends Controller
         // Batch yang sedang berjalan (rentang tanggalnya mencakup hari ini).
         $runningBatchIds = Batch::active()->pluck('id_batch');
 
-        // Kader aktif = kader pada batch yang sedang berjalan (BU difilter untuk Mentor).
-        $kaderQuery = Kader::whereIn('kader.id_batch', $runningBatchIds);
-        if ($companyCode) {
-            // Ikut menyertakan kader lintas BU yang dibina mentor BU ini — kalau tidak,
-            // kartu Kader Aktif & Feedback Belum Terisi mengabaikan mereka.
-            app(KaderPerMentorController::class)->scopeKaderToBU($kaderQuery, $companyCode);
-        }
-        $activeKaders = $kaderQuery->get(['nik', 'id_batch']);
-
-        // Feedback belum terisi = slot (kader × minggu feedback yang sudah berjalan) yang belum
-        // diisi Mentor. Feedback mentor = jawaban dengan nama_mentor NOT NULL & id_pertanyaan 1–6
-        // (mengacu ke tabel `weeks`, bukan refleksi kader di `weeks_kader`).
-        $availableWeeksByBatch = [];
-        foreach ($runningBatchIds as $bid) {
-            $availableWeeksByBatch[$bid] = Week::available()->forBatch($bid)->pluck('id_week')->all();
-        }
-        $totalSlots = 0;
-        $allWeekIds = [];
-        foreach ($activeKaders as $k) {
-            $wids = $availableWeeksByBatch[$k->id_batch] ?? [];
-            $totalSlots += count($wids);
-            foreach ($wids as $wid) {
-                $allWeekIds[$wid] = true;
-            }
-        }
-        $niks = $activeKaders->pluck('nik')->filter()->unique()->all();
-        $filledSlots = 0;
-        if ($totalSlots > 0 && !empty($niks)) {
-            $filledSlots = Jawaban::whereIn('nik_kader', $niks)
-                ->whereNotNull('nama_mentor')
-                ->whereIn('id_pertanyaan', [1, 2, 3, 4, 5, 6])
-                ->whereIn('id_week', array_keys($allWeekIds))
-                ->distinct()
-                ->get(['nik_kader', 'id_week'])
-                ->count();
-        }
-        $feedbackBelum = max(0, $totalSlots - $filledSlots);
+        // Kader aktif & feedback belum terisi — keduanya dari feedbackGap() supaya angka
+        // kartu dan isi daftar detailnya (modal saat kartu diklik) tidak pernah berbeda.
+        $gap = $this->feedbackGap($companyCode);
 
         // IDP belum lengkap = Form IDP yang belum di-approve Mentor (status masih 'pending').
         $idpQuery = Dokumen::where('jenis', 'FORM_IDP')->where('status', 'pending');
@@ -224,11 +190,176 @@ class DashboardController extends Controller
 
         return [
             'mentorCount'   => $mentorCount,
-            'kaderAktif'    => $activeKaders->count(),
+            'kaderAktif'    => $gap['kaderAktif'],
             'batchBerjalan' => $runningBatchIds->count(),
-            'feedbackBelum' => $feedbackBelum,
+            'feedbackBelum' => $gap['total'],
             'idpBelum'      => $idpBelum,
         ];
+    }
+
+    /**
+     * Slot feedback mentor yang belum terisi, dirinci per kader.
+     *
+     * Slot = kader (batch berjalan) × minggu feedback yang sudah berjalan. Sebuah slot
+     * dianggap terisi bila ada jawaban dengan nama_mentor NOT NULL & id_pertanyaan 1–6
+     * (mengacu ke tabel `weeks`, bukan refleksi kader di `weeks_kader`).
+     *
+     * $companyCode = null → semua BU (Admin MAI); selain itu → BU tersebut PLUS kader
+     * lintas BU yang dibina mentor BU ini (lihat scopeKaderToBU).
+     *
+     * @return array{kaderAktif:int, total:int, rows:\Illuminate\Support\Collection}
+     */
+    private function feedbackGap(?string $companyCode): array
+    {
+        $runningBatchIds = Batch::active()->pluck('id_batch');
+
+        $kaderQuery = Kader::select(
+                'kader.id as kader_id',
+                'kader.nik',
+                'kader.nama',
+                'kader.id_batch',
+                'kader.company_code',
+                'company.company_shortname as bu',
+                'company.company_name as bu_full',
+                'batch.nama_batch',
+                'batch.tahun_batch'
+            )
+            ->leftJoin('company', 'kader.company_code', '=', 'company.company_code')
+            ->leftJoin('batch', 'kader.id_batch', '=', 'batch.id_batch')
+            ->whereIn('kader.id_batch', $runningBatchIds)
+            ->orderBy('kader.nama', 'asc');
+
+        if ($companyCode) {
+            // Ikut menyertakan kader lintas BU yang dibina mentor BU ini — kalau tidak,
+            // kartu Kader Aktif & Feedback Belum Terisi mengabaikan mereka.
+            app(KaderPerMentorController::class)->scopeKaderToBU($kaderQuery, $companyCode);
+        }
+
+        $activeKaders = $kaderQuery->get();
+
+        // Minggu feedback yang sudah berjalan, per batch (anti-fraud: minggu depan tidak dihitung).
+        $weeksByBatch = [];
+        foreach ($runningBatchIds as $bid) {
+            $weeksByBatch[$bid] = Week::available()->forBatch($bid)
+                ->orderBy('angka_week', 'asc')
+                ->get(['id_week', 'angka_week', 'tanggal_mulai']);
+        }
+
+        $allWeekIds = collect($weeksByBatch)
+            ->flatMap(fn($w) => $w->pluck('id_week'))
+            ->unique()
+            ->values()
+            ->all();
+        $niks = $activeKaders->pluck('nik')->filter()->unique()->values()->all();
+
+        // Slot yang SUDAH terisi, dipetakan "nik|id_week".
+        $filled = [];
+        if (!empty($niks) && !empty($allWeekIds)) {
+            Jawaban::whereIn('nik_kader', $niks)
+                ->whereNotNull('nama_mentor')
+                ->whereIn('id_pertanyaan', [1, 2, 3, 4, 5, 6])
+                ->whereIn('id_week', $allWeekIds)
+                ->distinct()
+                ->get(['nik_kader', 'id_week'])
+                ->each(function ($j) use (&$filled) {
+                    $filled[$j->nik_kader . '|' . $j->id_week] = true;
+                });
+        }
+
+        $total = 0;
+        $rows  = collect();
+
+        foreach ($activeKaders as $k) {
+            $weeks   = $weeksByBatch[$k->id_batch] ?? collect();
+            $missing = [];
+
+            foreach ($weeks as $w) {
+                if (isset($filled[$k->nik . '|' . $w->id_week])) continue;
+                $missing[] = [
+                    'id_week'       => $w->id_week,
+                    'angka_week'    => (int) $w->angka_week,
+                    'tanggal_mulai' => optional($w->tanggal_mulai)->format('Y-m-d'),
+                ];
+            }
+
+            $total += count($missing);
+            if (empty($missing)) continue;
+
+            $rows->push([
+                'kader_id'      => $k->kader_id,
+                'nik'           => $k->nik,
+                'nama'          => $k->nama,
+                'bu'            => $k->bu ?: $k->company_code,
+                'bu_full'       => $k->bu_full,
+                'batch'         => $k->nama_batch !== null
+                    ? trim("Batch {$k->nama_batch} ({$k->tahun_batch})")
+                    : null,
+                'total_weeks'   => $weeks->count(),
+                'missing_count' => count($missing),
+                'weeks'         => $missing,
+                'mentors'       => [],
+            ]);
+        }
+
+        // Yang paling tertinggal muncul lebih dulu; nama sebagai penentu urutan kedua.
+        $rows = $rows->sort(
+            fn($a, $b) => ($b['missing_count'] <=> $a['missing_count'])
+                ?: strcasecmp((string) $a['nama'], (string) $b['nama'])
+        )->values();
+
+        return [
+            'kaderAktif' => $activeKaders->count(),
+            'total'      => $total,
+            'rows'       => $rows,
+        ];
+    }
+
+    /**
+     * Detail kartu "Feedback Belum Terisi" — daftar kader beserta minggu yang belum
+     * diisi mentor. Scope-nya persis sama dengan kartunya: Admin MAI melihat semua BU,
+     * Mentor hanya BU-nya sendiri + kader lintas BU yang dibina mentor BU tersebut.
+     */
+    public function feedbackBelum(Request $request)
+    {
+        $user         = Auth::user();
+        $isMentorUser = $user->type === 'Mentor';
+
+        if (!$isMentorUser && $user->type !== 'Admin') {
+            abort(403, 'Tidak diizinkan mengakses data ini.');
+        }
+
+        $gap  = $this->feedbackGap($isMentorUser ? $user->company_code : null);
+        $rows = $gap['rows'];
+
+        // Nama mentor pembina — supaya Admin tahu siapa yang harus ditagih.
+        if ($rows->isNotEmpty()) {
+            $mentorsByKader = \App\Models\ListKaderPerMentor::select(
+                    'list_kader_per_mentor.kader_id',
+                    'mentor.nama as mentor_name'
+                )
+                ->join('mentor', 'list_kader_per_mentor.mentor_id', '=', 'mentor.id')
+                ->whereIn('list_kader_per_mentor.kader_id', $rows->pluck('kader_id')->all())
+                ->whereNull('list_kader_per_mentor.deleted_at')
+                ->whereNull('mentor.deleted_at')
+                ->orderBy('mentor.nama', 'asc')
+                ->get()
+                ->groupBy('kader_id');
+
+            $rows = $rows->map(function ($row) use ($mentorsByKader) {
+                $row['mentors'] = $mentorsByKader->get($row['kader_id'], collect())
+                    ->pluck('mentor_name')
+                    ->unique()
+                    ->values()
+                    ->all();
+                return $row;
+            });
+        }
+
+        return response()->json([
+            'total'  => $gap['total'],
+            'scope'  => $isMentorUser ? 'bu' : 'all',
+            'kaders' => $rows->values(),
+        ]);
     }
 
     /**
