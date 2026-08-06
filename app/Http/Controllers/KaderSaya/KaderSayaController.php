@@ -214,7 +214,8 @@ class KaderSayaController extends Controller
                 'is_filled'    => in_array($w->id_week, $filledWeeks),
             ]);
 
-        // Refleksi kader diisi terhadap jadwal weeks_kader (48 minggu), bukan weeks (jadwal feedback mentor).
+        // Refleksi kader diisi terhadap jadwal weeks_kader (dwi-mingguan, tabel terpisah),
+        // bukan weeks (jadwal feedback mentor) — id_week kedua tabel bisa bernilai sama.
         $refleksiQuery = Jawaban::whereIn('jawaban.id_pertanyaan', [7, 8, 9, 10])
             ->where('jawaban.nik_kader', $kader->nik)
             ->whereNull('jawaban.nama_mentor')

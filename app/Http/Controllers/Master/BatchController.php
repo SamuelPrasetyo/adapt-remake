@@ -168,11 +168,14 @@ class BatchController extends Controller
         //   2. feedback_mai — Feedback MAI kader + mentor        (via nik_kader)
         //   3. dokumen      — upload WEEKLY_FEEDBACK             (via id_batch)
         // Hanya batch kosong (ketiganya nihil) yang boleh dihapus + dibersihkan week-nya.
+        // withTrashed: data yang diarsipkan (mis. minggu ganjil hasil revert dwi-mingguan)
+        // tetap dihitung "terisi" — kalau tidak, week-nya ikut terhapus permanen dan
+        // arsipnya jadi tidak bisa dipulihkan.
         $nikKader    = Kader::where('id_batch', $id)->pluck('nik');
         $hasFeedback = $nikKader->isNotEmpty()
-            && Jawaban::whereIn('nik_kader', $nikKader)->exists();
+            && Jawaban::withTrashed()->whereIn('nik_kader', $nikKader)->exists();
         $hasFmai     = $nikKader->isNotEmpty()
-            && FeedbackMai::whereIn('nik_kader', $nikKader)->exists();
+            && FeedbackMai::withTrashed()->whereIn('nik_kader', $nikKader)->exists();
         $hasUpload   = Dokumen::where('id_batch', $id)
             ->where('jenis', 'WEEKLY_FEEDBACK')
             ->exists();
@@ -186,9 +189,11 @@ class BatchController extends Controller
         }
 
         // Batch kosong — bersihkan jadwal minggu supaya tabel weeks & weeks_kader tidak
-        // menyimpan baris yatim (sampah), lalu hapus batch-nya.
-        Week::where('id_batch', $id)->delete();
-        WeekKader::where('id_batch', $id)->delete();
+        // menyimpan baris yatim (sampah), lalu hapus batch-nya. forceDelete karena
+        // kedua model kini soft delete: batch tanpa isi tidak perlu diarsipkan, dan
+        // baris tersembunyi tetap menghalangi generate ulang bila batch dibuat lagi.
+        Week::withTrashed()->where('id_batch', $id)->forceDelete();
+        WeekKader::withTrashed()->where('id_batch', $id)->forceDelete();
         Batch::where('id_batch', $id)->delete();
 
         ActivityLog::activity_log('Menghapus data Batch');
