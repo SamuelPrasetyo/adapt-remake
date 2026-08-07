@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { router, useForm, usePage } from "@inertiajs/react";
 import FilterableTable from "@/Components/FilterableTable";
 import Toast from "@/Components/Toast";
@@ -264,185 +265,328 @@ function RefleksiCard({ r, defaultOpen = false }) {
     );
 }
 
-function RefleksiAccordion({ refleksi }) {
+/**
+ * Saat form kirim disembunyikan (mis. batch terkunci), daftar kartu memakai lebar penuh
+ * halaman — satu kartu per baris jadi sangat boros. `wide` memecahnya jadi 2-3 kolom di
+ * layar besar; `items-start` menjaga tinggi tiap kartu tetap independen saat di-expand.
+ */
+const listLayout = (wide) => wide
+    ? 'grid gap-2 items-start md:grid-cols-2 2xl:grid-cols-3'
+    : 'space-y-2';
+
+function RefleksiAccordion({ refleksi, wide = false }) {
     if (refleksi.length === 0) return <p className="text-sm text-slate-400 text-center py-8">Belum ada refleksi dari kader.</p>;
     return (
-        <div className="space-y-2">
+        <div className={listLayout(wide)}>
             {refleksi.map((r, i) => <RefleksiCard key={r.week_id} r={r} defaultOpen={i === 0} />)}
         </div>
     );
 }
 
-// Tile skor di riwayat: [key data, label tile, field payload ke backend].
+// Tile skor di riwayat: [key data, label penuh, field payload ke backend, label ringkas untuk kartu compact].
 const FEEDBACK_TILES = [
-    ['routine_job',   'Routine Job', 'p1'],
-    ['assignment',    'Assignment',  'p2'],
-    ['pemahaman_sop', 'SOP',         'p3'],
-    ['project',       'Project',     'p4'],
+    ['routine_job',   'Routine Job', 'p1', 'Routine'],
+    ['assignment',    'Assignment',  'p2', 'Assign.'],
+    ['pemahaman_sop', 'SOP',         'p3', 'SOP'],
+    ['project',       'Project',     'p4', 'Project'],
 ];
 
 const isBlank = (v) => v === null || v === undefined || v === '';
 
-function FeedbackCard({ fb, defaultOpen = false, canEdit = false, kaderId = null }) {
-    const [open, setOpen]       = useState(defaultOpen);
+// Di atas panjang ini, "Area yang Perlu Ditingkatkan" biasanya kepotong oleh line-clamp-2
+// pada lebar kartu compact — baru munculkan tombol "Lihat" pada kasus itu.
+const AREA_BUBBLE_THRESHOLD = 70;
+
+/**
+ * Tombol kecil yang membuka catatan penuh dalam bubble mengambang (bukan modal) —
+ * dipakai untuk teks yang kepotong oleh line-clamp di kartu compact. Di-render lewat
+ * portal ke document.body supaya tidak ikut terpotong oleh `overflow-hidden` pada
+ * AccordionSection/kartu di atasnya, dan posisinya dihitung dari getBoundingClientRect
+ * tombol pemicunya (menempel di atas/bawah kartu, mengikuti ruang kosong yang tersedia).
+ */
+function NoteBubbleButton({ text, label = 'Area yang Perlu Ditingkatkan' }) {
+    const [open, setOpen] = useState(false);
+    const [pos, setPos]   = useState(null);
+    const btnRef = useRef(null);
+
+    useEffect(() => {
+        if (!open) return;
+        const close  = () => setOpen(false);
+        const onKey  = (e) => { if (e.key === 'Escape') close(); };
+        window.addEventListener('scroll', close, true);
+        window.addEventListener('resize', close);
+        document.addEventListener('keydown', onKey);
+        return () => {
+            window.removeEventListener('scroll', close, true);
+            window.removeEventListener('resize', close);
+            document.removeEventListener('keydown', onKey);
+        };
+    }, [open]);
+
+    const toggle = (e) => {
+        e.stopPropagation();
+        if (open) { setOpen(false); return; }
+        const r = btnRef.current.getBoundingClientRect();
+        const bw = 272, margin = 12;
+        const left = Math.min(Math.max(r.left + r.width / 2 - bw / 2, margin), window.innerWidth - bw - margin);
+        const below = (window.innerHeight - r.bottom) > 130;
+        setPos({
+            left, bw,
+            top:    below ? r.bottom + 8 : null,
+            bottom: below ? null : window.innerHeight - r.top + 8,
+            tailX:  r.left + r.width / 2 - left - 5,
+            below,
+        });
+        setOpen(true);
+    };
+
+    return (
+        <>
+            <button type="button" ref={btnRef} onClick={toggle}
+                className={`inline-flex items-center gap-0.5 shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full transition ${
+                    open ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                }`}>
+                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                Lihat
+            </button>
+            {open && pos && createPortal(
+                <div className="fixed inset-0 z-40" onClick={() => setOpen(false)}>
+                    <div onClick={(e) => e.stopPropagation()}
+                        className="absolute rounded-xl px-3 py-2.5 bg-slate-800 text-white shadow-xl"
+                        style={{ left: pos.left, width: pos.bw, top: pos.top ?? undefined, bottom: pos.bottom ?? undefined }}>
+                        <div className="absolute w-2.5 h-2.5 bg-slate-800 rotate-45 rounded-sm"
+                            style={pos.below ? { top: -4, left: pos.tailX } : { bottom: -4, left: pos.tailX }} />
+                        <div className="flex items-center justify-between gap-3 mb-1">
+                            <span className="text-[9.5px] font-bold uppercase tracking-wide text-slate-400">{label}</span>
+                            <button type="button" onClick={() => setOpen(false)} className="text-slate-400 hover:text-white transition">
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <p className="text-xs leading-relaxed text-slate-100">{text}</p>
+                    </div>
+                </div>,
+                document.body,
+            )}
+        </>
+    );
+}
+
+/**
+ * Kartu Week ringkas — selalu tampil penuh (tanpa accordion sendiri), dipakai di dalam
+ * satu grup bulan. Skor diperkecil supaya beberapa kartu muat berdampingan; edit tetap
+ * berlaku untuk seluruh nilai (bukan hanya yang kosong) selama `canEdit` true.
+ */
+function CompactFeedbackCard({ fb, canEdit = false, kaderId = null }) {
     const [editing, setEditing] = useState(false);
     const [draft, setDraft]     = useState({});
     const [saving, setSaving]   = useState(false);
-    const hasScores = fb.routine_job != null || fb.assignment != null || fb.pemahaman_sop != null || fb.project != null;
 
-    // Hanya kategori yang terlanjur kosong yang bisa dilengkapi — nilai yang sudah
-    // terkirim tidak boleh diubah dari riwayat.
     const gaps = FEEDBACK_TILES.filter(([key]) => isBlank(fb[key])).map(([, , field]) => field);
     if (isBlank(fb.motivasi)) gaps.push('p5');
     const canFill = canEdit && gaps.length > 0;
 
     const startEdit = () => {
-        setDraft(Object.fromEntries(gaps.map(f => [f, ''])));
-        setOpen(true);
+        setDraft({
+            p1: fb.routine_job   ?? '',
+            p2: fb.assignment    ?? '',
+            p3: fb.pemahaman_sop ?? '',
+            p4: fb.project       ?? '',
+            p5: fb.motivasi      ?? '',
+            p6: fb.area          ?? '',
+        });
         setEditing(true);
     };
     const cancelEdit = () => { setEditing(false); setDraft({}); };
 
-    const saveGaps = () => {
-        const payload = Object.fromEntries(Object.entries(draft).filter(([, v]) => v !== ''));
-        if (Object.keys(payload).length === 0) return;
+    const saveEdit = () => {
         setSaving(true);
-        router.post(`/kader-saya/${kaderId}/feedback/${fb.week_id}/lengkapi`, payload, {
+        router.post(`/kader-saya/${kaderId}/feedback/${fb.week_id}/update`, draft, {
             preserveScroll: true,
             onSuccess: () => cancelEdit(),
             onFinish:  () => setSaving(false),
         });
     };
 
-    const editPencil = (
-        <button type="button" onClick={(e) => { e.stopPropagation(); startEdit(); }}
-            title="Lengkapi nilai yang kosong"
-            className="absolute top-1 right-1 text-slate-300 hover:text-blue-600 transition">
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-        </button>
-    );
-
     return (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <button type="button" onClick={() => setOpen(o => !o)}
-                className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 transition text-left">
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${hasScores ? 'bg-blue-600' : 'bg-slate-100'}`}>
-                    <svg className={`w-4 h-4 ${hasScores ? 'text-white' : 'text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                    </svg>
+        <div className={`rounded-lg border p-2.5 ${canFill ? 'bg-amber-50/50 border-amber-200' : 'bg-slate-50 border-slate-100'}`}>
+            <div className="flex items-center justify-between gap-2 mb-2">
+                <span className="text-xs font-bold text-slate-700">Week {fb.angka_week}</span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                    {!editing && fb.motivasi && (
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${MOTIVASI_BADGE[fb.motivasi] ?? 'bg-slate-100 text-slate-600'}`}>
+                            {fb.motivasi.toUpperCase()}
+                        </span>
+                    )}
+                    {!editing && canFill && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                            {gaps.length} kosong
+                        </span>
+                    )}
+                    {canEdit && !editing && (
+                        <button type="button" onClick={startEdit} title="Ubah nilai feedback"
+                            className="text-slate-300 hover:text-blue-600 transition">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                        </button>
+                    )}
                 </div>
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-semibold text-slate-800">Week {fb.angka_week}</span>
-                        {fb.motivasi && (
-                            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${MOTIVASI_BADGE[fb.motivasi] ?? 'bg-slate-100 text-slate-600'}`}>
-                                {fb.motivasi.toUpperCase()}
-                            </span>
-                        )}
-                        {canFill && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
-                                {gaps.length} NILAI KOSONG
-                            </span>
-                        )}
-                    </div>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                        {fb.bulan && fb.tahun ? `${BULAN_ID[fb.bulan]} ${fb.tahun}` : ''}
-                        {fb.nama_mentor ? ` • Mentor: ${fb.nama_mentor}` : ''}
-                    </p>
-                </div>
-                <svg className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ${open ? 'rotate-180' : ''}`}
-                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                </svg>
-            </button>
-            {open && (
-                <div className="border-t border-slate-100 px-4 py-3 space-y-3">
-                    <div className="grid grid-cols-4 gap-2">
-                        {FEEDBACK_TILES.map(([key, label, field]) => {
-                            const val   = fb[key];
-                            const blank = isBlank(val);
-                            return (
-                                <div key={label} className={`relative rounded-lg border py-2.5 px-2 text-center flex flex-col items-center ${
-                                    blank && canEdit ? 'bg-amber-50/60 border-amber-200' : 'bg-slate-50 border-slate-100'
-                                }`}>
-                                    {blank && canEdit && !editing && editPencil}
-                                    <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400 leading-tight h-8 flex items-center justify-center">{label}</p>
-                                    {blank && editing ? (
-                                        <select value={draft[field] ?? ''} onChange={e => setDraft(d => ({ ...d, [field]: e.target.value }))}
-                                            className="w-full px-1 py-1 text-sm font-bold text-center border border-amber-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/30">
-                                            <option value="">—</option>
-                                            {SCORE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                                        </select>
-                                    ) : (
-                                        <p className={`text-2xl font-bold ${!blank ? scoreColor(parseInt(val) * 10) : 'text-slate-300'}`}>
-                                            {blank ? '—' : val}
-                                        </p>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
+            </div>
 
-                    {/* Motivasi hanya muncul sebagai badge di header saat terisi; saat kosong
-                        barisnya ditampilkan di sini supaya bisa dilengkapi. */}
-                    {isBlank(fb.motivasi) && canEdit && (
-                        <div className="relative flex items-center gap-2 bg-amber-50/60 border border-amber-200 rounded-lg px-3 py-2.5">
-                            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 shrink-0">Motivasi &amp; Keterlibatan</p>
+            <div className="grid grid-cols-4 gap-1 mb-2">
+                {FEEDBACK_TILES.map(([key, , field, compactLabel]) => {
+                    const val   = fb[key];
+                    const blank = isBlank(val);
+                    return (
+                        <div key={field} className="bg-white rounded-md border border-slate-100 py-1.5 px-1 text-center">
+                            <p className="text-[7px] font-semibold uppercase tracking-wide text-slate-400 leading-tight h-4 flex items-center justify-center">
+                                {compactLabel}
+                            </p>
                             {editing ? (
-                                <select value={draft.p5 ?? ''} onChange={e => setDraft(d => ({ ...d, p5: e.target.value }))}
-                                    className="flex-1 px-2 py-1 text-xs border border-amber-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/30">
-                                    <option value="">--Pilih Nilai--</option>
-                                    {MOTIVASI_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                                <select value={draft[field] ?? ''} onChange={e => setDraft(d => ({ ...d, [field]: e.target.value }))}
+                                    className="w-full text-[11px] font-bold text-center border border-blue-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-blue-500/40">
+                                    <option value="">—</option>
+                                    {SCORE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
                                 </select>
                             ) : (
-                                <>
-                                    <span className="flex-1 text-xs text-slate-300 font-bold">—</span>
-                                    {editPencil}
-                                </>
+                                <p className={`text-sm font-bold leading-none ${!blank ? scoreColor(parseInt(val) * 10) : 'text-slate-300'}`}>
+                                    {blank ? '—' : val}
+                                </p>
                             )}
                         </div>
-                    )}
+                    );
+                })}
+            </div>
 
-                    {canFill && editing && (
-                        <div className="flex items-center gap-2">
-                            <button type="button" onClick={saveGaps} disabled={saving}
-                                className="flex-1 px-3 py-2 text-xs font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60 transition">
-                                {saving ? 'Menyimpan...' : 'Simpan Nilai'}
-                            </button>
-                            <button type="button" onClick={cancelEdit} disabled={saving}
-                                className="px-3 py-2 text-xs font-semibold text-slate-500 border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-60 transition">
-                                Batal
-                            </button>
-                        </div>
+            {(editing || (canEdit && isBlank(fb.motivasi))) && (
+                <div className="flex items-center gap-1.5 mb-2">
+                    <span className="text-[8px] font-semibold uppercase tracking-wide text-slate-400 shrink-0">Motivasi</span>
+                    {editing ? (
+                        <select value={draft.p5 ?? ''} onChange={e => setDraft(d => ({ ...d, p5: e.target.value }))}
+                            className="flex-1 text-[10px] px-1.5 py-1 border border-blue-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-blue-500/40">
+                            <option value="">--Pilih--</option>
+                            {MOTIVASI_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                    ) : (
+                        <span className="text-[10px] text-slate-300 font-bold">—</span>
                     )}
+                </div>
+            )}
 
-                    {canFill && !editing && (
-                        <p className="text-[11px] text-amber-700 leading-relaxed">
-                            {gaps.length} kategori belum terisi — klik ikon pensil untuk melengkapi.
-                            Nilai yang sudah tersimpan tidak dapat diubah.
-                        </p>
-                    )}
+            {editing ? (
+                <textarea rows={2} value={draft.p6 ?? ''} onChange={e => setDraft(d => ({ ...d, p6: e.target.value }))}
+                    placeholder="Area yang perlu ditingkatkan..."
+                    className="w-full px-2 py-1 text-[10.5px] border border-blue-300 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-blue-500/40 resize-none" />
+            ) : fb.area ? (
+                <div className="flex items-start gap-1.5 border-l-2 border-blue-300 pl-2">
+                    <p className="flex-1 min-w-0 text-[10.5px] text-slate-600 leading-snug"
+                        style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {fb.area}
+                    </p>
+                    {fb.area.length > AREA_BUBBLE_THRESHOLD && <NoteBubbleButton text={fb.area} />}
+                </div>
+            ) : null}
 
-                    {fb.area && (
-                        <div className="bg-slate-50 rounded-lg border-l-2 border-blue-300 px-3 py-2.5">
-                            <p className="text-[10px] font-semibold text-slate-500 mb-1">Area Yang Perlu Ditingkatkan</p>
-                            <p className="text-xs text-slate-600 leading-relaxed italic">"{fb.area}"</p>
-                        </div>
-                    )}
+            {editing && (
+                <div className="flex items-center gap-1.5 mt-2">
+                    <button type="button" onClick={saveEdit} disabled={saving}
+                        className="flex-1 px-2 py-1.5 text-[10.5px] font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-60 transition">
+                        {saving ? 'Menyimpan...' : 'Simpan'}
+                    </button>
+                    <button type="button" onClick={cancelEdit} disabled={saving}
+                        className="px-2 py-1.5 text-[10.5px] font-semibold text-slate-500 border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-60 transition">
+                        Batal
+                    </button>
                 </div>
             )}
         </div>
     );
 }
 
-function RiwayatAccordion({ mentorFeedbackList, canEdit = false, kaderId = null }) {
+// Grid kartu week di dalam satu grup bulan yang terbuka — lebih lebar (3 kolom) kalau
+// tidak ada kolom form di sebelahnya, 2 kolom kalau berbagi ruang dengan form.
+const monthCardGrid = (wide) => wide
+    ? 'grid gap-2 items-start sm:grid-cols-2 lg:grid-cols-3'
+    : 'grid gap-2 items-start sm:grid-cols-2';
+
+function groupFeedbackByMonth(list) {
+    const groups = [];
+    const byKey  = {};
+    list.forEach((fb) => {
+        const key = `${fb.tahun}-${fb.bulan}`;
+        if (!byKey[key]) {
+            byKey[key] = { key, bulan: fb.bulan, tahun: fb.tahun, nama_mentor: fb.nama_mentor, items: [] };
+            groups.push(byKey[key]);
+        }
+        byKey[key].items.push(fb);
+    });
+    return groups;
+}
+
+function FeedbackMonthGroup({ group, defaultOpen = false, canEdit = false, kaderId = null, wide = false }) {
+    const [open, setOpen] = useState(defaultOpen);
+
+    const totalGaps = canEdit
+        ? group.items.reduce((sum, fb) => {
+            let n = FEEDBACK_TILES.filter(([key]) => isBlank(fb[key])).length;
+            if (isBlank(fb.motivasi)) n += 1;
+            return sum + n;
+        }, 0)
+        : 0;
+
+    return (
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <button type="button" onClick={() => setOpen(o => !o)}
+                className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 transition text-left">
+                <div className="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                    </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-semibold text-slate-800">{BULAN_ID[group.bulan]} {group.tahun}</span>
+                        {totalGaps > 0 && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                                {totalGaps} NILAI KOSONG
+                            </span>
+                        )}
+                    </div>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                        {group.items.length} feedback
+                        {group.nama_mentor ? ` • Mentor: ${group.nama_mentor}` : ''}
+                    </p>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 shrink-0">
+                    {group.items.length}
+                </span>
+                <svg className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ${open ? 'rotate-180' : ''}`}
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+            {open && (
+                <div className={`border-t border-slate-100 px-3 py-3 ${monthCardGrid(wide)}`}>
+                    {group.items.map((fb) => (
+                        <CompactFeedbackCard key={fb.week_id} fb={fb} canEdit={canEdit} kaderId={kaderId} />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function RiwayatAccordion({ mentorFeedbackList, canEdit = false, kaderId = null, wide = false }) {
     if (mentorFeedbackList.length === 0) return <p className="text-sm text-slate-400 text-center py-8">Belum ada feedback yang dikirim.</p>;
+    const groups = useMemo(() => groupFeedbackByMonth(mentorFeedbackList), [mentorFeedbackList]);
     return (
         <div className="space-y-2">
-            {mentorFeedbackList.map((fb, i) => (
-                <FeedbackCard key={fb.week_id} fb={fb} defaultOpen={i === 0} canEdit={canEdit} kaderId={kaderId} />
+            {groups.map((g, i) => (
+                <FeedbackMonthGroup key={g.key} group={g} defaultOpen={i === 0} canEdit={canEdit} kaderId={kaderId} wide={wide} />
             ))}
         </div>
     );
@@ -1111,8 +1255,38 @@ function MonthlyFeedbackForm({ kader, kaderId, periods }) {
     );
 }
 
-function MonthlyCard({ m, defaultOpen = false }) {
-    const [open, setOpen] = useState(defaultOpen);
+function MonthlyCard({ m, defaultOpen = false, canEdit = false, kaderId = null }) {
+    const [open, setOpen]       = useState(defaultOpen);
+    const [editing, setEditing] = useState(false);
+    const [draft, setDraft]     = useState({});
+    const [saving, setSaving]   = useState(false);
+    const [attempted, setAttempted] = useState(false);
+
+    const gaps = MONTHLY_QUESTIONS.filter((q, i) => isBlank(m[`q${i + 1}`])).length;
+
+    const startEdit = () => {
+        setDraft({ m1: m.q1 ?? '', m2: m.q2 ?? '', m3: m.q3 ?? '' });
+        setOpen(true);
+        setEditing(true);
+    };
+    const cancelEdit = () => { setEditing(false); setDraft({}); setAttempted(false); };
+
+    const missing = MONTHLY_QUESTIONS
+        .map((q, i) => (draft[`m${i + 1}`] ?? '').trim() ? null : i + 1)
+        .filter(Boolean);
+
+    const saveEdit = () => {
+        setAttempted(true);
+        if (missing.length > 0) return;
+        setSaving(true);
+        router.post(`/kader-saya/${kaderId}/monthly-feedback/update`,
+            { bulan: m.bulan, tahun: m.tahun, ...draft }, {
+                preserveScroll: true,
+                onSuccess: () => cancelEdit(),
+                onFinish:  () => setSaving(false),
+            });
+    };
+
     return (
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
             <button type="button" onClick={() => setOpen(o => !o)}
@@ -1123,7 +1297,14 @@ function MonthlyCard({ m, defaultOpen = false }) {
                     </svg>
                 </div>
                 <div className="flex-1 min-w-0">
-                    <span className="text-sm font-semibold text-slate-800">{BULAN_ID[m.bulan]} {m.tahun}</span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-semibold text-slate-800">{BULAN_ID[m.bulan]} {m.tahun}</span>
+                        {canEdit && gaps > 0 && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                                {gaps} JAWABAN KOSONG
+                            </span>
+                        )}
+                    </div>
                     <p className="text-xs text-slate-400 mt-0.5">{m.nama_mentor ? `Mentor: ${m.nama_mentor}` : ''}</p>
                 </div>
                 <svg className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ${open ? 'rotate-180' : ''}`}
@@ -1134,25 +1315,70 @@ function MonthlyCard({ m, defaultOpen = false }) {
             {open && (
                 <div className="border-t border-slate-100 px-4 py-3 space-y-2">
                     {MONTHLY_QUESTIONS.map((q, i) => {
-                        const val = m[`q${i + 1}`];
-                        return val ? (
-                            <div key={q.field} className="rounded-lg border-l-2 border-amber-300 bg-amber-50/60 px-3 py-2.5">
-                                <p className="text-[10px] font-semibold text-slate-500 mb-1 leading-snug">{i + 1}. {q.text}</p>
-                                <p className="text-xs text-slate-700 leading-relaxed italic">"{val}"</p>
+                        const val   = m[`q${i + 1}`];
+                        const field = `m${i + 1}`;
+                        const blank = isBlank(val);
+                        if (!editing && blank && !canEdit) return null;
+                        return (
+                            <div key={q.field} className={`relative rounded-lg border-l-2 px-3 py-2.5 ${
+                                blank && canEdit ? 'border-amber-400 bg-amber-50' : 'border-amber-300 bg-amber-50/60'
+                            }`}>
+                                {canEdit && !editing && (
+                                    <button type="button" onClick={startEdit} title="Ubah jawaban"
+                                        className="absolute top-2 right-2 text-slate-300 hover:text-amber-600 transition">
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                    </button>
+                                )}
+                                <p className="text-[10px] font-semibold text-slate-500 mb-1 leading-snug pr-5">{i + 1}. {q.text}</p>
+                                {editing ? (
+                                    <>
+                                        <textarea rows={3} value={draft[field] ?? ''} onChange={e => setDraft(d => ({ ...d, [field]: e.target.value }))}
+                                            placeholder={q.placeholder}
+                                            className={`w-full px-2 py-1.5 text-xs border rounded-md bg-white focus:outline-none focus:ring-2 resize-none ${
+                                                attempted && !(draft[field] ?? '').trim()
+                                                    ? 'border-rose-400 focus:ring-rose-500/30'
+                                                    : 'border-amber-300 focus:ring-amber-500/30'
+                                            }`} />
+                                        {attempted && !(draft[field] ?? '').trim() && (
+                                            <p className="text-[10px] text-rose-600 mt-1">Wajib dijawab.</p>
+                                        )}
+                                    </>
+                                ) : (
+                                    <p className={`text-xs leading-relaxed italic ${blank ? 'text-slate-300 font-bold' : 'text-slate-700'}`}>
+                                        {blank ? '—' : `"${val}"`}
+                                    </p>
+                                )}
                             </div>
-                        ) : null;
+                        );
                     })}
+
+                    {editing && (
+                        <div className="flex items-center gap-2 pt-1">
+                            <button type="button" onClick={saveEdit} disabled={saving}
+                                className="flex-1 px-3 py-2 text-xs font-semibold text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-60 transition">
+                                {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
+                            </button>
+                            <button type="button" onClick={cancelEdit} disabled={saving}
+                                className="px-3 py-2 text-xs font-semibold text-slate-500 border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-60 transition">
+                                Batal
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
     );
 }
 
-function MonthlyHistory({ list }) {
+function MonthlyHistory({ list, canEdit = false, kaderId = null, wide = false }) {
     if (list.length === 0) return <p className="text-sm text-slate-400 text-center py-8">Belum ada Monthly Feedback yang dikirim.</p>;
     return (
-        <div className="space-y-2">
-            {list.map((m, i) => <MonthlyCard key={m.key} m={m} defaultOpen={i === 0} />)}
+        <div className={listLayout(wide)}>
+            {list.map((m, i) => (
+                <MonthlyCard key={m.key} m={m} defaultOpen={i === 0} canEdit={canEdit} kaderId={kaderId} />
+            ))}
         </div>
     );
 }
@@ -1206,7 +1432,9 @@ function FolderTabs({ folder, onChange, folders = FOLDERS }) {
     );
 }
 
-function MonthlyFolder({ kader, kaderId, monthlyPeriods, monthlyFeedbackList, showForm }) {
+function MonthlyFolder({ kader, kaderId, monthlyPeriods, monthlyFeedbackList, showForm, canEdit = false }) {
+    // Tanpa form, daftar riwayat memakai lebar penuh → pecah jadi beberapa kolom.
+    const wide = !showForm;
     return (
         <div className={`grid grid-cols-1 gap-5 items-start ${showForm ? "lg:grid-cols-2" : ""}`}>
             {showForm && (
@@ -1223,14 +1451,14 @@ function MonthlyFolder({ kader, kaderId, monthlyPeriods, monthlyFeedbackList, sh
                     title="Riwayat Monthly Feedback"
                     count={monthlyFeedbackList.length}
                 >
-                    <MonthlyHistory list={monthlyFeedbackList} />
+                    <MonthlyHistory list={monthlyFeedbackList} canEdit={canEdit} kaderId={kaderId} wide={wide} />
                 </AccordionSection>
             </div>
         </div>
     );
 }
 
-export default function FeedbackTab({ kader, weeks, weeksKader = [], refleksi, mentorFeedbackList = [], monthlyPeriods = [], monthlyFeedbackList = [], mentorName, kaderId, showFeedbackForm = true, kaderView = false, weeklyFeedback = null, showMonthly = true }) {
+export default function FeedbackTab({ kader, weeks, weeksKader = [], refleksi, mentorFeedbackList = [], monthlyPeriods = [], monthlyFeedbackList = [], mentorName, kaderId, showFeedbackForm = true, kaderView = false, weeklyFeedback = null, showMonthly = true, feedbackEditable = false }) {
     const [folder, setFolder] = useState("weekly");
 
     // Kader batch arsip (Batch 1-2) tidak punya Monthly Feedback di sistem — folder-nya
@@ -1238,17 +1466,33 @@ export default function FeedbackTab({ kader, weeks, weeksKader = [], refleksi, m
     const folders = showMonthly ? FOLDERS : FOLDERS.filter(f => f.id !== "monthly");
     const active  = showMonthly ? folder : "weekly";
 
+    // Mentor/Admin boleh mengubah feedback selama batch belum berakhir. Nilai ini
+    // dihitung server dari tanggal_selesai batch — UI hanya mengikutinya.
+    const canEdit = showFeedbackForm && !kaderView && feedbackEditable;
+
     return (
         <div>
             <FolderTabs folder={active} onChange={setFolder} folders={folders} />
             <div className="border-2 border-slate-200 rounded-b-2xl rounded-tr-2xl bg-slate-50 p-5">
+            {!kaderView && !feedbackEditable && (
+                <div className="flex items-start gap-2 mb-4 p-3 bg-slate-100 border border-slate-200 rounded-lg">
+                    <svg className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                        <strong className="text-slate-600">Feedback terkunci.</strong> Masa batch kader ini sudah
+                        berakhir, sehingga feedback tidak dapat dikirim maupun diubah lagi.
+                    </p>
+                </div>
+            )}
             {active === "monthly" ? (
                 <MonthlyFolder
                     kader={kader}
                     kaderId={kaderId}
                     monthlyPeriods={monthlyPeriods}
                     monthlyFeedbackList={monthlyFeedbackList}
-                    showForm={showFeedbackForm}
+                    showForm={showFeedbackForm && feedbackEditable}
+                    canEdit={canEdit}
                 />
             ) : (
                 <WeeklyFolder
@@ -1259,9 +1503,10 @@ export default function FeedbackTab({ kader, weeks, weeksKader = [], refleksi, m
                     mentorFeedbackList={mentorFeedbackList}
                     mentorName={mentorName}
                     kaderId={kaderId}
-                    showFeedbackForm={showFeedbackForm}
+                    showFeedbackForm={showFeedbackForm && feedbackEditable}
                     kaderView={kaderView}
                     weeklyFeedback={weeklyFeedback}
+                    canEdit={canEdit}
                 />
             )}
             </div>
@@ -1269,7 +1514,9 @@ export default function FeedbackTab({ kader, weeks, weeksKader = [], refleksi, m
     );
 }
 
-function WeeklyFolder({ kader, weeks, weeksKader = [], refleksi, mentorFeedbackList = [], mentorName, kaderId, showFeedbackForm = true, kaderView = false, weeklyFeedback = null }) {
+function WeeklyFolder({ kader, weeks, weeksKader = [], refleksi, mentorFeedbackList = [], mentorName, kaderId, showFeedbackForm = true, kaderView = false, weeklyFeedback = null, canEdit = false }) {
+    // Tanpa kolom form di sebelah kiri, daftar riwayat memakai lebar penuh → multi-kolom.
+    const wide = !showFeedbackForm && !kaderView;
     return (
         <div className={`grid grid-cols-1 gap-5 items-start ${(showFeedbackForm || kaderView) ? "lg:grid-cols-2" : ""}`}>
             {kaderView ? (
@@ -1315,7 +1562,7 @@ function WeeklyFolder({ kader, weeks, weeksKader = [], refleksi, mentorFeedbackL
                     title="Refleksi Kader"
                     count={refleksi.length}
                 >
-                    <RefleksiAccordion refleksi={refleksi} />
+                    <RefleksiAccordion refleksi={refleksi} wide={wide} />
                 </AccordionSection>
 
                 <AccordionSection
@@ -1328,7 +1575,7 @@ function WeeklyFolder({ kader, weeks, weeksKader = [], refleksi, mentorFeedbackL
                     title="Feedback Dikirim"
                     count={mentorFeedbackList.length}
                 >
-                    <RiwayatAccordion mentorFeedbackList={mentorFeedbackList} canEdit={showFeedbackForm && !kaderView} kaderId={kaderId} />
+                    <RiwayatAccordion mentorFeedbackList={mentorFeedbackList} canEdit={canEdit} kaderId={kaderId} wide={wide} />
                 </AccordionSection>
             </div>
         </div>

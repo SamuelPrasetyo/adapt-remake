@@ -123,6 +123,7 @@ export default function KaderSayaDetail({
     allFases = [],
     kaderView = false,
     weeklyFeedback = null,
+    feedbackEditable = false,
     canViewKandidat = false,
     kandidat = null,
     nikKtp = null,
@@ -359,6 +360,7 @@ export default function KaderSayaDetail({
                     kaderView={kaderView}
                     weeklyFeedback={weeklyFeedback}
                     showMonthly={!isArsip}
+                    feedbackEditable={feedbackEditable}
                 />
             )}
             {tab === "summary" && canSummarizeMonthly && (
