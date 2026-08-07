@@ -361,6 +361,8 @@ class KaderSayaController extends Controller
             'weeksKader'         => $weeksKader,
             'refleksi'           => $refleksiList,
             'mentorFeedbackList' => $report['mentorFeedbackList'],
+            // Feedback terkunci otomatis begitu batch berakhir (turunan tanggal, tanpa cron).
+            'feedbackEditable'   => $this->feedbackEditable($kader),
             'monthlyPeriods'     => $monthlyPeriods,
             'monthlyFeedbackList'=> $monthlyFeedbackList,
             'monthlyFeedbackSummaries' => $monthlyFeedbackSummaries,
@@ -427,6 +429,9 @@ class KaderSayaController extends Controller
         $user  = Auth::user();
         $kader = Kader::where('id', $kader_id)->first();
         if (!$kader) abort(404);
+
+        abort_if(!$this->feedbackEditable($kader), 403,
+            'Batch sudah berakhir — feedback tidak dapat dikirim lagi.');
 
         // Semua kategori penilaian wajib — dulu field kosong hanya di-skip diam-diam saat insert
         // sehingga feedback bisa tersimpan sebagian (nilai tampil "—" di riwayat).
@@ -503,18 +508,34 @@ class KaderSayaController extends Controller
     }
 
     /**
-     * Melengkapi feedback lama yang tersimpan sebagian (nilai tampil "—" di riwayat).
+     * Apakah feedback kader ini masih boleh diubah?
      *
-     * Hanya untuk menambal kategori KOSONG: nilai yang sudah terisi tidak pernah ditimpa,
-     * sehingga aksi ini tidak bisa dipakai mengubah penilaian yang sudah dikirim. Feedback
-     * baru sudah divalidasi wajib-lengkap di storeFeedback(), jadi fungsi ini murni untuk
-     * membersihkan data warisan.
+     * Lock dihitung on-read dari tanggal_selesai batch — tidak ada cron/scheduler yang
+     * perlu menyalakannya (lihat Batch::feedbackEditable()). Kader tanpa batch, atau batch
+     * arsip yang tanggalnya NULL, otomatis terkunci.
      */
-    public function fillFeedbackGaps(Request $request, $kader_id, $id_week)
+    private function feedbackEditable($kader): bool
+    {
+        if (!$kader->id_batch) return false;
+        $batch = Batch::find($kader->id_batch);
+
+        return $batch ? $batch->feedbackEditable() : false;
+    }
+
+    /**
+     * Ubah feedback mingguan yang sudah terkirim (termasuk melengkapi kategori kosong).
+     *
+     * Nilai yang sudah terisi BOLEH ditimpa selama batch masih berjalan; setelah batch
+     * berakhir seluruh perubahan ditolak di sini, bukan hanya disembunyikan di UI.
+     */
+    public function updateFeedback(Request $request, $kader_id, $id_week)
     {
         $user  = Auth::user();
         $kader = Kader::where('id', $kader_id)->first();
         if (!$kader) abort(404);
+
+        abort_if(!$this->feedbackEditable($kader), 403,
+            'Batch sudah berakhir — feedback tidak dapat diubah lagi.');
 
         $request->validate([
             'p1' => 'nullable|integer|between:1,10',
@@ -522,12 +543,14 @@ class KaderSayaController extends Controller
             'p3' => 'nullable|integer|between:1,10',
             'p4' => 'nullable|integer|between:1,10',
             'p5' => 'nullable|in:Sangat Kurang,Kurang,Cukup,Baik,Sangat Baik',
+            'p6' => 'nullable|string',
         ], [], [
             'p1' => 'Routine Job',
             'p2' => 'Assignment',
             'p3' => 'Pemahaman SOP',
             'p4' => 'Project',
             'p5' => 'Motivasi & Keterlibatan',
+            'p6' => 'Area yang Perlu Ditingkatkan',
         ]);
 
         // Week harus SUDAH punya feedback mentor — mencegah route ini dipakai membuat
@@ -547,29 +570,30 @@ class KaderSayaController extends Controller
             'Sangat Baik'   => 5,
         ];
 
-        $answers = [
-            1 => $request->p1,
-            2 => $request->p2,
-            3 => $request->p3,
-            4 => $request->p4,
-            5 => $request->filled('p5') ? ($motivasiScore[$request->p5] ?? null) : null,
-        ];
+        // Hanya field yang dikirim yang disentuh — field yang tidak ada di payload
+        // dibiarkan apa adanya, bukan dikosongkan.
+        $answers = [];
+        foreach ([1 => 'p1', 2 => 'p2', 3 => 'p3', 4 => 'p4'] as $pertanyaan => $key) {
+            if ($request->filled($key)) $answers[$pertanyaan] = $request->$key;
+        }
+        if ($request->filled('p5')) $answers[5] = $motivasiScore[$request->p5] ?? null;
+        if ($request->has('p6'))    $answers[6] = trim((string) $request->p6);
 
         // Feedback tetap diatribusikan ke mentor penulis aslinya; created_by mencatat
-        // siapa yang melengkapi.
+        // siapa yang mengubah.
         $namaMentor = $existing->first()->nama_mentor;
-        $filled     = 0;
+        $changed    = 0;
 
         foreach ($answers as $pertanyaan => $jawaban) {
-            if ($jawaban === null || $jawaban === '') continue;
+            if ($jawaban === null) continue;
 
             $row = $existing->firstWhere('id_pertanyaan', $pertanyaan);
-            if ($row && $row->jawaban !== null && $row->jawaban !== '') continue; // jangan timpa
 
             if ($row) {
+                if ((string) $row->jawaban === (string) $jawaban) continue; // tidak ada perubahan
                 Jawaban::where('id_jawaban', $row->id_jawaban)
                     ->update(['jawaban' => $jawaban, 'updated_at' => now()]);
-            } else {
+            } elseif ($jawaban !== '') {
                 Jawaban::create([
                     'id_week'       => $id_week,
                     'id_pertanyaan' => $pertanyaan,
@@ -580,18 +604,107 @@ class KaderSayaController extends Controller
                     'updated_at'    => now(),
                     'created_by'    => $user->id,
                 ]);
+            } else {
+                continue;
             }
-            $filled++;
+            $changed++;
         }
 
-        Log::info('[KaderSaya::fillFeedbackGaps] done', [
+        Log::info('[KaderSaya::updateFeedback] done', [
             'kader_nik' => $kader->nik,
             'id_week'   => $id_week,
             'oleh'      => $user->name,
-            'terisi'    => $filled,
+            'berubah'   => $changed,
         ]);
 
         return back()->with('feedbackSuccess', true);
+    }
+
+    /**
+     * Ubah Monthly Feedback yang sudah terkirim. Dikunci oleh aturan yang sama dengan
+     * updateFeedback(): selama batch masih berjalan boleh diubah, setelah itu ditolak.
+     */
+    public function updateMonthlyFeedback(Request $request, $kader_id)
+    {
+        $user  = Auth::user();
+        $kader = Kader::where('id', $kader_id)->first();
+        if (!$kader) abort(404);
+
+        abort_if(!$this->feedbackEditable($kader), 403,
+            'Batch sudah berakhir — Monthly Feedback tidak dapat diubah lagi.');
+
+        $request->merge(collect(['m1', 'm2', 'm3'])
+            ->mapWithKeys(fn ($k) => [$k => is_string($request->$k) ? trim($request->$k) : $request->$k])
+            ->all());
+
+        $data = $request->validate([
+            'bulan' => 'required|integer|between:1,12',
+            'tahun' => 'required|integer|between:2000,2100',
+            'm1'    => 'required|string|min:3',
+            'm2'    => 'required|string|min:3',
+            'm3'    => 'required|string|min:3',
+        ], [], [
+            'm1' => 'Pertanyaan 1 (gambaran mentee)',
+            'm2' => 'Pertanyaan 2 (sikap kerja & etika)',
+            'm3' => 'Pertanyaan 3 (kesiapan kader)',
+        ]);
+
+        $questionIds = $this->monthlyQuestionIds();
+
+        // Baris Monthly Feedback bulan tsb — dicari lewat weeks karena jawaban di-anchor
+        // ke salah satu minggu di bulan itu.
+        $weekIds = Week::query()
+            ->when($kader->id_batch, fn ($q) => $q->forBatch($kader->id_batch))
+            ->where('bulan', $data['bulan'])
+            ->where('tahun', $data['tahun'])
+            ->pluck('id_week');
+        abort_if($weekIds->isEmpty(), 404, 'Periode bulan tidak ditemukan pada batch kader.');
+
+        $existing = Jawaban::where('nik_kader', $kader->nik)
+            ->whereIn('id_week', $weekIds)
+            ->whereNotNull('nama_mentor')
+            ->whereIn('id_pertanyaan', $questionIds)
+            ->get();
+        abort_if($existing->isEmpty(), 404, 'Monthly Feedback bulan ini belum pernah dikirim.');
+
+        $anchorWeek = $existing->first()->id_week;
+        $namaMentor = $existing->first()->nama_mentor;
+        $inputs     = [$data['m1'], $data['m2'], $data['m3']];
+        $changed    = 0;
+
+        foreach ($questionIds as $i => $pertanyaan) {
+            $jawaban = $inputs[$i] ?? null;
+            if ($jawaban === null) continue;
+
+            $row = $existing->firstWhere('id_pertanyaan', $pertanyaan);
+
+            if ($row) {
+                if ((string) $row->jawaban === (string) $jawaban) continue;
+                Jawaban::where('id_jawaban', $row->id_jawaban)
+                    ->update(['jawaban' => $jawaban, 'updated_at' => now()]);
+            } else {
+                Jawaban::create([
+                    'id_week'       => $anchorWeek,
+                    'id_pertanyaan' => $pertanyaan,
+                    'jawaban'       => $jawaban,
+                    'nama_mentor'   => $namaMentor,
+                    'nik_kader'     => $kader->nik,
+                    'created_at'    => now(),
+                    'updated_at'    => now(),
+                    'created_by'    => $user->id,
+                ]);
+            }
+            $changed++;
+        }
+
+        Log::info('[KaderSaya::updateMonthlyFeedback] done', [
+            'kader_nik' => $kader->nik,
+            'periode'   => $data['bulan'] . '/' . $data['tahun'],
+            'oleh'      => $user->name,
+            'berubah'   => $changed,
+        ]);
+
+        return back()->with('monthlyFeedbackSuccess', true);
     }
 
     /**
@@ -697,6 +810,9 @@ class KaderSayaController extends Controller
         $user  = Auth::user();
         $kader = Kader::where('id', $kader_id)->first();
         if (!$kader) abort(404);
+
+        abort_if(!$this->feedbackEditable($kader), 403,
+            'Batch sudah berakhir — Monthly Feedback tidak dapat dikirim lagi.');
 
         // Ketiga pertanyaan wajib terjawab — dulu jawaban kosong hanya di-skip saat insert,
         // jadi Monthly Feedback bisa tersimpan dengan pertanyaan yang bolong. Input di-trim

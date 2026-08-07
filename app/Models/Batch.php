@@ -55,6 +55,22 @@ class Batch extends Model
     }
 
     /**
+     * Feedback (Weekly & Monthly) masih boleh diubah selama batch belum berakhir.
+     *
+     * SENGAJA dihitung dari tanggal, bukan disimpan sebagai kolom `is_locked`. Tidak ada
+     * cron/scheduler yang perlu "menyalakan" lock: begitu tanggal_selesai terlewat, setiap
+     * pembacaan berikutnya otomatis mengembalikan false. Tidak ada jendela waktu di mana
+     * data sudah lewat tapi flag-nya belum ter-update.
+     *
+     * Batch arsip (tanggal_selesai NULL — lihat Batch 1 & 2) dianggap sudah terkunci.
+     */
+    public function feedbackEditable(): bool
+    {
+        return $this->tanggal_selesai !== null
+            && $this->tanggal_selesai->toDateString() >= now()->toDateString();
+    }
+
+    /**
      * Progres minggu kalender batch (dihitung murni dari tanggal).
      * Mengembalikan ['current' => minggu ke-N, 'total' => total minggu].
      */
