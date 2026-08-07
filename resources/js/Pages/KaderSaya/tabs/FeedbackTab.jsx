@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { router, useForm, usePage } from "@inertiajs/react";
 import FilterableTable from "@/Components/FilterableTable";
 import Toast from "@/Components/Toast";
@@ -7,6 +7,11 @@ import Toast from "@/Components/Toast";
 export const BULAN_ID = ["","Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
 const MOTIVASI_OPTIONS = ["Sangat Kurang","Kurang","Cukup","Baik","Sangat Baik"];
 const SCORE_OPTIONS    = Array.from({ length: 10 }, (_, i) => i + 1);
+
+// Kategori slider Penilaian Kinerja — semua wajib diisi (lihat KirimFeedbackForm).
+const SCORE_FIELDS = [['p1','Routine Job'],['p2','Assignment'],['p3','Pemahaman SOP'],['p4','Project']];
+const EMPTY_FEEDBACK_FORM = { id_week: '', p1: '', p2: '', p3: '', p4: '', p5: '', p6: '' };
+const EMPTY_MONTHLY_FORM  = { id_week: '', m1: '', m2: '', m3: '' };
 
 // Monthly Feedback mentor — pertanyaan kualitatif sebulan sekali (id_pertanyaan 13-15 di backend).
 export const MONTHLY_QUESTIONS = [
@@ -36,6 +41,112 @@ function WfStatusBadge({ status }) {
         <span className={`inline-flex items-center w-fit px-2.5 py-0.5 rounded-full text-xs font-semibold ${cfg.cls}`}>
             {cfg.label}
         </span>
+    );
+}
+
+// Status pilihan minggu/bulan di dropdown feedback. Hanya 'open' yang bisa dipilih.
+const WEEK_STATUS = {
+    filled: { label: 'Sudah Diisi',    badge: 'bg-emerald-100 text-emerald-700' },
+    open:   { label: 'Belum Diisi',    badge: 'bg-yellow-100 text-yellow-700' },
+    locked: { label: 'Belum Waktunya', badge: 'bg-rose-100 text-rose-700' },
+};
+
+const weekStatus = (w) => (w.is_filled ? 'filled' : (!w.is_available ? 'locked' : 'open'));
+
+function WeekStatusBadge({ status }) {
+    const cfg = WEEK_STATUS[status];
+    if (!cfg) return null;
+    return (
+        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 ${cfg.badge}`}>
+            {cfg.label}
+        </span>
+    );
+}
+
+const SELECT_ACCENT = {
+    blue:  'focus:ring-blue-500/30 focus:border-blue-500',
+    amber: 'focus:ring-amber-500/30 focus:border-amber-500',
+    violet:'focus:ring-violet-500/30 focus:border-violet-500',
+};
+
+/**
+ * Dropdown pilihan minggu/bulan dengan badge status berwarna.
+ *
+ * Pakai listbox custom, bukan <select> native: <option> tidak bisa memuat badge
+ * berwarna secara lintas-browser. Konsekuensinya atribut `required` bawaan browser
+ * tidak berlaku — pemanggil WAJIB memvalidasi sendiri (lihat `missing` di tiap form).
+ *
+ * groups: [{ label: string|null, items: [{ value, label, status }] }]
+ */
+function WeekSelect({ groups, value, onChange, placeholder, disabled = false, accent = 'blue', invalid = false }) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef(null);
+
+    useEffect(() => {
+        if (!open) return;
+        const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+        const onKey  = (e) => { if (e.key === 'Escape') setOpen(false); };
+        document.addEventListener('mousedown', onDown);
+        document.addEventListener('keydown', onKey);
+        return () => {
+            document.removeEventListener('mousedown', onDown);
+            document.removeEventListener('keydown', onKey);
+        };
+    }, [open]);
+
+    const items    = groups.flatMap(g => g.items);
+    const selected = items.find(i => String(i.value) === String(value)) || null;
+    const isEmpty  = items.length === 0;
+    const locked   = disabled || isEmpty;
+
+    return (
+        <div className="relative" ref={ref}>
+            <button type="button" disabled={locked} onClick={() => setOpen(o => !o)}
+                className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-sm border rounded-lg bg-white text-left focus:outline-none focus:ring-2 disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed ${
+                    invalid ? 'border-rose-400 focus:ring-rose-500/30 focus:border-rose-500' : `border-slate-300 ${SELECT_ACCENT[accent] ?? SELECT_ACCENT.blue}`
+                }`}>
+                {selected ? (
+                    <span className="flex items-center gap-2 min-w-0">
+                        <span className="truncate text-slate-800">{selected.label}</span>
+                        <WeekStatusBadge status={selected.status} />
+                    </span>
+                ) : (
+                    <span className="truncate text-slate-400">{placeholder}</span>
+                )}
+                <svg className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+
+            {open && (
+                <div className="absolute z-20 mt-1 w-full max-h-72 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-lg py-1">
+                    {groups.map((g, gi) => (
+                        <div key={g.label ?? gi}>
+                            {g.label && (
+                                <p className="sticky top-0 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-400 bg-slate-50 border-y border-slate-100">
+                                    {g.label}
+                                </p>
+                            )}
+                            {g.items.map(it => {
+                                const selectable = it.status === 'open';
+                                const active     = String(it.value) === String(value);
+                                return (
+                                    <button key={it.value} type="button" disabled={!selectable}
+                                        onClick={() => { onChange(String(it.value)); setOpen(false); }}
+                                        className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-sm text-left transition ${
+                                            selectable ? 'hover:bg-slate-50 text-slate-700' : 'cursor-not-allowed text-slate-400'
+                                        } ${active ? 'bg-slate-100 font-semibold' : ''}`}>
+                                        <span className="truncate">{it.label}</span>
+                                        <WeekStatusBadge status={it.status} />
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
     );
 }
 
@@ -162,9 +273,57 @@ function RefleksiAccordion({ refleksi }) {
     );
 }
 
-function FeedbackCard({ fb, defaultOpen = false }) {
-    const [open, setOpen] = useState(defaultOpen);
+// Tile skor di riwayat: [key data, label tile, field payload ke backend].
+const FEEDBACK_TILES = [
+    ['routine_job',   'Routine Job', 'p1'],
+    ['assignment',    'Assignment',  'p2'],
+    ['pemahaman_sop', 'SOP',         'p3'],
+    ['project',       'Project',     'p4'],
+];
+
+const isBlank = (v) => v === null || v === undefined || v === '';
+
+function FeedbackCard({ fb, defaultOpen = false, canEdit = false, kaderId = null }) {
+    const [open, setOpen]       = useState(defaultOpen);
+    const [editing, setEditing] = useState(false);
+    const [draft, setDraft]     = useState({});
+    const [saving, setSaving]   = useState(false);
     const hasScores = fb.routine_job != null || fb.assignment != null || fb.pemahaman_sop != null || fb.project != null;
+
+    // Hanya kategori yang terlanjur kosong yang bisa dilengkapi — nilai yang sudah
+    // terkirim tidak boleh diubah dari riwayat.
+    const gaps = FEEDBACK_TILES.filter(([key]) => isBlank(fb[key])).map(([, , field]) => field);
+    if (isBlank(fb.motivasi)) gaps.push('p5');
+    const canFill = canEdit && gaps.length > 0;
+
+    const startEdit = () => {
+        setDraft(Object.fromEntries(gaps.map(f => [f, ''])));
+        setOpen(true);
+        setEditing(true);
+    };
+    const cancelEdit = () => { setEditing(false); setDraft({}); };
+
+    const saveGaps = () => {
+        const payload = Object.fromEntries(Object.entries(draft).filter(([, v]) => v !== ''));
+        if (Object.keys(payload).length === 0) return;
+        setSaving(true);
+        router.post(`/kader-saya/${kaderId}/feedback/${fb.week_id}/lengkapi`, payload, {
+            preserveScroll: true,
+            onSuccess: () => cancelEdit(),
+            onFinish:  () => setSaving(false),
+        });
+    };
+
+    const editPencil = (
+        <button type="button" onClick={(e) => { e.stopPropagation(); startEdit(); }}
+            title="Lengkapi nilai yang kosong"
+            className="absolute top-1 right-1 text-slate-300 hover:text-blue-600 transition">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+        </button>
+    );
+
     return (
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
             <button type="button" onClick={() => setOpen(o => !o)}
@@ -182,6 +341,11 @@ function FeedbackCard({ fb, defaultOpen = false }) {
                                 {fb.motivasi.toUpperCase()}
                             </span>
                         )}
+                        {canFill && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                                {gaps.length} NILAI KOSONG
+                            </span>
+                        )}
                     </div>
                     <p className="text-xs text-slate-400 mt-0.5">
                         {fb.bulan && fb.tahun ? `${BULAN_ID[fb.bulan]} ${fb.tahun}` : ''}
@@ -196,17 +360,71 @@ function FeedbackCard({ fb, defaultOpen = false }) {
             {open && (
                 <div className="border-t border-slate-100 px-4 py-3 space-y-3">
                     <div className="grid grid-cols-4 gap-2">
-                        {[['Routine Job', fb.routine_job], ['Assignment', fb.assignment],
-                          ['SOP', fb.pemahaman_sop], ['Project', fb.project]
-                        ].map(([label, val]) => (
-                            <div key={label} className="bg-slate-50 rounded-lg border border-slate-100 py-2.5 px-2 text-center flex flex-col items-center">
-                                <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400 leading-tight h-8 flex items-center justify-center">{label}</p>
-                                <p className={`text-2xl font-bold ${val != null ? scoreColor(parseInt(val) * 10) : 'text-slate-300'}`}>
-                                    {val ?? '—'}
-                                </p>
-                            </div>
-                        ))}
+                        {FEEDBACK_TILES.map(([key, label, field]) => {
+                            const val   = fb[key];
+                            const blank = isBlank(val);
+                            return (
+                                <div key={label} className={`relative rounded-lg border py-2.5 px-2 text-center flex flex-col items-center ${
+                                    blank && canEdit ? 'bg-amber-50/60 border-amber-200' : 'bg-slate-50 border-slate-100'
+                                }`}>
+                                    {blank && canEdit && !editing && editPencil}
+                                    <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400 leading-tight h-8 flex items-center justify-center">{label}</p>
+                                    {blank && editing ? (
+                                        <select value={draft[field] ?? ''} onChange={e => setDraft(d => ({ ...d, [field]: e.target.value }))}
+                                            className="w-full px-1 py-1 text-sm font-bold text-center border border-amber-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/30">
+                                            <option value="">—</option>
+                                            {SCORE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                                        </select>
+                                    ) : (
+                                        <p className={`text-2xl font-bold ${!blank ? scoreColor(parseInt(val) * 10) : 'text-slate-300'}`}>
+                                            {blank ? '—' : val}
+                                        </p>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
+
+                    {/* Motivasi hanya muncul sebagai badge di header saat terisi; saat kosong
+                        barisnya ditampilkan di sini supaya bisa dilengkapi. */}
+                    {isBlank(fb.motivasi) && canEdit && (
+                        <div className="relative flex items-center gap-2 bg-amber-50/60 border border-amber-200 rounded-lg px-3 py-2.5">
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 shrink-0">Motivasi &amp; Keterlibatan</p>
+                            {editing ? (
+                                <select value={draft.p5 ?? ''} onChange={e => setDraft(d => ({ ...d, p5: e.target.value }))}
+                                    className="flex-1 px-2 py-1 text-xs border border-amber-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/30">
+                                    <option value="">--Pilih Nilai--</option>
+                                    {MOTIVASI_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                                </select>
+                            ) : (
+                                <>
+                                    <span className="flex-1 text-xs text-slate-300 font-bold">—</span>
+                                    {editPencil}
+                                </>
+                            )}
+                        </div>
+                    )}
+
+                    {canFill && editing && (
+                        <div className="flex items-center gap-2">
+                            <button type="button" onClick={saveGaps} disabled={saving}
+                                className="flex-1 px-3 py-2 text-xs font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60 transition">
+                                {saving ? 'Menyimpan...' : 'Simpan Nilai'}
+                            </button>
+                            <button type="button" onClick={cancelEdit} disabled={saving}
+                                className="px-3 py-2 text-xs font-semibold text-slate-500 border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-60 transition">
+                                Batal
+                            </button>
+                        </div>
+                    )}
+
+                    {canFill && !editing && (
+                        <p className="text-[11px] text-amber-700 leading-relaxed">
+                            {gaps.length} kategori belum terisi — klik ikon pensil untuk melengkapi.
+                            Nilai yang sudah tersimpan tidak dapat diubah.
+                        </p>
+                    )}
+
                     {fb.area && (
                         <div className="bg-slate-50 rounded-lg border-l-2 border-blue-300 px-3 py-2.5">
                             <p className="text-[10px] font-semibold text-slate-500 mb-1">Area Yang Perlu Ditingkatkan</p>
@@ -219,18 +437,21 @@ function FeedbackCard({ fb, defaultOpen = false }) {
     );
 }
 
-function RiwayatAccordion({ mentorFeedbackList }) {
+function RiwayatAccordion({ mentorFeedbackList, canEdit = false, kaderId = null }) {
     if (mentorFeedbackList.length === 0) return <p className="text-sm text-slate-400 text-center py-8">Belum ada feedback yang dikirim.</p>;
     return (
         <div className="space-y-2">
-            {mentorFeedbackList.map((fb, i) => <FeedbackCard key={fb.week_id} fb={fb} defaultOpen={i === 0} />)}
+            {mentorFeedbackList.map((fb, i) => (
+                <FeedbackCard key={fb.week_id} fb={fb} defaultOpen={i === 0} canEdit={canEdit} kaderId={kaderId} />
+            ))}
         </div>
     );
 }
 
 function KirimFeedbackForm({ kader, weeks, mentorName, kaderId }) {
-    const [form, setForm]         = useState({ id_week: '', p1: '', p2: '', p3: '', p4: '', p5: '', p6: '' });
+    const [form, setForm]         = useState(EMPTY_FEEDBACK_FORM);
     const [submitting, setSubmitting] = useState(false);
+    const [attempted, setAttempted]   = useState(false);
     const [toast, setToast]       = useState(false);
     const closeToast              = useCallback(() => setToast(false), []);
 
@@ -240,19 +461,43 @@ function KirimFeedbackForm({ kader, weeks, mentorName, kaderId }) {
             if (!w.bulan || !w.tahun) return;
             const key = `${w.tahun}-${String(w.bulan).padStart(2, '0')}`;
             if (!groups[key]) groups[key] = { label: `${BULAN_ID[w.bulan]} ${w.tahun}`, items: [] };
-            groups[key].items.push(w);
+            groups[key].items.push({ value: w.id_week, label: `Week ${w.angka_week}`, status: weekStatus(w) });
         });
         return Object.values(groups);
     }, [weeks]);
 
     const handleChange = (field, val) => setForm(f => ({ ...f, [field]: val }));
 
+    // Slider bernilai kosong tetap menampilkan thumb di posisi 1. Kalau mentor menggeser/klik
+    // tepat di angka 1, onChange tidak pernah jalan (nilai DOM tidak berubah) sehingga field
+    // diam-diam tetap kosong — inilah yang dulu membuat nilai lolos jadi "—". Commit manual
+    // saat pointer/keyboard dilepas menutup celah itu.
+    const commitIfEmpty = (field) => (e) => {
+        if (!form[field]) handleChange(field, e.currentTarget.value || '1');
+    };
+
+    // Semua kategori penilaian wajib; area improvement (p6) tetap opsional.
+    // Week ikut dicek di sini karena WeekSelect bukan <select> native (tanpa `required`).
+    const missing = useMemo(() => {
+        const list = [];
+        if (!form.id_week) list.push('Week');
+        SCORE_FIELDS.forEach(([f, label]) => { if (!form[f]) list.push(label); });
+        if (!form.p5) list.push('Motivasi & Keterlibatan');
+        return list;
+    }, [form]);
+
+    const isMissing = (field) => attempted && !form[field];
+
+    const resetScores = () => setForm(f => ({ ...f, p1: '', p2: '', p3: '', p4: '', p5: '' }));
+
     const handleSubmit = (e) => {
         e.preventDefault();
+        setAttempted(true);
+        if (missing.length > 0) return;
         setSubmitting(true);
         router.post(`/kader-saya/${kaderId}/feedback`, form, {
             preserveScroll: true,
-            onSuccess: () => { setToast(true); setForm({ id_week: '', p1: '', p2: '', p3: '', p4: '', p5: '', p6: '' }); },
+            onSuccess: () => { setToast(true); setForm(EMPTY_FEEDBACK_FORM); setAttempted(false); },
             onFinish:  () => setSubmitting(false),
         });
     };
@@ -291,27 +536,13 @@ function KirimFeedbackForm({ kader, weeks, mentorName, kaderId }) {
                     <label className="text-xs font-semibold text-slate-600 block mb-1.5">
                         Week <span className="text-rose-500">*</span>
                     </label>
-                    <select required value={form.id_week} onChange={e => handleChange('id_week', e.target.value)}
-                        disabled={weekGroups.length === 0}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 bg-white disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed">
-                        <option value="">
-                            {weekGroups.length === 0 ? '--Belum ada jadwal minggu--' : '--Pilih Week--'}
-                        </option>
-                        {weekGroups.map(g => (
-                            <optgroup key={g.label} label={g.label}>
-                                {g.items.map(w => {
-                                    const disabled = !w.is_available || w.is_filled;
-                                    const suffix = w.is_filled ? ' — sudah diisi'
-                                        : (!w.is_available ? ' — belum waktunya' : '');
-                                    return (
-                                        <option key={w.id_week} value={w.id_week} disabled={disabled}>
-                                            Week {w.angka_week}{suffix}
-                                        </option>
-                                    );
-                                })}
-                            </optgroup>
-                        ))}
-                    </select>
+                    <WeekSelect
+                        groups={weekGroups}
+                        value={form.id_week}
+                        onChange={val => handleChange('id_week', val)}
+                        placeholder={weekGroups.length === 0 ? '--Belum ada jadwal minggu--' : '--Pilih Week--'}
+                        invalid={isMissing('id_week')}
+                    />
                     {weekGroups.length === 0 && (
                         <p className="text-xs text-amber-600 mt-1.5 flex items-start gap-1">
                             <svg className="w-3.5 h-3.5 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -323,22 +554,55 @@ function KirimFeedbackForm({ kader, weeks, mentorName, kaderId }) {
                 </div>
 
                 <div>
-                    <p className="text-xs font-semibold text-slate-600 mb-3">Penilaian Kinerja</p>
+                    <div className="flex items-center justify-between mb-3">
+                        <p className="text-xs font-semibold text-slate-600">
+                            Penilaian Kinerja <span className="text-rose-500">*</span>
+                        </p>
+                        <button type="button" onClick={resetScores}
+                            disabled={!form.p1 && !form.p2 && !form.p3 && !form.p4 && !form.p5}
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-400 hover:text-slate-600 disabled:opacity-40 disabled:hover:text-slate-400 transition">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Reset semua
+                        </button>
+                    </div>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                        {[['p1','Routine Job'],['p2','Assignment'],['p3','Pemahaman SOP'],['p4','Project']].map(([field, label]) => (
+                        {SCORE_FIELDS.map(([field, label]) => (
                             <div key={field}>
                                 <div className="flex items-center justify-between mb-1">
-                                    <label className="text-xs text-slate-500">{label}</label>
-                                    <span className={`text-sm font-bold w-6 text-right ${form[field] ? scoreColor(parseInt(form[field]) * 10) : 'text-slate-300'}`}>
-                                        {form[field] || '—'}
-                                    </span>
+                                    <label className={`text-xs ${isMissing(field) ? 'text-rose-600 font-semibold' : 'text-slate-500'}`}>
+                                        {label}
+                                    </label>
+                                    <div className="flex items-center gap-1">
+                                        <span className={`text-sm font-bold w-6 text-right ${form[field] ? scoreColor(parseInt(form[field]) * 10) : (isMissing(field) ? 'text-rose-400' : 'text-slate-300')}`}>
+                                            {form[field] || '—'}
+                                        </span>
+                                        <span className="w-4 h-4 flex items-center justify-center">
+                                            {form[field] && (
+                                                <button type="button" title={`Reset nilai ${label}`}
+                                                    onClick={() => handleChange(field, '')}
+                                                    className="text-slate-300 hover:text-rose-500 transition">
+                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                </button>
+                                            )}
+                                        </span>
+                                    </div>
                                 </div>
                                 <input
                                     type="range"
                                     min="1" max="10" step="1"
                                     value={form[field] || 1}
                                     onChange={e => handleChange(field, e.target.value)}
-                                    className="w-full h-1.5 bg-slate-200 rounded-full appearance-none cursor-pointer accent-blue-600"
+                                    onPointerUp={commitIfEmpty(field)}
+                                    onKeyUp={commitIfEmpty(field)}
+                                    className={`w-full h-1.5 rounded-full appearance-none cursor-pointer ${
+                                        form[field]
+                                            ? 'bg-slate-200 accent-blue-600'
+                                            : (isMissing(field) ? 'bg-rose-100 accent-rose-300' : 'bg-slate-200 accent-slate-300')
+                                    }`}
                                 />
                                 <div className="flex justify-between text-[9px] text-slate-400 mt-0.5">
                                     <span>1</span><span>5</span><span>10</span>
@@ -349,9 +613,23 @@ function KirimFeedbackForm({ kader, weeks, mentorName, kaderId }) {
                 </div>
 
                 <div>
-                    <label className="text-xs font-semibold text-slate-600 block mb-1.5">Motivasi &amp; Keterlibatan</label>
+                    <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-semibold text-slate-600">
+                            Motivasi &amp; Keterlibatan <span className="text-rose-500">*</span>
+                        </label>
+                        {form.p5 && (
+                            <button type="button" onClick={() => handleChange('p5', '')}
+                                className="text-[11px] font-semibold text-slate-400 hover:text-rose-500 transition">
+                                Reset
+                            </button>
+                        )}
+                    </div>
                     <select value={form.p5} onChange={e => handleChange('p5', e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 bg-white">
+                        className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 bg-white ${
+                            isMissing('p5')
+                                ? 'border-rose-400 focus:ring-rose-500/30 focus:border-rose-500'
+                                : 'border-slate-300 focus:ring-blue-500/30 focus:border-blue-500'
+                        }`}>
                         <option value="">--Pilih Nilai--</option>
                         {MOTIVASI_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
@@ -363,6 +641,21 @@ function KirimFeedbackForm({ kader, weeks, mentorName, kaderId }) {
                         placeholder="Tuliskan area yang perlu ditingkatkan minggu depan..."
                         className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 bg-white resize-none" />
                 </div>
+
+                {attempted && missing.length > 0 && (
+                    <div className="flex items-start gap-2 p-3 bg-rose-50 border border-rose-200 rounded-lg">
+                        <svg className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        <div className="text-xs text-rose-700 leading-relaxed">
+                            <p className="font-semibold">{missing.length} isian belum lengkap</p>
+                            <p className="mt-0.5">
+                                Lengkapi: <strong>{missing.join(', ')}</strong>.
+                                Nilai yang masih &ldquo;—&rdquo; tidak akan tersimpan.
+                            </p>
+                        </div>
+                    </div>
+                )}
 
                 <button type="submit" disabled={submitting}
                     className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-60 transition">
@@ -379,6 +672,7 @@ function KirimFeedbackForm({ kader, weeks, mentorName, kaderId }) {
 function IsiRefleksiForm({ weeksKader }) {
     const [form, setForm]             = useState({ id_week: '', p7: '', p8: '', p9: '', p10: 0 });
     const [submitting, setSubmitting] = useState(false);
+    const [attempted, setAttempted]   = useState(false);
 
     const weekGroups = useMemo(() => {
         const groups = {};
@@ -386,7 +680,7 @@ function IsiRefleksiForm({ weeksKader }) {
             if (!w.bulan || !w.tahun) return;
             const key = `${w.tahun}-${String(w.bulan).padStart(2, '0')}`;
             if (!groups[key]) groups[key] = { label: `${BULAN_ID[w.bulan]} ${w.tahun}`, items: [] };
-            groups[key].items.push(w);
+            groups[key].items.push({ value: w.id_week, label: `Week ${w.angka_week}`, status: weekStatus(w) });
         });
         return Object.values(groups);
     }, [weeksKader]);
@@ -397,10 +691,12 @@ function IsiRefleksiForm({ weeksKader }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        setAttempted(true);
+        if (!form.id_week) return; // WeekSelect bukan <select> native, `required` tidak berlaku
         setSubmitting(true);
         router.post('/dashboard-kader/refleksi', form, {
             preserveScroll: true,
-            onSuccess: () => setForm({ id_week: '', p7: '', p8: '', p9: '', p10: 0 }),
+            onSuccess: () => { setForm({ id_week: '', p7: '', p8: '', p9: '', p10: 0 }); setAttempted(false); },
             onFinish:  () => setSubmitting(false),
         });
     };
@@ -417,24 +713,17 @@ function IsiRefleksiForm({ weeksKader }) {
                     <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 block mb-1.5">
                         Periode Refleksi <span className="text-rose-500">*</span>
                     </label>
-                    <select required value={form.id_week} onChange={e => handleChange('id_week', e.target.value)}
-                        disabled={weekGroups.length === 0}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500 bg-white disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed">
-                        <option value="">{weekGroups.length === 0 ? '--Belum ada jadwal--' : '--Pilih Week--'}</option>
-                        {weekGroups.map(g => (
-                            <optgroup key={g.label} label={g.label}>
-                                {g.items.map(w => {
-                                    const disabled = !w.is_available || w.is_filled;
-                                    const suffix = w.is_filled ? ' — sudah diisi' : (!w.is_available ? ' — belum waktunya' : '');
-                                    return (
-                                        <option key={w.id_week} value={w.id_week} disabled={disabled}>
-                                            Week {w.angka_week}{suffix}
-                                        </option>
-                                    );
-                                })}
-                            </optgroup>
-                        ))}
-                    </select>
+                    <WeekSelect
+                        groups={weekGroups}
+                        value={form.id_week}
+                        onChange={val => handleChange('id_week', val)}
+                        placeholder={weekGroups.length === 0 ? '--Belum ada jadwal--' : '--Pilih Week--'}
+                        accent="violet"
+                        invalid={attempted && !form.id_week}
+                    />
+                    {attempted && !form.id_week && (
+                        <p className="text-[11px] text-rose-600 mt-1">Pilih periode refleksi terlebih dahulu.</p>
+                    )}
                     {weekGroups.length === 0 && (
                         <p className="text-xs text-amber-600 mt-1.5">Belum ada jadwal minggu. Hubungi admin untuk mengatur batch.</p>
                     )}
@@ -689,19 +978,40 @@ function WeeklyFeedbackUpload({ data }) {
 }
 
 function MonthlyFeedbackForm({ kader, kaderId, periods }) {
-    const [form, setForm]             = useState({ id_week: '', m1: '', m2: '', m3: '' });
+    const [form, setForm]             = useState(EMPTY_MONTHLY_FORM);
     const [submitting, setSubmitting] = useState(false);
+    const [attempted, setAttempted]   = useState(false);
     const [toast, setToast]           = useState(false);
     const closeToast                  = useCallback(() => setToast(false), []);
 
     const handleChange = (field, val) => setForm(f => ({ ...f, [field]: val }));
 
+    const periodGroups = useMemo(() => ([{
+        label: null,
+        items: (periods || []).map(p => ({
+            value:  p.anchor_week_id,
+            label:  `${BULAN_ID[p.bulan]} ${p.tahun}`,
+            status: p.is_filled ? 'filled' : (!p.is_available ? 'locked' : 'open'),
+        })),
+    }]), [periods]);
+
+    // Semua pertanyaan wajib terjawab; jawaban berisi spasi saja tidak dihitung.
+    const missing = useMemo(
+        () => MONTHLY_QUESTIONS.map((q, i) => (form[q.field] ?? '').trim() ? null : i + 1).filter(Boolean),
+        [form],
+    );
+
+    const isMissing = (field) => attempted && !(form[field] ?? '').trim();
+    const incomplete = !form.id_week || missing.length > 0;
+
     const handleSubmit = (e) => {
         e.preventDefault();
+        setAttempted(true);
+        if (incomplete) return;
         setSubmitting(true);
         router.post(`/kader-saya/${kaderId}/monthly-feedback`, form, {
             preserveScroll: true,
-            onSuccess: () => { setToast(true); setForm({ id_week: '', m1: '', m2: '', m3: '' }); },
+            onSuccess: () => { setToast(true); setForm(EMPTY_MONTHLY_FORM); setAttempted(false); },
             onFinish:  () => setSubmitting(false),
         });
     };
@@ -726,23 +1036,14 @@ function MonthlyFeedbackForm({ kader, kaderId, periods }) {
                     <label className="text-xs font-semibold text-slate-600 block mb-1.5">
                         Bulan Tahun <span className="text-rose-500">*</span>
                     </label>
-                    <select required value={form.id_week} onChange={e => handleChange('id_week', e.target.value)}
-                        disabled={periods.length === 0}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 bg-white disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed">
-                        <option value="">
-                            {periods.length === 0 ? '--Belum ada jadwal bulan--' : '--Pilih Bulan--'}
-                        </option>
-                        {periods.map(p => {
-                            const disabled = !p.is_available || p.is_filled;
-                            const suffix = p.is_filled ? ' — sudah diisi'
-                                : (!p.is_available ? ' — belum waktunya' : '');
-                            return (
-                                <option key={p.anchor_week_id} value={p.anchor_week_id} disabled={disabled}>
-                                    {BULAN_ID[p.bulan]} {p.tahun}{suffix}
-                                </option>
-                            );
-                        })}
-                    </select>
+                    <WeekSelect
+                        groups={periodGroups}
+                        value={form.id_week}
+                        onChange={val => handleChange('id_week', val)}
+                        placeholder={periods.length === 0 ? '--Belum ada jadwal bulan--' : '--Pilih Bulan--'}
+                        accent="amber"
+                        invalid={attempted && !form.id_week}
+                    />
                     {periods.length === 0 && (
                         <p className="text-xs text-amber-600 mt-1.5 flex items-start gap-1">
                             <svg className="w-3.5 h-3.5 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -754,21 +1055,49 @@ function MonthlyFeedbackForm({ kader, kaderId, periods }) {
                 </div>
 
                 <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-3">Penilaian Kualitatif</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-3">
+                        Penilaian Kualitatif <span className="text-rose-500">*</span>
+                    </p>
                     <div className="space-y-4">
                         {MONTHLY_QUESTIONS.map((q, i) => (
                             <div key={q.field}>
                                 <label className="flex items-start gap-2 mb-1.5">
-                                    <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-700 text-[11px] font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                                    <span className={`w-5 h-5 rounded-full text-[11px] font-bold flex items-center justify-center shrink-0 mt-0.5 ${
+                                        isMissing(q.field) ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'
+                                    }`}>{i + 1}</span>
                                     <span className="text-xs font-semibold text-slate-700 leading-relaxed">{q.text}</span>
                                 </label>
                                 <textarea required rows={3} value={form[q.field]} onChange={e => handleChange(q.field, e.target.value)}
                                     placeholder={q.placeholder}
-                                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 bg-white resize-none" />
+                                    className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 bg-white resize-none ${
+                                        isMissing(q.field)
+                                            ? 'border-rose-400 focus:ring-rose-500/30 focus:border-rose-500'
+                                            : 'border-slate-300 focus:ring-amber-500/30 focus:border-amber-500'
+                                    }`} />
+                                {isMissing(q.field) && (
+                                    <p className="text-[11px] text-rose-600 mt-1">Pertanyaan ini wajib dijawab.</p>
+                                )}
                             </div>
                         ))}
                     </div>
                 </div>
+
+                {attempted && incomplete && (
+                    <div className="flex items-start gap-2 p-3 bg-rose-50 border border-rose-200 rounded-lg">
+                        <svg className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        <div className="text-xs text-rose-700 leading-relaxed">
+                            <p className="font-semibold">Isian belum lengkap</p>
+                            {!form.id_week && <p className="mt-0.5">Pilih <strong>Bulan Tahun</strong> terlebih dahulu.</p>}
+                            {missing.length > 0 && (
+                                <p className="mt-0.5">
+                                    Lengkapi pertanyaan nomor <strong>{missing.join(', ')}</strong> sebelum mengirim.
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 <button type="submit" disabled={submitting}
                     className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-600 text-white text-sm font-semibold rounded-lg hover:bg-amber-700 disabled:opacity-60 transition">
@@ -999,7 +1328,7 @@ function WeeklyFolder({ kader, weeks, weeksKader = [], refleksi, mentorFeedbackL
                     title="Feedback Dikirim"
                     count={mentorFeedbackList.length}
                 >
-                    <RiwayatAccordion mentorFeedbackList={mentorFeedbackList} />
+                    <RiwayatAccordion mentorFeedbackList={mentorFeedbackList} canEdit={showFeedbackForm && !kaderView} kaderId={kaderId} />
                 </AccordionSection>
             </div>
         </div>

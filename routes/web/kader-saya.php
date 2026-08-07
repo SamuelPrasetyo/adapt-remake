@@ -20,6 +20,8 @@ Route::middleware(['can:canMentorDashboard'])->group(function () {
     Route::get('/kader-saya/{kader_id}/kandidat/lampiran', [KandidatExportController::class, 'lampiran'])->name('kandidat.lampiran');
     Route::get('/kader-saya/{kader_id}', [KaderSayaController::class, 'show'])->name('kader.saya.show');
     Route::post('/kader-saya/{kader_id}/feedback', [KaderSayaController::class, 'storeFeedback'])->name('kader.saya.storeFeedback');
+    // Menambal kategori kosong pada feedback lama (tidak menimpa nilai yang sudah ada).
+    Route::post('/kader-saya/{kader_id}/feedback/{id_week}/lengkapi', [KaderSayaController::class, 'fillFeedbackGaps'])->name('kader.saya.fillFeedbackGaps');
     Route::post('/kader-saya/{kader_id}/monthly-feedback', [KaderSayaController::class, 'storeMonthlyFeedback'])->name('kader.saya.storeMonthlyFeedback');
     // Summary Monthly Feedback — hanya Admin MAI (dicek di controller)
     Route::post('/kader-saya/{kader_id}/monthly-summary', [KaderSayaController::class, 'storeMonthlyFeedbackSummary'])->name('kader.saya.storeMonthlyFeedbackSummary');
