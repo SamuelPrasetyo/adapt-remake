@@ -428,6 +428,24 @@ class KaderSayaController extends Controller
         $kader = Kader::where('id', $kader_id)->first();
         if (!$kader) abort(404);
 
+        // Semua kategori penilaian wajib — dulu field kosong hanya di-skip diam-diam saat insert
+        // sehingga feedback bisa tersimpan sebagian (nilai tampil "—" di riwayat).
+        $request->validate([
+            'id_week' => 'required',
+            'p1'      => 'required|integer|between:1,10',
+            'p2'      => 'required|integer|between:1,10',
+            'p3'      => 'required|integer|between:1,10',
+            'p4'      => 'required|integer|between:1,10',
+            'p5'      => 'required|in:Sangat Kurang,Kurang,Cukup,Baik,Sangat Baik',
+            'p6'      => 'nullable|string',
+        ], [], [
+            'p1' => 'Routine Job',
+            'p2' => 'Assignment',
+            'p3' => 'Pemahaman SOP',
+            'p4' => 'Project',
+            'p5' => 'Motivasi & Keterlibatan',
+        ]);
+
         // Anti-fraud: week harus milik batch kader, sudah berjalan, & belum terisi.
         $weekValid = Week::available()
             ->where('id_week', $request->id_week)
@@ -480,6 +498,98 @@ class KaderSayaController extends Controller
         }
 
         Log::info("[KaderSaya::storeFeedback] done — {$inserted} rows inserted");
+
+        return back()->with('feedbackSuccess', true);
+    }
+
+    /**
+     * Melengkapi feedback lama yang tersimpan sebagian (nilai tampil "—" di riwayat).
+     *
+     * Hanya untuk menambal kategori KOSONG: nilai yang sudah terisi tidak pernah ditimpa,
+     * sehingga aksi ini tidak bisa dipakai mengubah penilaian yang sudah dikirim. Feedback
+     * baru sudah divalidasi wajib-lengkap di storeFeedback(), jadi fungsi ini murni untuk
+     * membersihkan data warisan.
+     */
+    public function fillFeedbackGaps(Request $request, $kader_id, $id_week)
+    {
+        $user  = Auth::user();
+        $kader = Kader::where('id', $kader_id)->first();
+        if (!$kader) abort(404);
+
+        $request->validate([
+            'p1' => 'nullable|integer|between:1,10',
+            'p2' => 'nullable|integer|between:1,10',
+            'p3' => 'nullable|integer|between:1,10',
+            'p4' => 'nullable|integer|between:1,10',
+            'p5' => 'nullable|in:Sangat Kurang,Kurang,Cukup,Baik,Sangat Baik',
+        ], [], [
+            'p1' => 'Routine Job',
+            'p2' => 'Assignment',
+            'p3' => 'Pemahaman SOP',
+            'p4' => 'Project',
+            'p5' => 'Motivasi & Keterlibatan',
+        ]);
+
+        // Week harus SUDAH punya feedback mentor — mencegah route ini dipakai membuat
+        // feedback baru dan melewati validasi ketersediaan minggu di storeFeedback().
+        $existing = Jawaban::where('nik_kader', $kader->nik)
+            ->where('id_week', $id_week)
+            ->whereNotNull('nama_mentor')
+            ->whereIn('id_pertanyaan', [1, 2, 3, 4, 5, 6])
+            ->get();
+        abort_if($existing->isEmpty(), 404, 'Feedback minggu ini belum pernah dikirim.');
+
+        $motivasiScore = [
+            'Sangat Kurang' => 1,
+            'Kurang'        => 2,
+            'Cukup'         => 3,
+            'Baik'          => 4,
+            'Sangat Baik'   => 5,
+        ];
+
+        $answers = [
+            1 => $request->p1,
+            2 => $request->p2,
+            3 => $request->p3,
+            4 => $request->p4,
+            5 => $request->filled('p5') ? ($motivasiScore[$request->p5] ?? null) : null,
+        ];
+
+        // Feedback tetap diatribusikan ke mentor penulis aslinya; created_by mencatat
+        // siapa yang melengkapi.
+        $namaMentor = $existing->first()->nama_mentor;
+        $filled     = 0;
+
+        foreach ($answers as $pertanyaan => $jawaban) {
+            if ($jawaban === null || $jawaban === '') continue;
+
+            $row = $existing->firstWhere('id_pertanyaan', $pertanyaan);
+            if ($row && $row->jawaban !== null && $row->jawaban !== '') continue; // jangan timpa
+
+            if ($row) {
+                Jawaban::where('id_jawaban', $row->id_jawaban)
+                    ->update(['jawaban' => $jawaban, 'updated_at' => now()]);
+            } else {
+                Jawaban::create([
+                    'id_week'       => $id_week,
+                    'id_pertanyaan' => $pertanyaan,
+                    'jawaban'       => $jawaban,
+                    'nama_mentor'   => $namaMentor,
+                    'nik_kader'     => $kader->nik,
+                    'created_at'    => now(),
+                    'updated_at'    => now(),
+                    'created_by'    => $user->id,
+                ]);
+            }
+            $filled++;
+        }
+
+        Log::info('[KaderSaya::fillFeedbackGaps] done', [
+            'kader_nik' => $kader->nik,
+            'id_week'   => $id_week,
+            'oleh'      => $user->name,
+            'terisi'    => $filled,
+        ]);
 
         return back()->with('feedbackSuccess', true);
     }
@@ -587,6 +697,24 @@ class KaderSayaController extends Controller
         $user  = Auth::user();
         $kader = Kader::where('id', $kader_id)->first();
         if (!$kader) abort(404);
+
+        // Ketiga pertanyaan wajib terjawab — dulu jawaban kosong hanya di-skip saat insert,
+        // jadi Monthly Feedback bisa tersimpan dengan pertanyaan yang bolong. Input di-trim
+        // dulu supaya jawaban berisi spasi saja tidak lolos `required`.
+        $request->merge(collect(['m1', 'm2', 'm3'])
+            ->mapWithKeys(fn ($k) => [$k => is_string($request->$k) ? trim($request->$k) : $request->$k])
+            ->all());
+
+        $request->validate([
+            'id_week' => 'required',
+            'm1'      => 'required|string|min:3',
+            'm2'      => 'required|string|min:3',
+            'm3'      => 'required|string|min:3',
+        ], [], [
+            'm1' => 'Pertanyaan 1 (gambaran mentee)',
+            'm2' => 'Pertanyaan 2 (sikap kerja & etika)',
+            'm3' => 'Pertanyaan 3 (kesiapan kader)',
+        ]);
 
         // Anchor week harus milik batch kader & sudah berjalan.
         $week = Week::where('id_week', $request->id_week)
