@@ -124,8 +124,8 @@ export default function LearningGrowthTab({ faseGroups, allFases = [] }) {
                                             </span>
                                             <span className="text-sm text-slate-800 truncate flex-1 min-w-0">{m.nama}</span>
                                             {/* Angka per modul = Skor Modul (60% Post Test + 40% Post Activity; satu
-                                                komponen saja → 100%). BUKAN LGS/growth_score — itu khusus grafik
-                                                Learning Growth di Report. */}
+                                                komponen saja → 100%). Grafik Learning Growth di Report memakai
+                                                nilai asli tiap komponen, bukan angka ini. */}
                                             <div className="flex items-center gap-2 shrink-0 w-24">
                                                 <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                                                     <div className={`h-full rounded-full ${pal.bar}`} style={{ width: `${m.score ?? 0}%` }} />

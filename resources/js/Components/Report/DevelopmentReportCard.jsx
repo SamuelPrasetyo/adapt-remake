@@ -1,33 +1,84 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { getFaseNum } from "@/constants/fase";
-import {
-    Chart,
-    LineController,
-    LineElement,
-    PointElement,
-    LinearScale,
-    CategoryScale,
-    Filler,
-    Legend,
-    Tooltip,
-} from "chart.js";
 import { KKM, band, fmt, SectionTitle, ReportHeader, BackToPickerLink } from "./reportUi";
+import ReportLineChart, { avgOf, kkmDataset } from "./ReportLineChart";
 
-Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Filler, Legend, Tooltip);
+// Warna kelompok fase — dipakai bersama oleh dataset Chart.js & legenda di bawah grafik.
+// (Padanan Tailwind-nya: bg-blue-500 / bg-emerald-500.)
+const IN_CLASS_COLOR = "#3b82f6";
+const SELF_COLOR = "#10b981";
+// Pre Test dibuat KONTRAS KUAT terhadap Post Test pasangannya (bukan sekadar dashed atau
+// hue tetangga) supaya dua garis dalam satu grafik tidak pernah tertukar:
+//   biru (post)    ⇄ merah  (pre)   — In-Class
+//   hijau (post)   ⇄ ungu   (pre)   — Self-Learning
+// (Tailwind: rose-600 / purple-500.)
+const IN_CLASS_PRE_COLOR = "#e11d48";
+const SELF_PRE_COLOR = "#a855f7";
 
-// Rentang sumbu-Y adaptif (selalu memuat KKM & semua titik), dikunci ke skala 0–100.
-const yRange = (vals) => {
-    const v = vals.filter((x) => x != null);
-    if (!v.length) return { min: 50, max: 90 };
-    const lo = Math.min(...v, KKM);
-    const hi = Math.max(...v, KKM);
-    return { min: Math.max(0, Math.floor(lo - 5)), max: Math.min(100, Math.ceil(hi + 5)) };
+const lineStyle = (color, dashed = false) => ({
+    borderColor: color,
+    backgroundColor: color,
+    borderWidth: 2.5,
+    tension: 0.35,
+    pointRadius: 4,
+    pointHoverRadius: 6,
+    // spanGaps SENGAJA false: satu modul bisa punya Post Test tanpa Pre Test, dan garis tidak
+    // boleh melompati titik kosong itu — kalau dijembatani, grafik memperlihatkan nilai
+    // yang sebenarnya tidak ada.
+    spanGaps: false,
+    clip: false,
+    ...(dashed
+        ? { borderDash: [6, 4], pointBackgroundColor: "#fff", pointBorderColor: color, pointBorderWidth: 2 }
+        : {}),
+});
+
+/**
+ * Menyusun titik satu grafik Learning Growth.
+ *
+ * Sumbu-X: fase 1 (F1..Fn) → fase 3 (L1..Ln) → fase 2 (S1..Sn), masing-masing diurutkan
+ * menurut kapan komponen yang digambar grafik ini selesai. Dua kelompok garis:
+ * In-Class = fase 1 + 3, Self-Learning = fase 2.
+ *
+ * Tiap grafik memanggil ini dengan `timeOf`-nya sendiri, jadi urutan titik antar grafik
+ * memang boleh berbeda untuk modul yang sama — itu yang diminta: modul yang Post Test-nya
+ * selesai duluan belum tentu Post Activity-nya juga dinilai duluan.
+ *
+ * @param eligible modul layak tampil di grafik ini (nilainya sudah ada).
+ * @param timeOf   waktu selesai komponen grafik ini → kunci urut & filter jendela FMC.
+ * @param cutoff   akhir jendela FMC terpilih; null = view Final Score (tanpa batas).
+ */
+const buildSeries = (faseGroups, { eligible, timeOf, cutoff }) => {
+    const modulsOf = (n) =>
+        (faseGroups.find((g) => getFaseNum(g.fase) === String(n))?.moduls ?? []).filter((m) => {
+            if (!eligible(m)) return false;
+            if (cutoff == null) return true;
+            const t = timeOf(m);
+            return t ? new Date(t) <= cutoff : false;
+        });
+
+    // Modul tanpa timestamp (data lama) diurut paling belakang, bukan dibuang.
+    const sorted = (arr) =>
+        [...arr].sort((a, b) => {
+            const ta = timeOf(a);
+            const tb = timeOf(b);
+            if (ta && tb) return new Date(ta) - new Date(tb);
+            if (ta) return -1;
+            if (tb) return 1;
+            return 0;
+        });
+
+    const toPoints = (arr, prefix) =>
+        sorted(arr).map((m, i) => ({ label: `${prefix}${i + 1}`, nama: m.nama, kode_modul: m.kode_modul, m }));
+
+    const inClass = [...toPoints(modulsOf(1), "F"), ...toPoints(modulsOf(3), "L")];
+    const self = toPoints(modulsOf(2), "S");
+
+    return { inClass, self, all: [...inClass, ...self] };
 };
 
-const avgOf = (pts) => {
-    const s = pts.filter((p) => p != null);
-    return s.length ? s.reduce((a, b) => a + b, 0) / s.length : null;
-};
+// Dataset sepanjang sumbu-X penuh, berisi nilai hanya di rentang kelompoknya sendiri (sisanya
+// null) — supaya In-Class & Self-Learning tergambar sebagai dua garis terpisah di satu sumbu.
+const masked = (all, from, to, get) => all.map((p, i) => (i >= from && i < to ? get(p.m) : null));
 
 /**
  * Kartu "Management Trainee Development Report" untuk batch 3+ (data sistem).
@@ -46,7 +97,6 @@ export default function DevelopmentReportCard({
     grandScore = null,
     fmcWindows = [],
     currentFmc = 1,
-    signatures = {},
     backHref = null,
 }) {
     // view: 1 | 2 | 3 (per FMC) atau "final" (Grand Score).
@@ -55,43 +105,69 @@ export default function DevelopmentReportCard({
     const selFmc = isFinal ? 3 : Number(view);
     const selWindow = isFinal ? null : fmcWindows.find((w) => w.fmc === Number(view)) ?? null;
 
-    // ── Section A · Learning Growth (kumulatif s/d FMC terpilih) ──────────────
-    // Titik = LGS per modul (skala internal 0–100) → tampil 0–10. Modul disaring
-    // berdasarkan completed_at: di view FMC, hanya modul yang SELESAI s/d akhir FMC itu.
+    // ── Section A · Learning Growth ──────────────────────────────────────────
+    // Dua grafik terpisah berisi NILAI ASLI (tanpa rumus turunan): Pre/Post Test dan Post
+    // Activity. Keduanya dibatasi jendela FMC terpilih memakai waktu selesai komponennya
+    // masing-masing, jadi pipeline-nya berdiri sendiri-sendiri.
     const cutoff = isFinal ? null : selWindow ? new Date(selWindow.end) : null;
-    const inWindow = (m) => {
-        if (m.growth_score == null) return false;
-        if (cutoff == null) return true;
-        if (!m.completed_at) return false;
-        return new Date(m.completed_at) <= cutoff;
-    };
-    const modulsOf = (n) =>
-        (faseGroups.find((g) => getFaseNum(g.fase) === String(n))?.moduls ?? []).filter(inWindow);
-    const byCompletion = (arr) =>
-        [...arr].sort((a, b) => {
-            if (a.completed_at && b.completed_at) return new Date(a.completed_at) - new Date(b.completed_at);
-            if (a.completed_at) return -1;
-            if (b.completed_at) return 1;
-            return 0;
-        });
-    const toPoint = (prefix) => (m, i) => ({
-        label: `${prefix}${i + 1}`,
-        nama: m.nama,
-        score: m.growth_score != null ? m.growth_score : null,
-    });
-    const inClassPoints = useMemo(
-        () => [...byCompletion(modulsOf(1)).map(toPoint("F")), ...byCompletion(modulsOf(3)).map(toPoint("L"))],
+
+    // Grafik 1 — Pre/Post Test. Post Test yang menandai tahap ini selesai (Pre selalu
+    // mendahuluinya), jadi keanggotaan & urutan titik memakai Post Test.
+    const test = useMemo(
+        () =>
+            buildSeries(faseGroups, {
+                eligible: (m) => m.post_score != null,
+                timeOf: (m) => m.post_completed_at,
+                cutoff,
+            }),
         [faseGroups, view]
     );
-    const selfPoints = useMemo(() => byCompletion(modulsOf(2)).map(toPoint("S")), [faseGroups, view]);
-    const allPoints = useMemo(() => [...inClassPoints, ...selfPoints], [inClassPoints, selfPoints]);
 
-    const avgInClass = avgOf(inClassPoints.map((p) => p.score));
-    const avgSelf = avgOf(selfPoints.map((p) => p.score));
-    const lgScore = avgOf(allPoints.map((p) => p.score));
+    // Grafik 2 — Post Activity. Hanya yang SUDAH DINILAI Admin MAI; submission yang belum
+    // dinilai tidak punya angka untuk dibandingkan dengan KKM.
+    const pa = useMemo(
+        () =>
+            buildSeries(faseGroups, {
+                eligible: (m) => m.has_post_activity && m.pa_score != null,
+                timeOf: (m) => m.pa_completed_at,
+                cutoff,
+            }),
+        [faseGroups, view]
+    );
+
+    const testLabels = test.all.map((p) => p.label);
+    const testSplit = test.inClass.length;
+    const testDatasets = testLabels.length
+        ? [
+              { label: "In-Class · Post Test", data: masked(test.all, 0, testSplit, (m) => m.post_score), ...lineStyle(IN_CLASS_COLOR) },
+              { label: "In-Class · Pre Test", data: masked(test.all, 0, testSplit, (m) => m.pre_score), ...lineStyle(IN_CLASS_PRE_COLOR, true) },
+              { label: "Self-Learning · Post Test", data: masked(test.all, testSplit, test.all.length, (m) => m.post_score), ...lineStyle(SELF_COLOR) },
+              { label: "Self-Learning · Pre Test", data: masked(test.all, testSplit, test.all.length, (m) => m.pre_score), ...lineStyle(SELF_PRE_COLOR, true) },
+              kkmDataset(testLabels.length),
+          ]
+        : [];
+    // Sumbu-Y grafik 1 harus memuat garis Pre DAN Post sekaligus.
+    const testYValues = test.all.flatMap((p) => [p.m.pre_score, p.m.post_score]);
+
+    const paLabels = pa.all.map((p) => p.label);
+    const paSplit = pa.inClass.length;
+    const paDatasets = paLabels.length
+        ? [
+              { label: "In-Class", data: masked(pa.all, 0, paSplit, (m) => m.pa_score), ...lineStyle(IN_CLASS_COLOR) },
+              { label: "Self-Learning", data: masked(pa.all, paSplit, pa.all.length, (m) => m.pa_score), ...lineStyle(SELF_COLOR) },
+              kkmDataset(paLabels.length),
+          ]
+        : [];
+    const paYValues = pa.all.map((p) => p.m.pa_score);
+
+    const avgBy = (pts, key) => avgOf(pts.map((p) => p.m[key]));
+    const testScore = avgBy(test.all, "post_score");
+    const paScore = avgBy(pa.all, "pa_score");
+    const testBand = band(testScore);
+    const paBand = band(paScore);
 
     // ── Section B · Development Progress (skor mentor pada FMC terpilih) ──────
-    // Skor feedback mentor disimpan skala 1–10; ditampilkan per-100 agar seragam dgn LGS & OJT.
+    // Skor feedback mentor disimpan skala 1–10; ditampilkan per-100 agar seragam dgn KKM & OJT.
     const dpRaw = (isFinal ? developmentByFmc.all : developmentByFmc[view]) ?? [];
     const dp = dpRaw.map((d) => ({ ...d, score: d.score != null ? d.score * 10 : null }));
     const dpScores = dp.map((d) => d.score);
@@ -99,6 +175,23 @@ export default function DevelopmentReportCard({
     const dpScored = dp.filter((d) => d.score != null);
     const dpHigh = dpScored.length ? dpScored.reduce((a, b) => (b.score > a.score ? b : a)) : null;
     const dpLow = dpScored.length ? dpScored.reduce((a, b) => (b.score < a.score ? b : a)) : null;
+    const dpLabels = dpScored.length ? dp.map((d) => d.label) : [];
+    const dpDatasets = dpLabels.length
+        ? [
+              {
+                  label: "Skor",
+                  data: dp.map((d) => d.score),
+                  borderColor: IN_CLASS_COLOR,
+                  backgroundColor: "rgba(59,130,246,0.12)",
+                  borderWidth: 2.5,
+                  tension: 0.35,
+                  pointRadius: 5,
+                  fill: true,
+                  spanGaps: true,
+              },
+              kkmDataset(dpLabels.length),
+          ]
+        : [];
 
     // ── Section C · Final OJT Assessment ─────────────────────────────────────
     // Nilai dianggap FINAL hanya bila approval_status === 'approved'. Sudah dinilai tapi
@@ -120,73 +213,6 @@ export default function DevelopmentReportCard({
         pending_approval: { t: "Menunggu Approval", c: "bg-amber-100 text-amber-700" },
         not_assessed: { t: "Menunggu", c: "bg-slate-100 text-slate-500" },
     }[cStatus];
-
-    // ── Charts ───────────────────────────────────────────────────────────────
-    const lgChartRef = useRef(null);
-    const lgChart = useRef(null);
-    const dpChartRef = useRef(null);
-    const dpChart = useRef(null);
-
-    useEffect(() => {
-        if (!lgChartRef.current || allPoints.length === 0) return;
-        if (lgChart.current) lgChart.current.destroy();
-        const labels = allPoints.map((p) => p.label);
-        const inClass = allPoints.map((p, i) => (i < inClassPoints.length ? p.score : null));
-        const selfL = allPoints.map((p, i) => (i >= inClassPoints.length ? p.score : null));
-        lgChart.current = new Chart(lgChartRef.current, {
-            type: "line",
-            data: {
-                labels,
-                datasets: [
-                    { label: "In-Class", data: inClass, borderColor: "#3b82f6", backgroundColor: "#3b82f6", borderWidth: 2.5, tension: 0.35, pointRadius: 4, spanGaps: true, clip: false },
-                    { label: "Self-Learning", data: selfL, borderColor: "#10b981", backgroundColor: "#10b981", borderWidth: 2.5, tension: 0.35, pointRadius: 4, spanGaps: true, clip: false },
-                    { label: "KKM", data: labels.map(() => KKM), borderColor: "#f97316", borderWidth: 1.5, borderDash: [5, 4], pointRadius: 0, fill: false },
-                ],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: { callbacks: { title: (it) => allPoints[it[0]?.dataIndex]?.nama ?? it[0]?.label } },
-                },
-                scales: {
-                    y: { ...yRange(allPoints.map((p) => p.score)), grid: { color: "#f1f5f9" }, ticks: { stepSize: 10, font: { size: 10 } } },
-                    x: { grid: { display: false }, ticks: { font: { size: 10 } } },
-                },
-            },
-        });
-        return () => { if (lgChart.current) lgChart.current.destroy(); };
-    }, [JSON.stringify(allPoints), inClassPoints.length]);
-
-    useEffect(() => {
-        if (!dpChartRef.current || dpScored.length === 0) return;
-        if (dpChart.current) dpChart.current.destroy();
-        const labels = dp.map((d) => d.label);
-        dpChart.current = new Chart(dpChartRef.current, {
-            type: "line",
-            data: {
-                labels,
-                datasets: [
-                    { label: "Skor", data: dp.map((d) => d.score), borderColor: "#3b82f6", backgroundColor: "rgba(59,130,246,0.12)", borderWidth: 2.5, tension: 0.35, pointRadius: 5, fill: true, spanGaps: true },
-                    { label: "KKM", data: labels.map(() => KKM), borderColor: "#f97316", borderWidth: 1.5, borderDash: [5, 4], pointRadius: 0, fill: false },
-                ],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { ...yRange(dpScores), grid: { color: "#f1f5f9" }, ticks: { stepSize: 10, font: { size: 10 } } },
-                    x: { grid: { display: false }, ticks: { font: { size: 10 } } },
-                },
-            },
-        });
-        return () => { if (dpChart.current) dpChart.current.destroy(); };
-    }, [JSON.stringify(dp)]);
-
-    const lgBand = band(lgScore);
-    const dpBand = band(dpAvg);
 
     const periodeLabel = isFinal ? "FMC 1–3 · Final Score" : `FMC ${selFmc} · ${selWindow?.label ?? "—"}`;
 
@@ -238,44 +264,114 @@ export default function DevelopmentReportCard({
                     </div>
                 </div>
 
-                {/* Body: A / B / C */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
-                    {/* A · LEARNING GROWTH */}
-                    <div className="p-5">
-                        <SectionTitle code="A">Learning Growth</SectionTitle>
-                        <div className="flex items-center gap-2 mb-3">
-                            <span className="text-3xl font-bold text-slate-800">{fmt(lgScore)}</span>
-                            <span className={`text-xs font-medium px-2 py-0.5 rounded ${lgBand.cls}`}>{lgBand.label}</span>
-                        </div>
-                        <div style={{ height: 150 }}>
-                            {allPoints.length ? <canvas ref={lgChartRef} /> : <div className="h-full flex items-center justify-center text-xs text-slate-400">Belum ada modul selesai pada periode ini</div>}
-                        </div>
-                        <div className="mt-3 space-y-1.5 text-sm">
-                            <div className="flex items-center justify-between">
-                                <span className="flex items-center gap-2 text-slate-600"><span className="w-4 h-0.5 bg-blue-500 inline-block" /> In-Class (Avg Post)</span>
-                                <span className="font-semibold text-slate-800">{fmt(avgInClass)}</span>
+                {/* A · LEARNING GROWTH — selebar kartu, dua grafik nilai asli berdampingan */}
+                <div className="px-6 py-5 border-b border-slate-100">
+                    <SectionTitle code="A">Learning Growth</SectionTitle>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+                        {/* A1 · Pre / Post Test */}
+                        <div>
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                                <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Pre / Post Test</span>
+                                <span className="flex items-center gap-2">
+                                    <span className="text-2xl font-bold text-slate-800 leading-none">{fmt(testScore)}</span>
+                                    <span className={`text-xs font-medium px-2 py-0.5 rounded ${testBand.cls}`}>{testBand.label}</span>
+                                </span>
                             </div>
-                            <div className="flex items-center justify-between">
-                                <span className="flex items-center gap-2 text-slate-600"><span className="w-4 h-0.5 bg-emerald-500 inline-block" /> Self-Learning (Avg Post)</span>
-                                <span className="font-semibold text-slate-800">{fmt(avgSelf)}</span>
+                            <ReportLineChart
+                                labels={testLabels}
+                                datasets={testDatasets}
+                                yValues={testYValues}
+                                points={test.all}
+                                height={190}
+                                emptyMessage="Belum ada Post Test selesai pada periode ini"
+                            />
+                            {/* Empat angka dirapikan jadi tabel mini Pre × Post supaya tidak jadi 4 baris */}
+                            <div className="mt-3 grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-1.5 items-center text-sm">
+                                <span />
+                                <span className="text-[11px] uppercase tracking-wide text-slate-400 text-right w-10">Pre</span>
+                                <span className="text-[11px] uppercase tracking-wide text-slate-400 text-right w-10">Post</span>
+
+                                <span className="flex items-center gap-1.5 text-slate-600">
+                                    <span className="w-3 border-t-2 border-dashed border-rose-600 inline-block" />
+                                    <span className="w-3 h-0.5 bg-blue-500 inline-block" /> In-Class
+                                </span>
+                                <span className="font-semibold text-slate-800 text-right">{fmt(avgBy(test.inClass, "pre_score"))}</span>
+                                <span className="font-semibold text-slate-800 text-right">{fmt(avgBy(test.inClass, "post_score"))}</span>
+
+                                <span className="flex items-center gap-1.5 text-slate-600">
+                                    <span className="w-3 border-t-2 border-dashed border-purple-500 inline-block" />
+                                    <span className="w-3 h-0.5 bg-emerald-500 inline-block" /> Self-Learning
+                                </span>
+                                <span className="font-semibold text-slate-800 text-right">{fmt(avgBy(test.self, "pre_score"))}</span>
+                                <span className="font-semibold text-slate-800 text-right">{fmt(avgBy(test.self, "post_score"))}</span>
+
+                                <span className="flex items-center gap-2 text-slate-600">
+                                    <span className="w-4 border-t border-dashed border-orange-500 inline-block" /> KKM
+                                </span>
+                                <span />
+                                <span className="font-semibold text-slate-800 text-right">{KKM}</span>
                             </div>
-                            <div className="flex items-center justify-between">
-                                <span className="flex items-center gap-2 text-slate-600"><span className="w-4 border-t border-dashed border-orange-500 inline-block" /> KKM</span>
-                                <span className="font-semibold text-slate-800">{KKM}</span>
+                            <div className="mt-2 text-[11px] text-slate-400">Garis putus-putus (merah/ungu) = Pre Test</div>
+                        </div>
+
+                        {/* A2 · Post Activity */}
+                        <div>
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                                <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Post Activity</span>
+                                <span className="flex items-center gap-2">
+                                    <span className="text-2xl font-bold text-slate-800 leading-none">{fmt(paScore)}</span>
+                                    <span className={`text-xs font-medium px-2 py-0.5 rounded ${paBand.cls}`}>{paBand.label}</span>
+                                </span>
+                            </div>
+                            <ReportLineChart
+                                labels={paLabels}
+                                datasets={paDatasets}
+                                yValues={paYValues}
+                                points={pa.all}
+                                height={190}
+                                emptyMessage="Belum ada Post Activity dinilai pada periode ini"
+                            />
+                            <div className="mt-3 space-y-1.5 text-sm">
+                                <div className="flex items-center justify-between">
+                                    <span className="flex items-center gap-2 text-slate-600">
+                                        <span className="w-4 h-0.5 bg-blue-500 inline-block" /> In-Class
+                                    </span>
+                                    <span className="font-semibold text-slate-800">{fmt(avgBy(pa.inClass, "pa_score"))}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="flex items-center gap-2 text-slate-600">
+                                        <span className="w-4 h-0.5 bg-emerald-500 inline-block" /> Self-Learning
+                                    </span>
+                                    <span className="font-semibold text-slate-800">{fmt(avgBy(pa.self, "pa_score"))}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="flex items-center gap-2 text-slate-600">
+                                        <span className="w-4 border-t border-dashed border-orange-500 inline-block" /> KKM
+                                    </span>
+                                    <span className="font-semibold text-slate-800">{KKM}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
+                </div>
 
+                {/* Body: B / C */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-slate-100">
                     {/* B · DEVELOPMENT PROGRESS */}
                     <div className="p-5">
                         <SectionTitle code="B">Development Progress</SectionTitle>
                         <div className="flex items-center gap-2 mb-3">
                             <span className="text-3xl font-bold text-slate-800">{fmt(dpAvg)}</span>
-                            <span className={`text-xs font-medium px-2 py-0.5 rounded ${dpBand.cls}`}>{dpBand.label}</span>
+                            <span className={`text-xs font-medium px-2 py-0.5 rounded ${band(dpAvg).cls}`}>{band(dpAvg).label}</span>
                         </div>
-                        <div style={{ height: 150 }}>
-                            {dpScored.length ? <canvas ref={dpChartRef} /> : <div className="h-full flex items-center justify-center text-xs text-slate-400">Belum ada feedback mentor pada periode ini</div>}
-                        </div>
+                        <ReportLineChart
+                            labels={dpLabels}
+                            datasets={dpDatasets}
+                            yValues={dpScores}
+                            points={dp.map((d) => ({ nama: d.label }))}
+                            height={150}
+                            emptyMessage="Belum ada feedback mentor pada periode ini"
+                        />
                         <div className="mt-4 space-y-2 text-sm">
                             <div className="flex items-center justify-between">
                                 <span className="text-slate-500">Tertinggi</span>
@@ -374,11 +470,11 @@ export default function DevelopmentReportCard({
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-6">
                         {[
-                            { role: "Mentor", name: signatures?.mentorByFmc?.[isFinal ? "final" : selFmc] },
-                            { role: "HR / People Development", name: signatures?.hr },
-                            { role: "Division Head", name: signatures?.divisionHead },
-                        ].map(({ role, name }) => (
-                            <div key={role} className="text-center">
+                            { role: pen?.panelis1_peran || "Panelis 1", name: pen?.panelis1_nama },
+                            { role: pen?.panelis2_peran || "Panelis 2", name: pen?.panelis2_nama },
+                            { role: "Mentor", name: kader?.mentor },
+                        ].map(({ role, name }, i) => (
+                            <div key={i} className="text-center">
                                 <div className="text-sm text-slate-400 mb-10">{role}</div>
                                 <div className="border-t border-slate-300 pt-1 text-xs text-slate-600">({name || "         "})</div>
                             </div>

@@ -11,16 +11,17 @@ use App\Models\ModulAssignment;
 use App\Models\ModulReadingProgress;
 use App\Models\ModulTestResult;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 
 /**
- * Sumber tunggal data report per-kader: Learning Growth/LGS per fase, skor feedback
+ * Sumber tunggal data report per-kader: skor & progres modul per fase, skor feedback
  * mingguan mentor ("Development Progress"), daftar feedback mentor, dan Penilaian OJT/FMC.
  *
  * Dipakai bersama oleh:
  *  - KaderSaya/Detail (KaderSayaController::show) — tab Learning Growth & header FMC.
  *  - Report New (ReportController::report_new) — "Management Trainee Development Report".
  *
- * Tujuannya agar hitungan LGS/FMC cukup ada di satu tempat — mengikuti prinsip
+ * Tujuannya agar hitungan skor/FMC cukup ada di satu tempat — mengikuti prinsip
  * App\Support\ModulScore sebagai sumber tunggal rumus skor modul.
  */
 class KaderReportData
@@ -50,7 +51,8 @@ class KaderReportData
         $allModulIds = $userModulIds->merge($companyModulIds)->unique()->values()->all();
 
         // Urut per fase lalu `urutan` (diatur admin di Modul Pembelajaran) → kartu per-modul
-        // Learning Growth tampil sesuai urutan itu. Titik grafik tetap urut penyelesaian.
+        // Learning Growth tampil sesuai urutan itu. Titik grafik di Report tetap urut
+        // penyelesaian, memakai post_completed_at / pa_completed_at di bawah.
         $moduls = Modul::whereIn('id', $allModulIds)
             ->orderBy('fase')
             ->orderByRaw('urutan IS NULL, urutan')
@@ -61,8 +63,8 @@ class KaderReportData
             ? ModulTestResult::whereIn('modul_id', $allModulIds)->where('user_id', $userId)->where('is_completed', 1)->get(['modul_id', 'tipe', 'score', 'updated_at'])
             : collect();
 
-        // $postTimeMap = kapan Post Test diselesaikan → dipakai mengurutkan titik grafik
-        // Learning Growth berdasarkan urutan penyelesaian modul (lihat dokumentasi §10).
+        // $postTimeMap = kapan Post Test diselesaikan → kunci urut titik grafik Pre/Post Test
+        // di Report. Pasangannya $paTimeMap (kapan Post Activity dinilai) untuk grafik satunya.
         $testMap     = [];
         $postTimeMap = [];
         foreach ($testResults as $t) {
@@ -132,36 +134,9 @@ class KaderReportData
             );
             $modulScore = $modulScoreRaw !== null ? (int) round($modulScoreRaw) : null;
 
-            // Learning Growth Score (LGS) — titik grafik Learning Growth (rumus Stakeholder,
-            // berbasis KENAIKAN nilai). KG dari pre→post test; AS dari nilai tugas; LGS
-            // menggabungkannya (60/40) untuk modul ber-tugas, atau = KG bila tanpa tugas.
-            $kgRaw = ModulScore::knowledgeGain(
-                $testMap[$modul->id]['pre']  ?? null,
-                $testMap[$modul->id]['post'] ?? null
-            );
-            $asRaw = $modul->has_post_activity
-                ? ModulScore::applicationScore($paScoreMap[$modul->id] ?? null)
-                : null;
-            $growthRaw   = ModulScore::learningGrowth((bool) $modul->has_post_activity, $kgRaw, $asRaw);
-            $growthScore = $growthRaw !== null ? (int) round($growthRaw) : null;
-
             // Avg per fase (Kader Saya) = rata-rata Skor Modul ($modulScore) — angka yang sama
             // dengan badge tiap modul, supaya Avg di header fase konsisten dengan kartu modul.
-            // LGS/growth_score TIDAK dipakai di sini; itu khusus grafik Learning Growth di Report.
             if ($modulScore !== null) $faseGroups[$fase]['scores'][] = $modulScore;
-
-            // completed_at = saat komponen penilai terakhir selesai → urutan titik di grafik.
-            $completedAt = null;
-            if ($growthScore !== null) {
-                $times = [];
-                if (isset($postTimeMap[$modul->id]))                                 $times[] = $postTimeMap[$modul->id];
-                if ($modul->has_post_activity && isset($paTimeMap[$modul->id]))       $times[] = $paTimeMap[$modul->id];
-                $times = array_filter(array_map(
-                    fn ($t) => $t ? \Illuminate\Support\Carbon::parse($t) : null,
-                    $times
-                ));
-                if (!empty($times)) $completedAt = collect($times)->max()->toIso8601String();
-            }
 
             $faseGroups[$fase]['moduls'][] = [
                 'id'                => $modul->id,
@@ -180,11 +155,15 @@ class KaderReportData
                 'done'              => $done,
                 'required'          => $required,
                 'score'             => $modulScore,
-                // Komponen grafik Learning Growth (rumus Stakeholder, berbasis kenaikan nilai).
-                'kg'                => $kgRaw    !== null ? (int) round($kgRaw)    : null,
-                'as'                => $asRaw    !== null ? (int) round($asRaw)    : null,
-                'growth_score'      => $growthScore,
-                'completed_at'      => $completedAt,
+                // Dua grafik Learning Growth di Report diurutkan TERPISAH: masing-masing pakai
+                // waktu selesai komponennya sendiri, jadi satu modul bisa berbeda posisi antar
+                // grafik (mis. Post Test-nya duluan, tapi Post Activity-nya dinilai belakangan).
+                'post_completed_at' => isset($postTimeMap[$modul->id])
+                    ? Carbon::parse($postTimeMap[$modul->id])->toIso8601String()
+                    : null,
+                'pa_completed_at'   => ($modul->has_post_activity && isset($paTimeMap[$modul->id]))
+                    ? Carbon::parse($paTimeMap[$modul->id])->toIso8601String()
+                    : null,
             ];
             $faseGroups[$fase]['total']++;
             if ($done >= $required) $faseGroups[$fase]['done']++;
