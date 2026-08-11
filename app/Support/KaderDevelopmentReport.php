@@ -16,7 +16,7 @@ use Carbon\Carbon;
  *  - Report New / Arsip (ReportController::report_new & report_arsip_show) — halaman penuh.
  *  - KaderSaya/Detail tab "Report" (KaderSayaController::show) — kartu yang sama, embedded.
  *
- * Bertumpu pada App\Support\KaderReportData untuk LGS & Penilaian OJT; kelas ini hanya
+ * Bertumpu pada App\Support\KaderReportData untuk skor modul & Penilaian OJT; kelas ini hanya
  * menambah lapisan khas report: jendela FMC, bucket skor mentor per FMC, catatan bulanan,
  * Grand Score, dan tanda tangan.
  */
@@ -45,7 +45,7 @@ class KaderDevelopmentReport
         $header  = self::header($kader);
         $windows = self::fmcWindows($header->batch_start, $header->batch_year);
 
-        [$devByFmc, $mentorByFmc] = self::developmentByFmc($header->nik, $windows);
+        [$devByFmc] = self::developmentByFmc($header->nik, $windows);
         [$fmcFinalScores, $fmcApproved, $grandScore] = self::ojtSummary($report['penilaianList']);
 
         return [
@@ -57,16 +57,6 @@ class KaderDevelopmentReport
             'fmcFinalScores'        => $fmcFinalScores,
             'fmcApproved'           => $fmcApproved,
             'grandScore'            => $grandScore,
-            'signatures'            => [
-                'mentorByFmc'  => [
-                    1       => $mentorByFmc[1],
-                    2       => $mentorByFmc[2],
-                    3       => $mentorByFmc[3],
-                    'final' => $mentorByFmc['all'],
-                ],
-                'hr'           => 'HR Business Unit',
-                'divisionHead' => 'MAI',
-            ],
             'fmcWindows' => array_map(fn ($w) => [
                 'fmc'            => $w['fmc'],
                 'label'          => $w['label'],
@@ -197,23 +187,20 @@ class KaderDevelopmentReport
 
     /**
      * Section B — rata-rata 4 aspek feedback mentor, di-bucket per FMC berdasarkan tanggal
-     * minggunya (+ bucket 'all' untuk view Final Score). Sekaligus mengembalikan nama mentor
-     * dari feedback mingguan TERAKHIR tiap bucket, dipakai sebagai TTD "Mentor".
+     * minggunya (+ bucket 'all' untuk view Final Score).
      *
-     * @return array{0: array, 1: array} [devByFmc, mentorNameByBucket]
+     * @return array{0: array} [devByFmc]
      */
     private static function developmentByFmc(?string $nik, array $windows): array
     {
-        $rows = Jawaban::selectRaw('jawaban.id_pertanyaan as idp, jawaban.jawaban as val, jawaban.nama_mentor as nama_mentor, weeks.tanggal_mulai as wdate, weeks.id_week as id_week')
+        $rows = Jawaban::selectRaw('jawaban.id_pertanyaan as idp, jawaban.jawaban as val, weeks.tanggal_mulai as wdate')
             ->join('weeks', 'jawaban.id_week', '=', 'weeks.id_week')
             ->where('jawaban.nik_kader', $nik)
             ->whereNotNull('jawaban.nama_mentor')
             ->whereIn('jawaban.id_pertanyaan', array_keys(self::ASPEK))
             ->get();
 
-        $acc            = ['all' => [], 1 => [], 2 => [], 3 => []]; // [bucket][idp] => [sum, count]
-        $lastMentorWeek = ['all' => null, 1 => null, 2 => null, 3 => null];
-        $lastMentorName = ['all' => null, 1 => null, 2 => null, 3 => null];
+        $acc = ['all' => [], 1 => [], 2 => [], 3 => []]; // [bucket][idp] => [sum, count]
 
         foreach ($rows as $r) {
             $buckets = ['all'];
@@ -221,12 +208,6 @@ class KaderDevelopmentReport
                 $d = Carbon::parse($r->wdate);
                 foreach ($windows as $w) {
                     if ($d->between($w['start'], $w['end'])) { $buckets[] = $w['fmc']; break; }
-                }
-            }
-            foreach ($buckets as $b) {
-                if ($lastMentorWeek[$b] === null || $r->id_week > $lastMentorWeek[$b]) {
-                    $lastMentorWeek[$b] = $r->id_week;
-                    $lastMentorName[$b] = $r->nama_mentor;
                 }
             }
             if (!is_numeric($r->val)) continue;
@@ -252,7 +233,7 @@ class KaderDevelopmentReport
             $devByFmc[$b] = $list;
         }
 
-        return [$devByFmc, $lastMentorName];
+        return [$devByFmc];
     }
 
     /**
@@ -325,7 +306,8 @@ class KaderDevelopmentReport
 
     /**
      * 3 jendela FMC (masing-masing 4 bulan) diturunkan dari tanggal mulai batch.
-     * start/end dipakai untuk: (a) memfilter titik grafik per completed_at, (b) bucket
+     * start/end dipakai untuk: (a) memfilter titik grafik per waktu selesai komponennya
+     * (post_completed_at / pa_completed_at), (b) bucket
      * skor mentor per FMC. label = rentang "Mei – Agu 2026"; penilaianLabel = bulan ke-4.
      */
     public static function fmcWindows($batchStart, $batchYear): array

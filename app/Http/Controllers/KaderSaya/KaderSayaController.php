@@ -307,6 +307,35 @@ class KaderSayaController extends Controller
         if ($perjanjianKerja) {
             $uploader = User::find($perjanjianKerja->mentor_id);
             $perjanjianKerja->uploaded_by_name = $uploader ? $uploader->name : '—';
+            $perjanjianKerja->size_bytes       = $this->dokumenSize($perjanjianKerja->path_file);
+        }
+
+        // Dokumen Lainnya (jenis LAINNYA) di tab Dokumen — hanya yang terikat kader ini;
+        // baris LAINNYA dari menu Upload > Dokumen punya kader_id NULL sehingga tidak ikut.
+        // Tidak dikirim ke Kader: tabnya memang disembunyikan, dan props Inertia terbaca
+        // dari view-source sehingga menyembunyikan di frontend saja tidak cukup.
+        $dokumenLainnya = [];
+
+        if ($isAdmin021 || $isMentor) {
+            $lainnyaRows = Dokumen::where('kader_id', $kader_id)
+                ->where('jenis', 'LAINNYA')
+                ->orderBy('created_at', 'desc')
+                ->get(['id', 'nama_file', 'path_file', 'mentor_id', 'created_at']);
+
+            // Nama pengunggah diambil sekali untuk semua baris (bukan User::find per dokumen).
+            $uploaderNames = User::whereIn('id', $lainnyaRows->pluck('mentor_id')->filter()->unique())
+                ->pluck('name', 'id');
+
+            // path_file sengaja TIDAK diteruskan ke frontend: unduhan lewat route
+            // dokumenLainnya.download yang memeriksa role, bukan link langsung ke folder
+            // public. Di sini hanya dipakai untuk membaca ukuran filenya.
+            $dokumenLainnya = $lainnyaRows->map(fn ($doc) => [
+                'id'               => $doc->id,
+                'nama_file'        => $doc->nama_file,
+                'created_at'       => $doc->created_at,
+                'uploaded_by_name' => $uploaderNames[$doc->mentor_id] ?? '—',
+                'size_bytes'       => $this->dokumenSize($doc->path_file),
+            ])->values();
         }
 
         // Data kandidat (portal rekrutmen Career MAI), ditautkan via kader.nik_ktp = kandidat.ktp.
@@ -375,7 +404,11 @@ class KaderSayaController extends Controller
                     'path_file' => $t->path_file,
                 ])
                 : null,
+            'dokumenLainnya'     => $dokumenLainnya,
             'canUpload'          => $isAdmin021 || $isMentor,
+            // Dokumen Lainnya sengaja lebih ketat dari Perjanjian Kerja: kurasi arsip
+            // dokumen kader ada di Admin MAI, Mentor cukup melihat & mengunduh.
+            'canManageDokumenLainnya' => $isAdmin021,
             'penilaianList'      => $report['penilaianList'],
             'penilaianSkorMap'   => $report['penilaianSkorMap'],
             'penilaianKomentarMap' => $report['penilaianKomentarMap'],
@@ -505,6 +538,20 @@ class KaderSayaController extends Controller
         Log::info("[KaderSaya::storeFeedback] done — {$inserted} rows inserted");
 
         return back()->with('feedbackSuccess', true);
+    }
+
+    /**
+     * Ukuran file dokumen di disk, untuk ditampilkan di tab Dokumen.
+     * null bila file hilang (baris DB masih ada tapi filenya sudah tidak ada) —
+     * frontend menampilkannya sebagai "—" alih-alih 0 B yang menyesatkan.
+     */
+    private function dokumenSize(?string $pathFile): ?int
+    {
+        if (!$pathFile) return null;
+
+        $full = public_path($pathFile);
+
+        return is_file($full) ? (filesize($full) ?: null) : null;
     }
 
     /**

@@ -7,7 +7,7 @@ import { pickerBackHref } from "@/Components/Report/reportUi";
 export default function Development(props) {
     return (
         <AppLayout title="REPORT" breadcrumb="Report">
-            <div className="max-w-5xl mx-auto">
+            <div className="max-w-7xl mx-auto">
                 <DevelopmentReportCard {...props} backHref={pickerBackHref("system")} />
             </div>
         </AppLayout>

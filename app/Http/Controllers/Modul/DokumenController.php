@@ -104,12 +104,15 @@ class DokumenController extends Controller
      * Scope dokumen yang boleh dilihat/dikelola user login di menu ini.
      * Dibatasi jenis generik saja — dokumen fitur lain (template, IDP, post activity,
      * dst) dikelola lewat menunya masing-masing, bukan dari sini.
+     *
+     * kader_id wajib NULL: dokumen LAINNYA yang terikat seorang kader berasal dari tab
+     * Dokumen di detail Kader Saya (DokumenLainnyaController) dan dikelola dari sana.
      */
     private function ownedQuery()
     {
         $user = auth()->user();
 
-        $q = Dokumen::whereIn('jenis', self::JENIS_OPTIONS);
+        $q = Dokumen::whereIn('jenis', self::JENIS_OPTIONS)->whereNull('kader_id');
 
         return $user->type === 'Mentor'
             ? $q->where('tipe', 'mentor')->where('mentor_id', $user->id)

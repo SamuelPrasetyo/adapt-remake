@@ -14,6 +14,16 @@ import Toast from "@/Components/Toast";
 
 const PANELIS = [1, 2];
 
+/**
+ * Jabatan Panelis mengikuti aturan tetap (Read-Only, tidak diketik bebas):
+ * Panelis 1 = BOD/Direksi, Panelis 2 = HR + nama Business Unit lengkap kader.
+ */
+function panelisPeranDefault(p, kader) {
+    if (p === 1) return "BOD/Direksi";
+    const bu = kader?.bu_name || kader?.bu || "";
+    return bu ? `HR ${bu}` : "HR";
+}
+
 function fmt(score) {
     if (score === null || score === undefined) return "—";
     return Number(score).toFixed(1);
@@ -276,9 +286,7 @@ function InfoSheet({ kader, fmc, panelisInfo, setPanelisInfo, tanggalEvaluasi, d
                                 <TextField
                                     label="Peran Panelis"
                                     value={panelisInfo[p]?.peran}
-                                    onChange={(v) => setPanelisInfo(p, "peran", v)}
-                                    placeholder="mis. Direksi / HR BU / Mentor"
-                                    disabled={disabled}
+                                    disabled
                                 />
                             </div>
                         </div>
@@ -449,8 +457,8 @@ export default function PenilaianOjtModal({
     const [skor, setSkorState] = useState(initialSkor || {});
     const [komentar, setKomentarState] = useState(initialKomentar || {});
     const [panelisInfo, setPanelisInfoState] = useState({
-        1: { nama: initialFinalReport.panelis1_nama ?? "", peran: initialFinalReport.panelis1_peran ?? "" },
-        2: { nama: initialFinalReport.panelis2_nama ?? "", peran: initialFinalReport.panelis2_peran ?? "" },
+        1: { nama: initialFinalReport.panelis1_nama ?? "", peran: panelisPeranDefault(1, kader) },
+        2: { nama: initialFinalReport.panelis2_nama ?? "", peran: panelisPeranDefault(2, kader) },
     });
     const [finalReport, setFinalReport] = useState({
         final_recommendation: initialFinalReport.final_recommendation ?? null,
