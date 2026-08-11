@@ -47,11 +47,6 @@ export default function LearningGrowthChart({ modul = [], nilai = {}, kkm = 70, 
         if (!canvasRef.current || points.length === 0) return;
         if (chartRef.current) chartRef.current.destroy();
 
-        // Sumbu-Y adaptif tapi selalu memuat KKM & semua titik, dikunci ke rentang 0–100.
-        const scores = points.map((p) => p.score).filter((v) => v != null);
-        const lo = Math.min(...scores, kkm);
-        const hi = Math.max(...scores, kkm);
-
         chartRef.current = new Chart(canvasRef.current, {
             type: "line",
             data: {
@@ -95,10 +90,10 @@ export default function LearningGrowthChart({ modul = [], nilai = {}, kkm = 70, 
                 },
                 scales: {
                     y: {
-                        min: Math.max(0, Math.floor(lo - 5)),
-                        max: Math.min(100, Math.ceil(hi + 5)),
+                        min: 0,
+                        max: 100,
                         grid: { color: "#f1f5f9" },
-                        ticks: { stepSize: 10, font: { size: 10 } },
+                        ticks: { stepSize: 20, font: { size: 10 } },
                     },
                     // autoSkip dimatikan: label sudah pendek (M1..Mn) jadi semuanya harus tampil,
                     // bukan dilewati selang-seling seperti saat labelnya masih "Modul n".

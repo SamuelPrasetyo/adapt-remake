@@ -7,7 +7,7 @@ import { pickerBackHref, withPickerParams } from "@/Components/Report/reportUi";
 export default function DevelopmentArsip({ trainingHref = null, ...props }) {
     return (
         <AppLayout title="REPORT ARSIP" breadcrumb="Report / Arsip Batch 1–2">
-            <div className="max-w-5xl mx-auto">
+            <div className="max-w-7xl mx-auto">
                 <ArsipReportCard
                     {...props}
                     backHref={pickerBackHref("arsip")}

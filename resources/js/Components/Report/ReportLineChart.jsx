@@ -15,17 +15,9 @@ import { KKM } from "./reportUi";
 Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Filler, Legend, Tooltip);
 
 /**
- * Rentang sumbu-Y adaptif: selalu memuat KKM & semua titik, dikunci ke skala 0–100.
- * Beri SEMUA nilai yang digambar (mis. pre DAN post), bukan salah satu saja — kalau tidak,
- * garis yang tidak ikut dihitung bisa keluar dari rentang sumbu.
+ * Rentang sumbu-Y tetap 0–100 supaya semua grafik report sebanding satu sama lain.
  */
-export const yRange = (vals) => {
-    const v = vals.filter((x) => x != null);
-    if (!v.length) return { min: 50, max: 90 };
-    const lo = Math.min(...v, KKM);
-    const hi = Math.max(...v, KKM);
-    return { min: Math.max(0, Math.floor(lo - 5)), max: Math.min(100, Math.ceil(hi + 5)) };
-};
+export const yRange = () => ({ min: 0, max: 100 });
 
 export const avgOf = (vals) => {
     const s = vals.filter((v) => v != null);
@@ -94,7 +86,7 @@ export default function ReportLineChart({
                     },
                 },
                 scales: {
-                    y: { ...yRange(yValues), grid: { color: "#f1f5f9" }, ticks: { stepSize: 10, font: { size: 10 } } },
+                    y: { ...yRange(yValues), grid: { color: "#f1f5f9" }, ticks: { stepSize: 20, font: { size: 10 } } },
                     x: { grid: { display: false }, ticks: { font: { size: 10 }, autoSkip: false, maxRotation: 0 } },
                 },
             },

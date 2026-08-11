@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { getFaseNum } from "@/constants/fase";
 import { KKM, band, fmt, SectionTitle, ReportHeader, BackToPickerLink } from "./reportUi";
 import ReportLineChart, { avgOf, kkmDataset } from "./ReportLineChart";
+import ReportBarChart from "./ReportBarChart";
 
 // Warna kelompok fase — dipakai bersama oleh dataset Chart.js & legenda di bawah grafik.
 // (Padanan Tailwind-nya: bg-blue-500 / bg-emerald-500.)
@@ -79,6 +80,43 @@ const buildSeries = (faseGroups, { eligible, timeOf, cutoff }) => {
 // Dataset sepanjang sumbu-X penuh, berisi nilai hanya di rentang kelompoknya sendiri (sisanya
 // null) — supaya In-Class & Self-Learning tergambar sebagai dua garis terpisah di satu sumbu.
 const masked = (all, from, to, get) => all.map((p, i) => (i >= from && i < to ? get(p.m) : null));
+
+// Badge band nilai (Excellent/Good/…) — dipakai seragam di semua grafik kartu ini.
+// Ikon centang hanya muncul kalau nilainya ada; band(null) cuma menampilkan "—".
+function BandBadge({ value }) {
+    const b = band(value);
+    return (
+        <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${b.cls}`}>
+            {value != null && (
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                </svg>
+            )}
+            {b.label}
+        </span>
+    );
+}
+
+// Kotak "Tertinggi"/"Terendah" di bawah grafik Development Progress — kartu report dibuat
+// lebih lebar (lihat pembungkus di halaman Report) supaya "Nama — Skor" muat satu baris
+// walau nama aspeknya panjang (mis. "SOP Understanding").
+function ExtremeStat({ label, tone, icon, item }) {
+    return (
+        <div className="flex items-center gap-3 px-4 py-3">
+            <span className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 ${tone}`}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d={icon} />
+                </svg>
+            </span>
+            <div className="min-w-0">
+                <div className="text-xs font-medium text-slate-500">{label}</div>
+                <div className="text-[13px] font-semibold text-slate-800 leading-snug">
+                    {item ? `${item.label} — ${fmt(item.score)}` : "—"}
+                </div>
+            </div>
+        </div>
+    );
+}
 
 /**
  * Kartu "Management Trainee Development Report" untuk batch 3+ (data sistem).
@@ -163,8 +201,6 @@ export default function DevelopmentReportCard({
     const avgBy = (pts, key) => avgOf(pts.map((p) => p.m[key]));
     const testScore = avgBy(test.all, "post_score");
     const paScore = avgBy(pa.all, "pa_score");
-    const testBand = band(testScore);
-    const paBand = band(paScore);
 
     // ── Section B · Development Progress (skor mentor pada FMC terpilih) ──────
     // Skor feedback mentor disimpan skala 1–10; ditampilkan per-100 agar seragam dgn KKM & OJT.
@@ -174,24 +210,11 @@ export default function DevelopmentReportCard({
     const dpAvg = avgOf(dpScores);
     const dpScored = dp.filter((d) => d.score != null);
     const dpHigh = dpScored.length ? dpScored.reduce((a, b) => (b.score > a.score ? b : a)) : null;
-    const dpLow = dpScored.length ? dpScored.reduce((a, b) => (b.score < a.score ? b : a)) : null;
+    // Semua skor sama rata → tidak ada aspek yang benar-benar "terendah", jadi kotaknya
+    // ditampilkan kosong ("—") daripada mengulang aspek yang sama dengan Tertinggi.
+    const dpAllTied = dpScored.length > 1 && dpScored.every((d) => d.score === dpScored[0].score);
+    const dpLow = dpScored.length && !dpAllTied ? dpScored.reduce((a, b) => (b.score < a.score ? b : a)) : null;
     const dpLabels = dpScored.length ? dp.map((d) => d.label) : [];
-    const dpDatasets = dpLabels.length
-        ? [
-              {
-                  label: "Skor",
-                  data: dp.map((d) => d.score),
-                  borderColor: IN_CLASS_COLOR,
-                  backgroundColor: "rgba(59,130,246,0.12)",
-                  borderWidth: 2.5,
-                  tension: 0.35,
-                  pointRadius: 5,
-                  fill: true,
-                  spanGaps: true,
-              },
-              kkmDataset(dpLabels.length),
-          ]
-        : [];
 
     // ── Section C · Final OJT Assessment ─────────────────────────────────────
     // Nilai dianggap FINAL hanya bila approval_status === 'approved'. Sudah dinilai tapi
@@ -272,9 +295,11 @@ export default function DevelopmentReportCard({
                         <div>
                             <div className="flex items-center justify-between gap-2 mb-2">
                                 <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Pre / Post Test</span>
-                                <span className="flex items-center gap-2">
-                                    <span className="text-2xl font-bold text-slate-800 leading-none">{fmt(testScore)}</span>
-                                    <span className={`text-xs font-medium px-2 py-0.5 rounded ${testBand.cls}`}>{testBand.label}</span>
+                                <span className="flex flex-col items-center">
+                                    <div className="text-2xl font-bold text-slate-800 leading-none">{fmt(testScore)}</div>
+                                    <div className="mt-1">
+                                        <BandBadge value={testScore} />
+                                    </div>
                                 </span>
                             </div>
                             <ReportLineChart
@@ -318,9 +343,11 @@ export default function DevelopmentReportCard({
                         <div>
                             <div className="flex items-center justify-between gap-2 mb-2">
                                 <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Post Activity</span>
-                                <span className="flex items-center gap-2">
-                                    <span className="text-2xl font-bold text-slate-800 leading-none">{fmt(paScore)}</span>
-                                    <span className={`text-xs font-medium px-2 py-0.5 rounded ${paBand.cls}`}>{paBand.label}</span>
+                                <span className="flex flex-col items-center">
+                                    <div className="text-2xl font-bold text-slate-800 leading-none">{fmt(paScore)}</div>
+                                    <div className="mt-1">
+                                        <BandBadge value={paScore} />
+                                    </div>
                                 </span>
                             </div>
                             <ReportLineChart
@@ -358,29 +385,43 @@ export default function DevelopmentReportCard({
                 {/* Body: B / C */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-slate-100">
                     {/* B · DEVELOPMENT PROGRESS */}
-                    <div className="p-5">
-                        <SectionTitle code="B">Development Progress</SectionTitle>
-                        <div className="flex items-center gap-2 mb-3">
-                            <span className="text-3xl font-bold text-slate-800">{fmt(dpAvg)}</span>
-                            <span className={`text-xs font-medium px-2 py-0.5 rounded ${band(dpAvg).cls}`}>{band(dpAvg).label}</span>
+                    <div className="p-5 bg-white">
+                        <div className="flex items-start justify-between gap-3 mb-4">
+                            <div>
+                                <SectionTitle code="B">Development Progress</SectionTitle>
+                                <p className="text-xs text-slate-400 -mt-2">Skor rata-rata aspek pengembangan dari feedback mentor</p>
+                            </div>
+                            <div className="flex flex-col items-center shrink-0">
+                                <div className="text-2xl font-bold text-slate-800 leading-none">{fmt(dpAvg)}</div>
+                                <div className="mt-1">
+                                    <BandBadge value={dpAvg} />
+                                </div>
+                            </div>
                         </div>
-                        <ReportLineChart
+                        <ReportBarChart
                             labels={dpLabels}
-                            datasets={dpDatasets}
-                            yValues={dpScores}
+                            data={dp.map((d) => d.score)}
+                            kkm={KKM}
                             points={dp.map((d) => ({ nama: d.label }))}
-                            height={150}
+                            height={170}
                             emptyMessage="Belum ada feedback mentor pada periode ini"
                         />
-                        <div className="mt-4 space-y-2 text-sm">
-                            <div className="flex items-center justify-between">
-                                <span className="text-slate-500">Tertinggi</span>
-                                <span className="font-semibold text-slate-800">{dpHigh ? `${dpHigh.label} — ${fmt(dpHigh.score)}` : "—"}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-slate-500">Terendah</span>
-                                <span className="font-semibold text-slate-800">{dpLow ? `${dpLow.label} — ${fmt(dpLow.score)}` : "—"}</span>
-                            </div>
+                        <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
+                            <span className="w-4 border-t border-dashed border-orange-500 inline-block" /> KKM {KKM}
+                        </div>
+                        <div className="mt-3 rounded-xl bg-white/80 border border-slate-100 divide-x divide-slate-100 grid grid-cols-2 overflow-hidden">
+                            <ExtremeStat
+                                label="Tertinggi"
+                                tone="bg-emerald-100 text-emerald-600"
+                                icon="M13 7h8m0 0v8m0-8L11 17l-4-4-6 6"
+                                item={dpHigh}
+                            />
+                            <ExtremeStat
+                                label="Terendah"
+                                tone="bg-rose-100 text-rose-600"
+                                icon="M13 17h8m0 0V9m0 8L11 7 7 11l-6-6"
+                                item={dpLow}
+                            />
                         </div>
                     </div>
 
