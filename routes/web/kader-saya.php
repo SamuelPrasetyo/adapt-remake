@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\KaderSaya\DokumenLainnyaController;
 use App\Http\Controllers\KaderSaya\KaderSayaController;
 use App\Http\Controllers\KaderSaya\KandidatExportController;
 use App\Http\Controllers\KaderSaya\PenilaianOjtController;
@@ -27,9 +28,15 @@ Route::middleware(['can:canMentorDashboard'])->group(function () {
     // Summary Monthly Feedback — hanya Admin MAI (dicek di controller)
     Route::post('/kader-saya/{kader_id}/monthly-summary', [KaderSayaController::class, 'storeMonthlyFeedbackSummary'])->name('kader.saya.storeMonthlyFeedbackSummary');
 
+    // Tab "Dokumen" — Perjanjian Kerja (wajib, 1 file) + Dokumen Lainnya (opsional, banyak file).
     Route::post('/kader-saya/{kader_id}/perjanjian-kerja', [PerjanjianKerjaController::class, 'store'])->name('perjanjian.store');
     Route::delete('/perjanjian-kerja/{id}', [PerjanjianKerjaController::class, 'destroy'])->name('perjanjian.destroy');
     Route::get('/perjanjian-kerja/{id}/download', [PerjanjianKerjaController::class, 'download'])->name('perjanjian.download');
+
+    // Dokumen Lainnya (jenis LAINNYA) — upload/hapus khusus Admin MAI, dicek di controller.
+    Route::post('/kader-saya/{kader_id}/dokumen-lainnya', [DokumenLainnyaController::class, 'store'])->name('dokumenLainnya.store');
+    Route::delete('/dokumen-lainnya/{id}', [DokumenLainnyaController::class, 'destroy'])->name('dokumenLainnya.destroy');
+    Route::get('/dokumen-lainnya/{id}/download', [DokumenLainnyaController::class, 'download'])->name('dokumenLainnya.download');
 
     // Penilaian OJT — write oleh Mentor, read oleh Admin021 + Mentor (cek di controller)
     Route::post('/kader-saya/{kader_id}/penilaian/{fmc}', [PenilaianOjtController::class, 'store'])->name('penilaian.store');

@@ -91,7 +91,11 @@ class PerjanjianKerjaController extends Controller
         return back()->with('perjanjianSuccess', 'Dokumen berhasil dihapus.');
     }
 
-    public function download($id)
+    /**
+     * ?inline=1 menampilkan dokumen di tab browser (tombol "mata" di tab Dokumen);
+     * tanpa parameter itu tetap mengunduh seperti sebelumnya.
+     */
+    public function download(Request $request, $id)
     {
         $user = Auth::user();
         $doc  = Dokumen::where('id', $id)->where('jenis', 'PERJANJIAN_KERJA')->firstOrFail();
@@ -108,7 +112,9 @@ class PerjanjianKerjaController extends Controller
             abort(404, 'File tidak ditemukan.');
         }
 
-        return response()->download($path, $doc->nama_file);
+        $disposition = $request->boolean('inline') ? 'inline' : 'attachment';
+
+        return response()->download($path, $doc->nama_file, [], $disposition);
     }
 
     private function authorizeAccess($user, $kader_id)
