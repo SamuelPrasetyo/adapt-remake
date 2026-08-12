@@ -19,6 +19,10 @@ const STATUS_META = {
     kritis:          { label: "Behind Schedule",           cls: "bg-rose-100 text-rose-700 border-rose-300"      },
 };
 
+// Tiap kolom stat di header adalah shortcut ke tab sumber angkanya.
+// flex-1 basis-0 → berapa pun jumlah statnya, lebarnya dibagi rata selebar kartu.
+const STAT_BTN = "group/stat flex-1 basis-0 min-w-[7rem] text-center rounded-lg py-1 px-3 transition hover:bg-slate-50 cursor-pointer";
+
 const TABS = [
     {
         id: "learning",
@@ -279,15 +283,21 @@ export default function KaderSayaDetail({
                 </div>
 
                 {/* Stats row — semua angka di sini skor 0-100, jadi warnanya seragam mengikuti
-                    band KKM (scoreTone), bukan warna tetap per kolom. */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mt-5 pt-5 border-t border-slate-100">
+                    band KKM (scoreTone), bukan warna tetap per kolom.
+                    Tiap kolom jadi shortcut ke tab sumber angkanya: Avg per-fase → Overview
+                    (Learning Growth), FMC → Penilaian OJT, Avg Feedback → Feedback. */}
+                {/* Flex-wrap, bukan grid: jumlah kolom ikut jumlah fase yang di-assign
+                    (3 s/d 5), tiap kolom melar rata sehingga barisnya penuh ujung ke ujung. */}
+                <div className="flex flex-wrap justify-center gap-4 mt-5 pt-5 border-t border-slate-100">
                     {allFases.map((fase) => {
                         const faseKey = getFaseNum(fase);
                         const label = getFaseLabel(fase);
                         const fg = faseGroups.find((g) => getFaseNum(g.fase) === faseKey);
                         const notAssigned = !fg;
                         return (
-                            <div key={fase} className="text-center">
+                            <button key={fase} type="button" onClick={() => handleTabChange("learning")}
+                                title={`Lihat Learning Growth ${label} di tab Overview`}
+                                className={STAT_BTN}>
                                 {notAssigned ? (
                                     <div className="flex items-center justify-center gap-1">
                                         <div className={`text-2xl font-bold ${scoreTone(null).text}`}>—</div>
@@ -306,24 +316,28 @@ export default function KaderSayaDetail({
                                         {fg.avg_score != null ? fg.avg_score : "—"}
                                     </div>
                                 )}
-                                <div className="text-xs text-slate-500 mt-0.5">Avg {label}</div>
-                            </div>
+                                <div className="text-xs text-slate-500 mt-0.5 group-hover/stat:text-blue-600">Avg {label}</div>
+                            </button>
                         );
                     })}
-                    <div className="text-center" title={isArsip
-                        ? "Final Score OJT arsip — rata-rata OJT 1–4"
-                        : "Final Score Penilaian OJT dari FMC terakhir yang sudah dinilai & di-approve"}>
+                    <button type="button" onClick={() => handleTabChange("penilaian")}
+                        className={STAT_BTN}
+                        title={isArsip
+                            ? "Final Score OJT arsip — rata-rata OJT 1–4"
+                            : "Final Score Penilaian OJT dari FMC terakhir yang sudah dinilai & di-approve"}>
                         <div className={`text-2xl font-bold ${scoreTone(fmcScore).text}`}>
                             {fmcScore != null ? fmcScore : "—"}
                         </div>
-                        <div className="text-xs text-slate-500 mt-0.5">FMC</div>
-                    </div>
-                    <div className="text-center" title="Rata-rata skor feedback mingguan, dinormalisasi ke skala 100">
+                        <div className="text-xs text-slate-500 mt-0.5 group-hover/stat:text-blue-600">FMC</div>
+                    </button>
+                    <button type="button" onClick={() => handleTabChange("feedback")}
+                        className={STAT_BTN}
+                        title="Rata-rata skor feedback mingguan, dinormalisasi ke skala 100">
                         <div className={`text-2xl font-bold ${scoreTone(avgFeedbackScore).text}`}>
                             {avgFeedbackScore != null ? avgFeedbackScore : "—"}
                         </div>
-                        <div className="text-xs text-slate-500 mt-0.5">Avg Feedback</div>
-                    </div>
+                        <div className="text-xs text-slate-500 mt-0.5 group-hover/stat:text-blue-600">Avg Feedback</div>
+                    </button>
                 </div>
             </div>
 
