@@ -19,6 +19,9 @@ Route::middleware(['can:isAdmin&Mentor'])->group(function () {
         Route::get('/report-new', 'report_new_index')->name('report.new.index');
         Route::get('/report-new/{kader}', 'report_new')->name('report.new.show');
 
+        // Nilai Feedback Menu
+        Route::get('/kader-feedback', 'kader_feedback_index')->name('kader.feedback.index');
+
         // Report Arsip — Batch 1 & 2 (skor agregat, tanpa historikal sistem)
         Route::get('/report-arsip/{kader}', 'report_arsip_show')->name('report.arsip.show');
         // Rincian nilai in-class training dari dokumen arsip (baru tersedia untuk Batch 2)

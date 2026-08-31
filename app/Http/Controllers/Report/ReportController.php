@@ -22,6 +22,7 @@ use App\Support\ArsipImporter;
 use App\Support\HasilTrainingMt;
 use App\Support\KaderDevelopmentReport;
 use App\Support\KaderReportData;
+use App\Support\KandidatData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -405,6 +406,162 @@ class ReportController extends Controller
     public function feedback_index()
     {
         return Inertia::render('Report/Feedback');
+    }
+
+    public function kader_feedback_index()
+    {
+        try {
+            $rows = Kader::select(
+                    'kader.id',
+                    'kader.nik',
+                    'kader.nik_ktp',
+                    'kader.id_batch',
+                    'kader.nama as nama_kader',
+                    'company.company_shortname as bu',
+                    'batch.nama_batch as batch_name'
+                )
+                ->leftJoin('company', 'kader.company_code', '=', 'company.company_code')
+                ->leftJoin('batch', 'kader.id_batch', '=', 'batch.id_batch')
+                ->orderBy('kader.nama', 'asc')
+                ->get();
+
+            $kaderIds = $rows->pluck('id')->all();
+            $mentors = ListKaderPerMentor::select(
+                    'list_kader_per_mentor.kader_id',
+                    'mentor.nama as mentor_name',
+                    'mentor.jabatan as mentor_jabatan'
+                )
+                ->join('mentor', 'list_kader_per_mentor.mentor_id', '=', 'mentor.id')
+                ->whereIn('list_kader_per_mentor.kader_id', $kaderIds)
+                ->whereNull('list_kader_per_mentor.deleted_at')
+                ->whereNull('mentor.deleted_at')
+                ->get()
+                ->groupBy('kader_id');
+
+            $ktps = $rows->pluck('nik_ktp')->filter()->unique()->values()->all();
+            $photos = [];
+            try {
+                $photos = KandidatData::photosForKtps($ktps);
+            } catch (\Throwable $e) {}
+
+            $jawabanStats = Jawaban::select('nik_kader', DB::raw('COUNT(*) as total_jawaban'))
+                ->whereNotNull('nama_mentor')
+                ->whereIn('nik_kader', $rows->pluck('nik')->all())
+                ->groupBy('nik_kader')
+                ->get()
+                ->keyBy('nik_kader');
+
+            $weeklyAvgData = Jawaban::select('jawaban.nik_kader', 'weeks.angka_week', DB::raw('AVG(jawaban.jawaban) as avg_s'))
+                ->join('weeks', 'jawaban.id_week', '=', 'weeks.id_week')
+                ->whereNotNull('jawaban.nama_mentor')
+                ->whereIn('jawaban.id_pertanyaan', [1, 2, 3, 4])
+                ->whereIn('jawaban.nik_kader', $rows->pluck('nik')->all())
+                ->groupBy('jawaban.nik_kader', 'weeks.angka_week')
+                ->get()
+                ->groupBy('nik_kader');
+
+            $jawabanWeeks = Jawaban::select('jawaban.nik_kader', 'weeks.angka_week')
+                ->join('weeks', 'jawaban.id_week', '=', 'weeks.id_week')
+                ->whereNotNull('jawaban.nama_mentor')
+                ->whereIn('jawaban.nik_kader', $rows->pluck('nik')->all())
+                ->distinct()
+                ->get()
+                ->groupBy('nik_kader');
+
+            $jawabanMenteeWeeks = Jawaban::select('jawaban.nik_kader', 'weeks_kader.angka_week')
+                ->join('weeks_kader', 'jawaban.id_week', '=', 'weeks_kader.id_week')
+                ->whereNull('jawaban.nama_mentor')
+                ->whereIn('jawaban.nik_kader', $rows->pluck('nik')->all())
+                ->distinct()
+                ->get()
+                ->groupBy('nik_kader');
+
+            $kaders = $rows->map(function ($r) use ($mentors, $jawabanStats, $photos, $jawabanWeeks, $jawabanMenteeWeeks, $weeklyAvgData) {
+                $mentorList = $mentors->get($r->id, collect());
+                $mentorArray = $mentorList->map(function($m) {
+                    return [
+                        'nama' => $m->mentor_name,
+                        'jabatan' => $m->mentor_jabatan,
+                    ];
+                })->all();
+
+                $stat = $jawabanStats->get($r->nik);
+                $hasFeedback = ($stat->total_jawaban ?? 0) > 0;
+
+                $weekAvgRows = $weeklyAvgData->get($r->nik, collect());
+                $weeklyScoresObj = [];
+                if ($weekAvgRows->isEmpty()) {
+                    $avgScore = null;
+                } else {
+                    $weekScores = [];
+                    foreach ($weekAvgRows as $w) {
+                        $val = round((float)$w->avg_s, 1);
+                        $weekScores[] = $val;
+                        $weeklyScoresObj[$w->angka_week] = $val;
+                    }
+                    $avgFeedbackRaw = \App\Support\ModulScore::feedbackAverage($weekScores);
+                    $avgScore = $avgFeedbackRaw !== null ? round($avgFeedbackRaw * 10, 0) : null;
+                }
+
+                $filledWeeks = $jawabanWeeks->get($r->nik, collect())
+                                ->pluck('angka_week')
+                                ->sort()
+                                ->values()
+                                ->all();
+
+                $filledMenteeWeeks = $jawabanMenteeWeeks->get($r->nik, collect())
+                                ->pluck('angka_week')
+                                ->sort()
+                                ->values()
+                                ->all();
+
+                return [
+                    'id' => $r->id,
+                    'nik' => $r->nik,
+                    'nama_kader' => $r->nama_kader,
+                    'bu' => $r->bu,
+                    'id_batch' => $r->id_batch,
+                    'batch' => $r->batch_name ? 'Batch ' . $r->batch_name : null,
+                    'mentors' => $mentorArray,
+                    'foto' => $photos[$r->nik_ktp] ?? null,
+                    'has_feedback' => $hasFeedback,
+                    'filled_weeks' => $filledWeeks,
+                    'filled_mentee_weeks' => $filledMenteeWeeks,
+                    'weekly_scores' => $weeklyScoresObj,
+                    'avg_score' => $avgScore,
+                ];
+            })->values()->toArray();
+
+        } catch (\Throwable $e) {
+            Log::error('[kader-feedback] Error: ' . $e->getMessage());
+            $kaders = [];
+        }
+
+        $batches = \App\Models\Batch::orderBy('tanggal_mulai', 'desc')->get();
+
+        $allWeeks = \App\Models\Week::select('id_batch', 'angka_week', 'tanggal_mulai')
+            ->whereNotNull('tanggal_mulai')
+            ->get();
+
+        $weekMonthMap = [];
+        foreach ($allWeeks as $w) {
+            $month = (int)date('m', strtotime($w->tanggal_mulai));
+            $year = (int)date('Y', strtotime($w->tanggal_mulai));
+            $key = "{$year}-" . str_pad($month, 2, '0', STR_PAD_LEFT);
+            if (!isset($weekMonthMap[$w->id_batch])) {
+                $weekMonthMap[$w->id_batch] = [];
+            }
+            if (!isset($weekMonthMap[$w->id_batch][$key])) {
+                $weekMonthMap[$w->id_batch][$key] = [];
+            }
+            $weekMonthMap[$w->id_batch][$key][] = $w->angka_week;
+        }
+
+        return Inertia::render('Report/KaderFeedback', [
+            'kaders' => $kaders,
+            'batches' => $batches,
+            'weekMonthMap' => $weekMonthMap,
+        ]);
     }
 
     // ──────────────────────────────────────────────────────────────────────────

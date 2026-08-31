@@ -27,6 +27,15 @@ export const ADMIN_NAV = [
     },
     {
         type: "item",
+        label: "Nilai Feedback",
+        icon: "star",
+        href: "/kader-feedback",
+        match: "/kader-feedback",
+        requires: "admin021",
+        preserveMentor: true,
+    },
+    {
+        type: "item",
         label: "Kader Saya",
         icon: "people",
         href: "/kader-saya",
