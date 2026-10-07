@@ -56,7 +56,11 @@ class LoginController extends Controller
                 }
                 return redirect('/dashboard');
             }
-            return redirect()->back()->with(['loginError' => 'Akun tidak aktif']);
+            // Auth::attempt sudah membuat sesi terautentikasi; cabut sebelum menolak.
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            return redirect()->route('login.index')->with(['loginError' => 'Akun tidak aktif']);
         }
 
         return redirect()->back()->with(['loginError' => 'Username atau Password Salah']);

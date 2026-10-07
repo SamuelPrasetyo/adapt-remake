@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { Link } from "@inertiajs/react";
+import { Link, router } from "@inertiajs/react";
 import AppLayout from "@/Layouts/AppLayout";
+import Modal from "@/Components/Modal";
 import KaderAvatar from "@/Components/KaderAvatar";
 import { scoreTone } from "@/Components/Report/reportUi";
 import { getFaseLabel, getFaseNum } from "@/constants/fase";
@@ -138,7 +139,11 @@ export default function KaderSayaDetail({
     developmentReport = null,
     arsipDetail = null,
     mentorUnassigned = false,
+    isNonaktif = false,
+    canDeactivate = false,
 }) {
+    const [statusModal, setStatusModal] = useState(false);
+    const [statusBusy, setStatusBusy] = useState(false);
     // Kader batch arsip (Batch 1-2). Overview-nya tetap memakai LearningGrowthTab —
     // backend sudah menyusun nilai in-class trainingnya sebagai fase Monthly Training —
     // yang berbeda hanya Penilaian OJT (tanpa form) & tidak adanya Monthly Feedback.
@@ -182,6 +187,21 @@ export default function KaderSayaDetail({
         const qs = params.toString();
         return qs ? `/kader-saya?${qs}` : "/kader-saya";
     }, []);
+
+    const submitStatus = () => {
+        setStatusBusy(true);
+        router.post(
+            `/kader-saya/${kader?.id}/${isNonaktif ? "aktifkan" : "nonaktifkan"}`,
+            {},
+            {
+                preserveScroll: true,
+                onFinish: () => {
+                    setStatusBusy(false);
+                    setStatusModal(false);
+                },
+            }
+        );
+    };
 
     const meta     = STATUS_META[status] || STATUS_META.on_track;
     const initials = (kader?.nama || "?").split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() || "").join("");
@@ -228,6 +248,22 @@ export default function KaderSayaDetail({
                 </div>
             )}
 
+            {/* Kader Non Aktif: data read-only, akun tidak bisa login. */}
+            {isNonaktif && (
+                <div className="mb-6 flex items-start gap-3 rounded-xl border border-slate-300 bg-slate-100 px-4 py-3">
+                    <svg className="w-5 h-5 shrink-0 text-slate-500 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clipRule="evenodd" />
+                    </svg>
+                    <div className="text-sm text-slate-700">
+                        <p className="font-semibold">Kader ini sudah dinonaktifkan</p>
+                        <p className="mt-0.5 text-slate-600">
+                            Akun loginnya tidak dapat digunakan. Data historis tetap tersimpan dan dapat dilihat,
+                            tetapi feedback dan penilaian baru tidak dapat diisi.
+                        </p>
+                    </div>
+                </div>
+            )}
+
             {/* Kader header card */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-6">
                 <div className="flex flex-wrap items-start gap-4">
@@ -245,6 +281,11 @@ export default function KaderSayaDetail({
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${meta.cls}`}>
                                 {meta.label}
                             </span>
+                            {isNonaktif && (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-200 text-slate-600 border border-slate-300">
+                                    Non Aktif
+                                </span>
+                            )}
                         </div>
                         {/* Identitas: BU sebagai badge, sisanya chip abu-abu agar tidak
                             terbaca sebagai satu kalimat panjang. */}
@@ -280,6 +321,16 @@ export default function KaderSayaDetail({
                             )}
                         </div>
                     </div>
+                    {canDeactivate && !kaderView && (
+                        <button type="button" onClick={() => setStatusModal(true)}
+                            className={`shrink-0 inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-lg border transition ${
+                                isNonaktif
+                                    ? "text-emerald-700 bg-white border-emerald-300 hover:bg-emerald-50"
+                                    : "text-red-600 bg-white border-red-300 hover:bg-red-50"
+                            }`}>
+                            {isNonaktif ? "Aktifkan Kembali" : "Nonaktifkan Kader"}
+                        </button>
+                    )}
                 </div>
 
                 {/* Stats row — semua angka di sini skor 0-100, jadi warnanya seragam mengikuti
@@ -416,6 +467,45 @@ export default function KaderSayaDetail({
             {tab === "report" && !kaderView && (
                 <ReportTab report={developmentReport} />
             )}
+
+            <Modal
+                open={statusModal}
+                onClose={() => !statusBusy && setStatusModal(false)}
+                title={isNonaktif ? "Aktifkan Kembali Kader" : "Nonaktifkan Kader"}
+                footer={
+                    <>
+                        <button type="button" disabled={statusBusy} onClick={() => setStatusModal(false)}
+                            className="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50">
+                            Batal
+                        </button>
+                        <button type="button" disabled={statusBusy} onClick={submitStatus}
+                            className={`px-4 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-50 ${
+                                isNonaktif ? "bg-emerald-600 hover:bg-emerald-700" : "bg-red-600 hover:bg-red-700"
+                            }`}>
+                            {statusBusy ? "Memproses..." : isNonaktif ? "Ya, Aktifkan" : "Ya, Nonaktifkan"}
+                        </button>
+                    </>
+                }
+            >
+                {isNonaktif ? (
+                    <p className="text-sm text-slate-600">
+                        Aktifkan kembali <span className="font-semibold text-slate-800">{kader?.nama}</span>?
+                        Akun loginnya akan aktif lagi dan kader kembali dihitung di statistik.
+                    </p>
+                ) : (
+                    <div className="space-y-2 text-sm text-slate-600">
+                        <p>
+                            Nonaktifkan <span className="font-semibold text-slate-800">{kader?.nama}</span>?
+                        </p>
+                        <ul className="list-disc pl-5 space-y-1">
+                            <li>Akun kader tidak dapat login, sesi yang sedang berjalan ikut berakhir.</li>
+                            <li>Data tidak dihapus dan tetap tampil di All Kader dengan badge Non Aktif.</li>
+                            <li>Kader tidak dihitung di statistik aktif, dan feedback baru tidak dapat diisi.</li>
+                        </ul>
+                        <p>Status ini dapat dikembalikan kapan saja.</p>
+                    </div>
+                )}
+            </Modal>
         </AppLayout>
     );
 }

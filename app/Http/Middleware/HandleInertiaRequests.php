@@ -191,7 +191,7 @@ class HandleInertiaRequests extends Middleware
                             ->pluck('kader_id');
                     $kaderNiks = $kaderIds->isEmpty()
                         ? collect()
-                        : DB::table('kader')->whereIn('id', $kaderIds->all())->pluck('nik');
+                        : DB::table('kader')->whereIn('id', $kaderIds->all())->whereNull('deactivated_at')->pluck('nik');
                     $idpRaw = DB::table('dokumen as d')
                         ->leftJoin('users as ku', DB::raw('CONVERT(d.kader_id USING utf8mb4) COLLATE utf8mb4_unicode_ci'), '=', 'ku.id')
                         ->where('d.jenis', 'FORM_IDP')
@@ -265,7 +265,7 @@ class HandleInertiaRequests extends Middleware
                         ->pluck('kader_id');
                 $kaderNiks = $kaderIds->isEmpty()
                     ? collect()
-                    : DB::table('kader')->whereIn('id', $kaderIds->all())->pluck('nik');
+                    : DB::table('kader')->whereIn('id', $kaderIds->all())->whereNull('deactivated_at')->pluck('nik');
 
                 if ($kaderNiks->isEmpty()) {
                     return ['idp' => 0, 'weekly' => 0];

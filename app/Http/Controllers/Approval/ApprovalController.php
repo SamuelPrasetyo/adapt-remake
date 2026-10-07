@@ -34,7 +34,9 @@ class ApprovalController extends Controller
             // leftJoin: baris yang kadernya sudah hilang sama sekali tetap tampil.
             ->whereNull('kader.deleted_at');
 
+        // Kader Non Aktif: antrean pending disembunyikan, riwayat approved tetap tampil.
         $ojtPending = (clone $ojtBase)
+            ->whereNull('kader.deactivated_at')
             ->where('p.approval_status', 'pending')
             ->orderBy('p.updated_at', 'desc')
             ->get(['p.kader_id','p.fmc_number','p.final_score','p.updated_at',
@@ -63,6 +65,7 @@ class ApprovalController extends Controller
             ->where('d.jenis', 'POST_ACTIVITY');
 
         $paPending = (clone $paBase)
+            ->whereNull('k.deactivated_at')
             ->where('d.status', 'pending')
             ->orderBy('d.created_at', 'desc')
             ->get(['d.id','d.nama_file','d.path_file','d.tipe','d.created_at','m.nama_modul',
@@ -533,7 +536,7 @@ class ApprovalController extends Controller
             return collect();
         }
 
-        return DB::table('kader')->whereIn('id', $kaderIds->all())->pluck('nik');
+        return DB::table('kader')->whereIn('id', $kaderIds->all())->whereNull('deactivated_at')->pluck('nik');
     }
 
     private function findOjt($kader_id, $fmc): PenilaianOjt

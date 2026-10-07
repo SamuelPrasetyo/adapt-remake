@@ -226,6 +226,17 @@ class UserController extends Controller
                 return redirect()->route('kader.index', ['tab' => 'arsip']);
             }
 
+            // Kader Non Aktif: aktivasi hanya lewat All Kader (Admin MAI), supaya status
+            // kader dan akunnya tidak berbeda.
+            if (Kader::where('nik', $user->nik)->whereNotNull('deactivated_at')->exists()) {
+                Alert::warning(
+                    'Kader Non Aktif',
+                    'Kader pemilik akun ini sedang dinonaktifkan. Aktifkan kembali lewat menu All Kader '
+                        . '(detail kader), akun loginnya otomatis ikut aktif.'
+                );
+                return redirect()->route('user.index');
+            }
+
             // Akun Kader tanpa data kader sama sekali — juga akan 404 kalau login.
             if (!Kader::where('nik', $user->nik)->exists()) {
                 Alert::warning(

@@ -62,11 +62,15 @@ class KaderArchiver
                 'updated_by' => $actorId,
             ]);
 
-            DB::table('users')->where('nik', $kader->nik)->where('type', 'Kader')->update([
-                'status'     => 'Aktif',
-                'updated_at' => now(),
-                'updated_by' => $actorId,
-            ]);
+            // Kader yang juga Non Aktif (KaderDeactivator) tetap tidak boleh login
+            // setelah dipulihkan dari arsip; aktivasinya lewat All Kader.
+            if ($kader->deactivated_at === null) {
+                DB::table('users')->where('nik', $kader->nik)->where('type', 'Kader')->update([
+                    'status'     => 'Aktif',
+                    'updated_at' => now(),
+                    'updated_by' => $actorId,
+                ]);
+            }
 
             return true;
         });

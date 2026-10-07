@@ -402,7 +402,8 @@ class ModulController extends Controller
         // Data untuk Assign Modal
         $moduls    = Modul::get();
         $companies = Company::get();
-        $users     = Kader::get();
+        // Pilihan assign baru: kader Non Aktif tidak ditawarkan.
+        $users     = Kader::aktif()->get();
 
         $mentorUsersModal = DB::table('users')
             ->where('users.type', 'Mentor')->where('users.status', 'Aktif')

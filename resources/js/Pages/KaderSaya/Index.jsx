@@ -368,6 +368,7 @@ function KaderCard({ kader, filterQuery = "" }) {
         .map((w) => w[0]?.toUpperCase() || "")
         .join("");
     const pct = Number(kader.progress_overall || 0);
+    const nonaktif = !!kader.is_nonaktif;
     const meta = STATUS_META[kader.status] || STATUS_META.on_track;
     const faseEntries = Object.entries(kader.fase_scores || {}).sort(
         ([a], [b]) => String(a).localeCompare(String(b))
@@ -377,9 +378,13 @@ function KaderCard({ kader, filterQuery = "" }) {
         <Link
             href={`/kader-saya/${kader.k_id}${filterQuery}`}
             onClick={rememberListScroll}
-            className="flex flex-col bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 hover:shadow-md hover:ring-blue-300 transition-all group"
+            className={`flex flex-col rounded-2xl shadow-sm ring-1 hover:shadow-md transition-all group ${
+                nonaktif
+                    ? "bg-slate-100 ring-slate-300 hover:ring-slate-400"
+                    : "bg-white ring-slate-200 hover:ring-blue-300"
+            }`}
         >
-            <div className="p-5 flex-1">
+            <div className={`p-5 flex-1 ${nonaktif ? "opacity-60 grayscale" : ""}`}>
                 {/* Header */}
                 <div className="flex items-start gap-3 mb-4">
                     <KaderAvatar
@@ -396,6 +401,11 @@ function KaderCard({ kader, filterQuery = "" }) {
                             <span className="font-semibold text-slate-900 leading-snug group-hover:text-blue-600 transition wrap-break-word">
                                 {kader.nama_kader}
                             </span>
+                            {nonaktif && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-200 text-slate-600 text-[10px] font-bold ring-1 ring-slate-300 shrink-0">
+                                    Non Aktif
+                                </span>
+                            )}
                         </div>
                         <div className="text-xs text-slate-500 truncate mt-0.5">
                             {kader.bu && (
@@ -456,7 +466,9 @@ function KaderCard({ kader, filterQuery = "" }) {
             </div>
 
             {/* Footer */}
-            <div className="px-5 py-3 bg-slate-50 rounded-b-2xl border-t border-slate-100 flex items-center justify-between">
+            <div className={`px-5 py-3 rounded-b-2xl border-t flex items-center justify-between ${
+                nonaktif ? "bg-slate-200/70 border-slate-300" : "bg-slate-50 border-slate-100"
+            }`}>
                 <span className="text-xs text-slate-500 min-w-0 truncate">
                     Mentor:{" "}
                     <span className="font-medium text-slate-700">
@@ -468,12 +480,19 @@ function KaderCard({ kader, filterQuery = "" }) {
                         </span>
                     )}
                 </span>
-                <span
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ring-1 shrink-0 ${meta.cls}`}
-                >
-                    <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
-                    {meta.label}
-                </span>
+                {nonaktif ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ring-1 shrink-0 bg-slate-200 text-slate-600 ring-slate-300">
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
+                        Non Aktif
+                    </span>
+                ) : (
+                    <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ring-1 shrink-0 ${meta.cls}`}
+                    >
+                        <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
+                        {meta.label}
+                    </span>
+                )}
                 {/* {kader.avg_score != null && (
                     <span className="text-xs font-semibold text-slate-700">
                         Avg: {kader.avg_score}
@@ -550,6 +569,8 @@ export default function KaderSayaIndex({
                     </h2>
                     <p className="text-sm text-slate-500">
                         {filtered.length} kader ditampilkan
+                        {filtered.some((k) => k.is_nonaktif) &&
+                            ` (${filtered.filter((k) => k.is_nonaktif).length} non aktif)`}
                     </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">

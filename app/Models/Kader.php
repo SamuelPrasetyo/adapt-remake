@@ -26,4 +26,14 @@ class Kader extends Model
     public $incrementing = false;
     protected $primaryKey = ['id','nik'];
     protected $keyType = 'uuid';
+
+    /**
+     * Kader yang tidak Non Aktif. Kader Non Aktif (deactivated_at terisi) tetap
+     * terlihat di All Kader, jadi tidak disaring global scope; pakai scope ini
+     * di statistik/daftar pilihan yang hanya butuh kader aktif.
+     */
+    public function scopeAktif($query)
+    {
+        return $query->whereNull('kader.deactivated_at');
+    }
 }

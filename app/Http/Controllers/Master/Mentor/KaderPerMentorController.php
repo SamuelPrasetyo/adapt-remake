@@ -56,6 +56,9 @@ class KaderPerMentorController extends Controller
         // Unassign kader yang tidak dipilih lagi (khusus mentor ini)
         $unassigned = ListKaderPerMentor::where('mentor_id', $mentor->id)
             ->whereNull('deleted_at')
+            // Kader Non Aktif tidak muncul di daftar pilihan, jadi tidak pernah ada di
+            // $selectedIds — jangan ikut di-unassign, riwayat mentornya harus tetap utuh.
+            ->whereNotIn('kader_id', Kader::withoutGlobalScopes()->whereNotNull('deactivated_at')->select('id'))
             ->when($selectedIds->isNotEmpty(), fn($q) => $q->whereNotIn('kader_id', $selectedIds->all()))
             ->update(['deleted_at' => now()]);
 
@@ -72,7 +75,7 @@ class KaderPerMentorController extends Controller
         // Assign kader baru yang belum ada. Kader lintas BU diizinkan — ada kasus
         // nyata kader BU lain dibina mentor BU ini — tapi dicatat terpisah di
         // ActivityLog karena bukan pola normal.
-        $kaders = Kader::whereIn('id', $selectedIds->all())->get();
+        $kaders = Kader::aktif()->whereIn('id', $selectedIds->all())->get();
 
         $inserted = 0;
         $skipped  = [];
@@ -159,7 +162,11 @@ class KaderPerMentorController extends Controller
         ]);
     }
 
-    public function listByMentorQuery($mentor_id, $idBatch = null)
+    /**
+     * @param bool $includeNonaktif true = kader Non Aktif ikut (All Kader, ditandai
+     *                              is_nonaktif); false = hanya kader aktif (Dashboard dkk).
+     */
+    public function listByMentorQuery($mentor_id, $idBatch = null, bool $includeNonaktif = false)
     {
         $rows = ListKaderPerMentor::select(
                 'list_kader_per_mentor.id',
@@ -170,6 +177,7 @@ class KaderPerMentorController extends Controller
                 'kader.nik as nik_kader',
                 'kader.nik_ktp as nik_ktp',
                 'kader.company_code as company_code',
+                'kader.deactivated_at as deactivated_at',
                 'batch.nama_batch as batch_name',
                 'batch.tahun_batch as batch_year',
                 'divisis.nama as divisi_name',
@@ -186,12 +194,17 @@ class KaderPerMentorController extends Controller
             // Query dimulai dari ListKaderPerMentor, jadi global scope SoftDeletes
             // milik model Kader tidak ikut — kader terarsip harus disaring manual.
             ->whereNull('kader.deleted_at')
+            ->unless($includeNonaktif, fn($q) => $q->whereNull('kader.deactivated_at'))
             ->when($idBatch, fn($q) => $q->where('list_kader_per_mentor.id_batch', $idBatch))
             ->orderBy('kader.nama', 'asc')
             ->get()
             // Satu kader bisa punya >1 assignment ke mentor ini secara historis; jaga tetap unik.
             ->unique('k_id')
             ->values();
+
+        // Sengaja foreach, bukan each(fn ...): arrow fn mengembalikan hasil assignment, dan
+        // Collection::each() berhenti begitu callback mengembalikan false (kader aktif).
+        foreach ($rows as $r) $r->is_nonaktif = $r->deactivated_at !== null;
 
         // Tampilkan SEMUA mentor kader (bukan hanya mentor yang difilter) agar kartu konsisten.
         $this->attachMentors($rows, $idBatch);
@@ -276,7 +289,7 @@ class KaderPerMentorController extends Controller
      * Daftar semua kader dalam satu BU (atau seluruh BU jika $companyCode = null),
      * lengkap dengan mentor (jika ada) dan stats progress modul.
      */
-    public function listAllKadersInBU($companyCode = null, $idBatch = null)
+    public function listAllKadersInBU($companyCode = null, $idBatch = null, bool $includeNonaktif = false)
     {
         // Query murni kader (tanpa join mentor) agar satu kader = satu baris,
         // walau punya >1 mentor. Daftar mentor ditempel via attachMentors().
@@ -287,6 +300,7 @@ class KaderPerMentorController extends Controller
                 'kader.nik_ktp as nik_ktp',
                 'kader.nama as nama_kader',
                 'kader.company_code',
+                'kader.deactivated_at',
                 'company.company_shortname as bu',
                 'divisis.nama as divisi_name',
                 'departemens.nama as dept_name',
@@ -307,7 +321,14 @@ class KaderPerMentorController extends Controller
             $kadersQuery->where('kader.id_batch', $idBatch);
         }
 
+        if (!$includeNonaktif) {
+            $kadersQuery->aktif();
+        }
+
         $rows = $kadersQuery->get();
+        // Sengaja foreach, bukan each(fn ...): arrow fn mengembalikan hasil assignment, dan
+        // Collection::each() berhenti begitu callback mengembalikan false (kader aktif).
+        foreach ($rows as $r) $r->is_nonaktif = $r->deactivated_at !== null;
 
         $this->attachMentors($rows, $idBatch);
         $this->attachKandidatPhotos($rows);

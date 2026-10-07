@@ -37,6 +37,9 @@ class PenilaianOjtController extends Controller
 
         $kader = Kader::where('id', $kader_id)->firstOrFail();
 
+        abort_if($kader->deactivated_at !== null, 403,
+            'Kader ini sudah dinonaktifkan — penilaian tidak dapat disimpan.');
+
         $this->authorizeWrite($user, $kader_id);
 
         // Nama kedua panelis wajib — form assessment ini memang milik panel, bukan 1 penilai.

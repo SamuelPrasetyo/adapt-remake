@@ -70,14 +70,18 @@ class DashboardController extends Controller
 
             // kader_count per mentor — ikut filter batch yang dipilih
             $mentorIds = $mentors->pluck('id')->all();
-            $countQuery = \App\Models\ListKaderPerMentor::whereIn('mentor_id', $mentorIds)
-                ->whereNull('deleted_at')
-                ->select('mentor_id', DB::raw('COUNT(*) as c'))
-                ->groupBy('mentor_id');
+            // Kader Non Aktif / terarsip tidak dihitung.
+            $countQuery = \App\Models\ListKaderPerMentor::whereIn('list_kader_per_mentor.mentor_id', $mentorIds)
+                ->join('kader', 'list_kader_per_mentor.kader_id', '=', 'kader.id')
+                ->whereNull('list_kader_per_mentor.deleted_at')
+                ->whereNull('kader.deleted_at')
+                ->whereNull('kader.deactivated_at')
+                ->select('list_kader_per_mentor.mentor_id', DB::raw('COUNT(*) as c'))
+                ->groupBy('list_kader_per_mentor.mentor_id');
             if ($idBatch) {
-                $countQuery->where('id_batch', $idBatch);
+                $countQuery->where('list_kader_per_mentor.id_batch', $idBatch);
             }
-            $countMap = $countQuery->pluck('c', 'mentor_id');
+            $countMap = $countQuery->pluck('c', 'list_kader_per_mentor.mentor_id');
             $mentors->each(function ($m) use ($countMap) {
                 $m->kader_count = (int) ($countMap[$m->id] ?? 0);
             });
@@ -129,7 +133,7 @@ class DashboardController extends Controller
         // Jumlah SEMUA kader di batch yang dipilih (termasuk yang belum di-assign ke mentor).
         $totalKaderInBatch = 0;
         if ($showMentorPanel) {
-            $totalKaderInBatch = Kader::when($idBatch, fn($q) => $q->where('kader.id_batch', $idBatch))
+            $totalKaderInBatch = Kader::aktif()->when($idBatch, fn($q) => $q->where('kader.id_batch', $idBatch))
                 ->when(
                     $targetCompanyCode ?? null,
                     // Pakai scope yang sama dengan daftar kadernya supaya kader lintas
@@ -227,6 +231,7 @@ class DashboardController extends Controller
             ->leftJoin('company', 'kader.company_code', '=', 'company.company_code')
             ->leftJoin('batch', 'kader.id_batch', '=', 'batch.id_batch')
             ->whereIn('kader.id_batch', $runningBatchIds)
+            ->aktif()
             ->orderBy('kader.nama', 'asc');
 
         if ($companyCode) {

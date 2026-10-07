@@ -34,11 +34,15 @@ class MentorController extends Controller
             ->get();
 
         $mentorIds = $mentors->pluck('id')->all();
-        $countMap  = ListKaderPerMentor::whereIn('mentor_id', $mentorIds)
-            ->whereNull('deleted_at')
-            ->select('mentor_id', DB::raw('COUNT(*) as c'))
-            ->groupBy('mentor_id')
-            ->pluck('c', 'mentor_id');
+        // Kader Non Aktif / terarsip tidak dihitung.
+        $countMap  = ListKaderPerMentor::whereIn('list_kader_per_mentor.mentor_id', $mentorIds)
+            ->join('kader', 'list_kader_per_mentor.kader_id', '=', 'kader.id')
+            ->whereNull('list_kader_per_mentor.deleted_at')
+            ->whereNull('kader.deleted_at')
+            ->whereNull('kader.deactivated_at')
+            ->select('list_kader_per_mentor.mentor_id', DB::raw('COUNT(*) as c'))
+            ->groupBy('list_kader_per_mentor.mentor_id')
+            ->pluck('c', 'list_kader_per_mentor.mentor_id');
         $mentors->each(fn($m) => $m->kader_count = (int) ($countMap[$m->id] ?? 0));
 
         $companys = Company::orderBy('company_shortname', 'asc')->get();
@@ -53,6 +57,7 @@ class MentorController extends Controller
             )
             ->leftJoin('company', 'kader.company_code', '=', 'company.company_code')
             ->leftJoin('divisis', 'kader.id_divisi', '=', 'divisis.id')
+            ->aktif()
             ->orderBy('kader.nama', 'asc')
             ->get();
 

@@ -68,12 +68,16 @@ class KaderSayaController extends Controller
         // Jumlah kader per mentor mengikuti filter batch — seorang mentor bisa membina kader
         // di banyak batch, jadi tanpa filter ini angkanya gabungan semua batch (tidak akurat).
         $mentorIds = $mentors->pluck('id')->all();
-        $countMap  = ListKaderPerMentor::whereIn('mentor_id', $mentorIds)
-            ->whereNull('deleted_at')
-            ->when($idBatch, fn($q) => $q->where('id_batch', $idBatch))
-            ->select('mentor_id', DB::raw('COUNT(*) as c'))
-            ->groupBy('mentor_id')
-            ->pluck('c', 'mentor_id');
+        // Kader Non Aktif dan terarsip tidak dihitung (join kader + deactivated_at/deleted_at null).
+        $countMap  = ListKaderPerMentor::whereIn('list_kader_per_mentor.mentor_id', $mentorIds)
+            ->join('kader', 'list_kader_per_mentor.kader_id', '=', 'kader.id')
+            ->whereNull('list_kader_per_mentor.deleted_at')
+            ->whereNull('kader.deleted_at')
+            ->whereNull('kader.deactivated_at')
+            ->when($idBatch, fn($q) => $q->where('list_kader_per_mentor.id_batch', $idBatch))
+            ->select('list_kader_per_mentor.mentor_id', DB::raw('COUNT(*) as c'))
+            ->groupBy('list_kader_per_mentor.mentor_id')
+            ->pluck('c', 'list_kader_per_mentor.mentor_id');
         $mentors->each(fn($m) => $m->kader_count = (int) ($countMap[$m->id] ?? 0));
 
         $mentorFilter   = $request->query('mentor_id', 'all');
@@ -86,14 +90,15 @@ class KaderSayaController extends Controller
         }
 
         $kaders = $mentorFilter !== 'all' && $selectedMentor
-            ? $perMentor->listByMentorQuery($mentorFilter, $idBatch)
-            : $perMentor->listAllKadersInBU($isMentor ? $user->company_code : null, $idBatch);
+            ? $perMentor->listByMentorQuery($mentorFilter, $idBatch, true)
+            : $perMentor->listAllKadersInBU($isMentor ? $user->company_code : null, $idBatch, true);
 
         // fase_scores & avg_score di-set oleh KaderPerMentorController::attachProgressStats
         // memakai rumus tunggal ModulScore (Post Test + Post Activity, TANPA Pre Test).
 
         // Jumlah SEMUA kader di batch yang dipilih (termasuk yang belum di-assign ke mentor).
-        $totalKaderInBatch = Kader::when($idBatch, fn($q) => $q->where('kader.id_batch', $idBatch))
+        // Hanya kader aktif — Non Aktif tetap tampil di daftar tapi tidak masuk angka ini.
+        $totalKaderInBatch = Kader::aktif()->when($idBatch, fn($q) => $q->where('kader.id_batch', $idBatch))
             // Scope yang sama dengan $kaders di atas, supaya kader lintas BU ikut
             // terhitung dan angkanya tidak berbeda dari isi daftarnya.
             ->when($isMentor, fn($q) => $perMentor->scopeKaderToBU($q, $user->company_code))
@@ -413,7 +418,10 @@ class KaderSayaController extends Controller
             'penilaianSkorMap'   => $report['penilaianSkorMap'],
             'penilaianKomentarMap' => $report['penilaianKomentarMap'],
             'penilaianStructure' => PenilaianOjtStructure::all(),
-            'canEditPenilaian'   => $isMentor,
+            'canEditPenilaian'   => $isMentor && $kader->deactivated_at === null,
+            // Status Non Aktif + tombol Nonaktifkan/Aktifkan (hanya Admin MAI 021).
+            'isNonaktif'         => $kader->deactivated_at !== null,
+            'canDeactivate'      => $isAdmin021 && $kader->deleted_at === null,
             // Banner peringatan kader tanpa mentor aktif (Admin/Mentor saja).
             'mentorUnassigned'   => $mentorUnassigned,
             'allFases'           => $isArsipBatch ? $arsipDetail['allFases'] : $report['allFases'],
@@ -463,6 +471,7 @@ class KaderSayaController extends Controller
         $kader = Kader::where('id', $kader_id)->first();
         if (!$kader) abort(404);
 
+        $this->abortIfNonaktif($kader);
         abort_if(!$this->feedbackEditable($kader), 403,
             'Batch sudah berakhir — feedback tidak dapat dikirim lagi.');
 
@@ -563,10 +572,21 @@ class KaderSayaController extends Controller
      */
     private function feedbackEditable($kader): bool
     {
+        if ($kader->deactivated_at !== null) return false;
         if (!$kader->id_batch) return false;
         $batch = Batch::find($kader->id_batch);
 
         return $batch ? $batch->feedbackEditable() : false;
+    }
+
+    /**
+     * Kader Non Aktif read-only: feedback/penilaian baru ditolak di server, bukan hanya
+     * disembunyikan di UI. Data historisnya tetap bisa dilihat.
+     */
+    private function abortIfNonaktif($kader): void
+    {
+        abort_if($kader->deactivated_at !== null, 403,
+            'Kader ini sudah dinonaktifkan — data hanya dapat dilihat.');
     }
 
     /**
@@ -581,6 +601,7 @@ class KaderSayaController extends Controller
         $kader = Kader::where('id', $kader_id)->first();
         if (!$kader) abort(404);
 
+        $this->abortIfNonaktif($kader);
         abort_if(!$this->feedbackEditable($kader), 403,
             'Batch sudah berakhir — feedback tidak dapat diubah lagi.');
 
@@ -677,6 +698,7 @@ class KaderSayaController extends Controller
         $kader = Kader::where('id', $kader_id)->first();
         if (!$kader) abort(404);
 
+        $this->abortIfNonaktif($kader);
         abort_if(!$this->feedbackEditable($kader), 403,
             'Batch sudah berakhir — Monthly Feedback tidak dapat diubah lagi.');
 
@@ -858,6 +880,7 @@ class KaderSayaController extends Controller
         $kader = Kader::where('id', $kader_id)->first();
         if (!$kader) abort(404);
 
+        $this->abortIfNonaktif($kader);
         abort_if(!$this->feedbackEditable($kader), 403,
             'Batch sudah berakhir — Monthly Feedback tidak dapat dikirim lagi.');
 

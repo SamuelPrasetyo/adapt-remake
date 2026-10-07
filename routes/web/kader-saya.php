@@ -2,11 +2,18 @@
 
 use App\Http\Controllers\KaderSaya\DokumenLainnyaController;
 use App\Http\Controllers\KaderSaya\KaderSayaController;
+use App\Http\Controllers\KaderSaya\KaderStatusController;
 use App\Http\Controllers\KaderSaya\KandidatExportController;
 use App\Http\Controllers\KaderSaya\PenilaianOjtController;
 use App\Http\Controllers\KaderSaya\PerjanjianKerjaController;
 use App\Http\Controllers\Master\Mentor\KaderPerMentorController;
 use Illuminate\Support\Facades\Route;
+
+// Nonaktifkan / aktifkan kembali kader — khusus Admin MAI (021)
+Route::middleware(['can:isAdmin021'])->group(function () {
+    Route::post('/kader-saya/{kader_id}/nonaktifkan', [KaderStatusController::class, 'deactivate'])->name('kader.saya.deactivate');
+    Route::post('/kader-saya/{kader_id}/aktifkan', [KaderStatusController::class, 'reactivate'])->name('kader.saya.reactivate');
+});
 
 // Kader Saya, Perjanjian Kerja & Penilaian OJT — Admin MAI + Mentor
 Route::middleware(['can:canMentorDashboard'])->group(function () {
