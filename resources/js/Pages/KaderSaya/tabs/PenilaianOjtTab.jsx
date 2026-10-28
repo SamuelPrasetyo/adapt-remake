@@ -185,7 +185,7 @@ export default function PenilaianOjtTab({
                                         <div className={`text-xs font-medium mt-3 ${status.cls}`}>{status.label}</div>
                                         {hasData && (p?.panelis1_nama || p?.panelis2_nama) && (
                                             <div className="text-[11px] text-slate-400 mt-1.5 text-center px-2 leading-relaxed">
-                                                Panelis: {[p.panelis1_nama, p.panelis2_nama].filter(Boolean).join(" & ")}
+                                                Panelis: {[p.panelis1_nama, p.panelis2_nama, ...(p.panelis_others || []).map(o => o?.nama)].filter(Boolean).join(" & ")}
                                             </div>
                                         )}
                                         {p?.approval_status === "rejected" && p?.rejection_reason && (

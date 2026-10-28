@@ -513,6 +513,7 @@ export default function DevelopmentReportCard({
                         {[
                             { role: pen?.panelis1_peran || "Panelis 1", name: pen?.panelis1_nama },
                             { role: pen?.panelis2_peran || "Panelis 2", name: pen?.panelis2_nama },
+                            ...(pen?.panelis_others || []).map((o, i) => ({ role: o?.peran || `Others ${i + 1}`, name: o?.nama })),
                             { role: "Mentor", name: kader?.mentor },
                         ].map(({ role, name }, i) => (
                             <div key={i} className="text-center">

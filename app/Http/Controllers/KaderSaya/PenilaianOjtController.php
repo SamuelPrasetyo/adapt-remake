@@ -54,12 +54,18 @@ class PenilaianOjtController extends Controller
             'panelis.1.peran'       => 'nullable|string|max:150',
             'panelis.2.nama'        => 'required|string|max:150',
             'panelis.2.peran'       => 'nullable|string|max:150',
-            'final_report'                      => 'nullable|array',
+            // Panelis tambahan (Others) opsional, maksimal 3 orang.
+            'panelis_others'           => 'nullable|array|max:3',
+            'panelis_others.*.nama'    => 'required|string|max:150',
+            'panelis_others.*.peran'   => 'nullable|string|max:150',
+            'final_report'                    => 'nullable|array',
             'final_report.final_recommendation' => 'nullable|in:recommended,not_recommended',
         ], [
             'skor.required'           => 'Semua nilai kompetensi wajib diisi.',
             'panelis.1.nama.required' => 'Nama Panelis 1 wajib diisi.',
             'panelis.2.nama.required' => 'Nama Panelis 2 wajib diisi.',
+            'panelis_others.max'             => 'Panelis Others maksimal 3 orang.',
+            'panelis_others.*.nama.required' => 'Nama Panelis Others wajib diisi (atau hapus baris yang kosong).',
         ]);
 
         $validItemCodes = array_flip(PenilaianOjtStructure::validItemCodes());
@@ -113,6 +119,10 @@ class PenilaianOjtController extends Controller
                 'panelis1_peran' => $validated['panelis'][1]['peran'] ?? null,
                 'panelis2_nama'  => $validated['panelis'][2]['nama'],
                 'panelis2_peran' => $validated['panelis'][2]['peran'] ?? null,
+                'panelis_others' => collect($validated['panelis_others'] ?? [])
+                    ->map(fn($o) => ['nama' => $o['nama'], 'peran' => $o['peran'] ?? null])
+                    ->values()
+                    ->all() ?: null,
             ]);
 
             // Gunakan array_key_exists agar nilai null (field dikosongkan user) tetap tersimpan.
@@ -268,6 +278,7 @@ class PenilaianOjtController extends Controller
                 'panelis1_peran'       => $rec ? $rec->panelis1_peran : null,
                 'panelis2_nama'        => $rec ? $rec->panelis2_nama : null,
                 'panelis2_peran'       => $rec ? $rec->panelis2_peran : null,
+                'panelis_others'       => $rec ? ($rec->panelis_others ?? []) : [],
                 'final_recommendation' => $rec ? $rec->final_recommendation : null,
                 'approval_status'      => $rec ? ($rec->approval_status ?? 'pending') : 'pending',
                 'approved_at'          => ($rec && $rec->approved_at) ? $rec->approved_at->toIso8601String() : null,

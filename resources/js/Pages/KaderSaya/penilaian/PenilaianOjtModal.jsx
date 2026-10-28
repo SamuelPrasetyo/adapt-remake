@@ -14,6 +14,9 @@ import Toast from "@/Components/Toast";
 
 const PANELIS = [1, 2];
 
+/** Panelis tambahan "Others": opsional, maksimal 3 orang, nama & peran diketik bebas. */
+const MAX_OTHERS = 3;
+
 /**
  * Jabatan Panelis mengikuti aturan tetap (Read-Only, tidak diketik bebas):
  * Panelis 1 = BOD/Direksi, Panelis 2 = HR + nama Business Unit lengkap kader.
@@ -244,7 +247,7 @@ function CompetencyTable({ title, subtitle, items, sheet, skor, setSkor, disable
 
 /* ---------- Tab: Informasi & Panelis (bagian A) ---------- */
 
-function InfoSheet({ kader, fmc, panelisInfo, setPanelisInfo, tanggalEvaluasi, disabled, showErrors }) {
+function InfoSheet({ kader, fmc, panelisInfo, setPanelisInfo, others, setOther, addOther, removeOther, tanggalEvaluasi, disabled, showErrors }) {
     return (
         <div className="space-y-5">
             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -266,7 +269,7 @@ function InfoSheet({ kader, fmc, panelisInfo, setPanelisInfo, tanggalEvaluasi, d
                 <div className="px-4 sm:px-5 py-3 bg-slate-800 text-white">
                     <h3 className="text-base font-bold">Panelis</h3>
                     <p className="text-xs text-slate-300 mt-0.5">
-                        Nama kedua panelis wajib diisi sebelum penilaian dapat dimulai.
+                        Nama Panelis 1 &amp; 2 wajib diisi sebelum penilaian dapat dimulai. Others bersifat opsional.
                     </p>
                 </div>
                 <div className="p-4 sm:p-5 space-y-4 sm:space-y-5">
@@ -291,6 +294,63 @@ function InfoSheet({ kader, fmc, panelisInfo, setPanelisInfo, tanggalEvaluasi, d
                             </div>
                         </div>
                     ))}
+
+                    {/* Others — opsional, maks 3 */}
+                    {(!disabled || others.length > 0) && (
+                        <div className="border border-dashed border-slate-300 rounded-xl p-4">
+                            <div className="flex items-center justify-between gap-3 mb-3">
+                                <div className="text-sm font-bold text-slate-600 uppercase tracking-wide">
+                                    Others <span className="normal-case font-normal text-slate-400">(opsional, maks. {MAX_OTHERS})</span>
+                                </div>
+                                {!disabled && others.length < MAX_OTHERS && (
+                                    <button
+                                        type="button"
+                                        onClick={addOther}
+                                        className="px-3 py-1.5 text-sm font-semibold text-blue-600 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 transition"
+                                    >
+                                        + Tambah Others
+                                    </button>
+                                )}
+                            </div>
+                            {others.length === 0 ? (
+                                <p className="text-sm italic text-slate-400">Belum ada panelis tambahan.</p>
+                            ) : (
+                                <div className="space-y-4">
+                                    {others.map((o, i) => (
+                                        <div key={i} className="flex items-start gap-3">
+                                            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <TextField
+                                                    label={`Nama Others ${i + 1}`}
+                                                    required
+                                                    value={o.nama}
+                                                    onChange={(v) => setOther(i, "nama", v)}
+                                                    placeholder="Nama lengkap panelis"
+                                                    disabled={disabled}
+                                                    invalid={showErrors && (o.nama ?? "").trim() === ""}
+                                                />
+                                                <TextField
+                                                    label="Peran Panelis"
+                                                    value={o.peran}
+                                                    onChange={(v) => setOther(i, "peran", v)}
+                                                    placeholder="Mis. Kepala Divisi"
+                                                    disabled={disabled}
+                                                />
+                                            </div>
+                                            {!disabled && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeOther(i)}
+                                                    className="mt-7 p-2 text-slate-400 hover:text-rose-600 text-xl leading-none"
+                                                    aria-label={`Hapus Others ${i + 1}`}
+                                                    title="Hapus"
+                                                >×</button>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
@@ -299,7 +359,7 @@ function InfoSheet({ kader, fmc, panelisInfo, setPanelisInfo, tanggalEvaluasi, d
 
 /* ---------- Tab: Penilaian (bagian B, C, D, E) ---------- */
 
-function PenilaianSheet({ panelisInfo, structure, skor, setSkor, komentar, setKomentar, disabled, weights, scores, finalReport, setFinalReport, showErrors, missingCount }) {
+function PenilaianSheet({ panelisInfo, others, structure, skor, setSkor, komentar, setKomentar, disabled, weights, scores, finalReport, setFinalReport, showErrors, missingCount }) {
     const hardItems = structure?.hard || [];
     const softItems = structure?.soft || [];
 
@@ -318,6 +378,13 @@ function PenilaianSheet({ panelisInfo, structure, skor, setSkor, komentar, setKo
                         {p > 1 && <span className="text-blue-400 mr-3">&amp;</span>}
                         {panelisInfo[p]?.nama || <span className="italic font-normal text-blue-500">Panelis {p} belum diisi</span>}
                         {panelisInfo[p]?.peran && <span className="text-sm font-normal text-blue-700"> ({panelisInfo[p].peran})</span>}
+                    </span>
+                ))}
+                {others.filter(o => o.nama?.trim()).map((o, i) => (
+                    <span key={`o${i}`} className="text-base font-semibold text-blue-900">
+                        <span className="text-blue-400 mr-3">&amp;</span>
+                        {o.nama}
+                        {o.peran?.trim() && <span className="text-sm font-normal text-blue-700"> ({o.peran})</span>}
                     </span>
                 ))}
                 <span className="w-full text-xs text-blue-700">
@@ -460,6 +527,9 @@ export default function PenilaianOjtModal({
         1: { nama: initialFinalReport.panelis1_nama ?? "", peran: panelisPeranDefault(1, kader) },
         2: { nama: initialFinalReport.panelis2_nama ?? "", peran: panelisPeranDefault(2, kader) },
     });
+    const [others, setOthers] = useState(() =>
+        (initialFinalReport.panelis_others || []).slice(0, MAX_OTHERS).map(o => ({ nama: o?.nama ?? "", peran: o?.peran ?? "" }))
+    );
     const [finalReport, setFinalReport] = useState({
         final_recommendation: initialFinalReport.final_recommendation ?? null,
     });
@@ -471,6 +541,14 @@ export default function PenilaianOjtModal({
     const setKomentar = (code, val) => setKomentarState(prev => ({ ...prev, [code]: val }));
     const setPanelisInfo = (p, field, val) =>
         setPanelisInfoState(prev => ({ ...prev, [p]: { ...prev[p], [field]: val } }));
+    const setOther = (i, field, val) =>
+        setOthers(prev => prev.map((o, idx) => (idx === i ? { ...o, [field]: val } : o)));
+    const addOther = () =>
+        setOthers(prev => (prev.length >= MAX_OTHERS ? prev : [...prev, { nama: "", peran: "" }]));
+    const removeOther = (i) => setOthers(prev => prev.filter((_, idx) => idx !== i));
+
+    // Baris Others yang sudah ditambahkan wajib diberi nama (atau dihapus).
+    const othersValid = others.every(o => (o.nama ?? "").trim() !== "");
 
     // Nama kedua panelis adalah gerbang: tanpa itu, lembar penilaian belum bisa dibuka.
     const panelisReady = PANELIS.every(p => (panelisInfo[p]?.nama ?? "").trim() !== "");
@@ -536,6 +614,11 @@ export default function PenilaianOjtModal({
             goTab("info");
             return;
         }
+        if (!othersValid) {
+            setToast({ open: true, type: "error", message: "Nama Panelis Others wajib diisi, atau hapus baris yang kosong." });
+            goTab("info");
+            return;
+        }
         if (missingCount > 0) {
             setToast({ open: true, type: "error", message: `${missingCount} nilai kompetensi belum diisi.` });
             goTab("penilaian");
@@ -558,6 +641,7 @@ export default function PenilaianOjtModal({
                 1: { nama: panelisInfo[1].nama.trim(), peran: panelisInfo[1].peran?.trim() || null },
                 2: { nama: panelisInfo[2].nama.trim(), peran: panelisInfo[2].peran?.trim() || null },
             },
+            panelis_others: others.map(o => ({ nama: o.nama.trim(), peran: o.peran?.trim() || null })),
             final_report: finalReport,
         }, {
             preserveScroll: true,
@@ -645,6 +729,10 @@ export default function PenilaianOjtModal({
                                 fmc={fmc}
                                 panelisInfo={panelisInfo}
                                 setPanelisInfo={setPanelisInfo}
+                                others={others}
+                                setOther={setOther}
+                                addOther={addOther}
+                                removeOther={removeOther}
                                 tanggalEvaluasi={tanggalEvaluasi}
                                 disabled={!canEdit}
                                 showErrors={showErrors}
@@ -653,6 +741,7 @@ export default function PenilaianOjtModal({
                         {activeTab === "penilaian" && (
                             <PenilaianSheet
                                 panelisInfo={panelisInfo}
+                                others={others}
                                 structure={structure}
                                 skor={skor}
                                 setSkor={setSkor}
@@ -698,17 +787,20 @@ export default function PenilaianOjtModal({
                                 ))}
                             </div>
                             <div className="border-t border-slate-700 mt-3 pt-3 text-xs text-slate-400 leading-relaxed">
-                                Panel: {PANELIS.map(p => panelisInfo[p]?.nama).filter(Boolean).join(" & ") || "—"}
+                                Panel: {[...PANELIS.map(p => panelisInfo[p]?.nama), ...others.map(o => o.nama)]
+                                    .filter(n => n?.trim()).join(" & ") || "—"}
                             </div>
                         </div>
 
                         {/* Action buttons */}
                         <div className="flex flex-row lg:flex-col gap-2 lg:mt-auto shrink-0">
-                            {canEdit && (missingCount > 0 || !panelisReady) && (
+                            {canEdit && (missingCount > 0 || !panelisReady || !othersValid) && (
                                 <p className="hidden lg:block text-xs text-amber-600 leading-relaxed">
                                     {!panelisReady
                                         ? "Nama Panelis 1 & 2 wajib diisi."
-                                        : `${missingCount} nilai kompetensi belum diisi.`}
+                                        : !othersValid
+                                            ? "Nama Panelis Others belum diisi."
+                                            : `${missingCount} nilai kompetensi belum diisi.`}
                                 </p>
                             )}
                             {canEdit && (

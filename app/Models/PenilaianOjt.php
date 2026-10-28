@@ -16,7 +16,8 @@ class PenilaianOjt extends Model
     protected $guarded = [];
 
     protected $casts = [
-        'approved_at' => 'datetime',
+        'approved_at'    => 'datetime',
+        'panelis_others' => 'array',
     ];
 
     public function skor()
