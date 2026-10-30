@@ -8,6 +8,7 @@ import NavGroup from "./components/NavGroup";
 import MentorSelectorCard from "./components/MentorSelectorCard";
 import PasswordInput from "./components/PasswordInput";
 import InboxBell from "./components/InboxBell";
+import BatchWeekInfo from "./components/BatchWeekInfo";
 
 export default function AppLayout({
     title,
@@ -296,20 +297,8 @@ export default function AppLayout({
                     <div className="flex items-center gap-4">
                         {headerActions}
 
-                        {/* Batch berjalan + minggu ke-N (dihitung dari tanggal batch) */}
-                        {props?.currentBatchInfo && (
-                            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50 ring-1 ring-slate-200">
-                                <span className="text-md font-medium text-slate-700">Batch {props.currentBatchInfo.nama_batch}</span>
-                                {props.currentBatchInfo.currentWeek != null && (
-                                    <>
-                                        <span className="text-slate-300">|</span>
-                                        <span className="text-md font-semibold text-blue-600">
-                                            Minggu {props.currentBatchInfo.currentWeek}/{props.currentBatchInfo.totalWeeks}
-                                        </span>
-                                    </>
-                                )}
-                            </div>
-                        )}
+                        {/* Ikon kalender → daftar batch & minggu ke-N masing-masing (dihitung dari tanggal batch) */}
+                        <BatchWeekInfo batches={props?.batchWeeks ?? []} />
 
                         {/* Inbox Bell — Kader, Mentor & Admin021 */}
                         <InboxBell inbox={inbox} user={user} />

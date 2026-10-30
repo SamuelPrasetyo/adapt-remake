@@ -89,6 +89,7 @@ function PsikotestPreview({ doc, onClose }) {
 
     const ext = (doc.nama_file ?? "").split(".").pop().toLowerCase();
     const src = fileUrl(doc.id, true);
+    const isPdf = ext === "pdf";
 
     return (
         <div className="fixed inset-0 z-[60] flex flex-col bg-white">
@@ -97,13 +98,16 @@ function PsikotestPreview({ doc, onClose }) {
                 <h3 className="text-sm font-semibold text-slate-800 truncate flex-1 min-w-0" title={doc.nama_file}>
                     {doc.nama_file}
                 </h3>
-                <a href={fileUrl(doc.id)}
-                    className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    Unduh
-                </a>
+                {/* PDF: unduh lewat tombol bawaan viewer browser, jadi tombol sendiri disembunyikan. */}
+                {!isPdf && (
+                    <a href={fileUrl(doc.id)}
+                        className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Unduh
+                    </a>
+                )}
                 <button type="button" onClick={onClose} aria-label="Tutup"
                     className="w-8 h-8 inline-flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 transition shrink-0">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -112,7 +116,7 @@ function PsikotestPreview({ doc, onClose }) {
                 </button>
             </div>
             <div className="flex-1 min-h-0 overflow-auto bg-slate-100">
-                {ext === "pdf" ? (
+                {isPdf ? (
                     <iframe src={src} title={doc.nama_file} className="w-full h-full border-0" />
                 ) : (
                     <div className="min-h-full flex items-center justify-center p-4">
@@ -322,17 +326,12 @@ export default function DokumenPsikotestIndex({ kaders = [], batches = [], batch
             <div className="flex items-center justify-end gap-1">
                 {doc && (
                     <>
-                        <button
-                            type="button"
-                            onClick={() => setPreview(doc)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition text-slate-700 bg-slate-100 hover:bg-slate-200"
-                        >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <ActionBtn onClick={() => setPreview(doc)} color="slate" title="Lihat">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                             </svg>
-                            Lihat
-                        </button>
+                        </ActionBtn>
                         <ActionBtn href={fileUrl(doc.id)} color="slate" title="Unduh">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" />

@@ -46,26 +46,42 @@ class HandleInertiaRequests extends Middleware
                     'company_code' => $request->user()->company_code,
                 ] : null,
             ],
-            'currentBatchInfo' => function () use ($request) {
+            // Info minggu berjalan di header (ikon kalender → popover). Program MT berlangsung
+            // 3-5 tahun sehingga beberapa batch bisa berjalan bersamaan: Admin & Mentor melihat
+            // semua batch bertanggal (terbaru dulu), Kader hanya batch-nya sendiri.
+            // Batch arsip (tanggal_mulai NULL) tidak punya hitungan minggu, jadi tidak ikut.
+            'batchWeeks' => function () use ($request) {
                 $user = $request->user();
-                if (!$user) return null;
+                if (!$user) return [];
 
-                // Kader -> batch-nya sendiri; selain itu -> batch yang sedang berjalan.
-                $batch = null;
+                $query = Batch::whereNotNull('tanggal_mulai')->whereNotNull('tanggal_selesai');
                 if ($user->type === 'Kader') {
                     $idBatch = Kader::where('nik', $user->nik)->value('id_batch');
-                    $batch   = $idBatch ? Batch::find($idBatch) : null;
+                    if (!$idBatch) return [];
+                    $query->where('id_batch', $idBatch);
                 }
-                $batch = $batch ?? Batch::current();
-                if (!$batch) return null;
 
-                $p = $batch->weekProgress();
-                return [
-                    'nama_batch'  => $batch->nama_batch,
-                    'tahun_batch' => $batch->tahun_batch,
-                    'currentWeek' => $p['current'],
-                    'totalWeeks'  => $p['total'],
-                ];
+                $currentId = optional(Batch::current())->id_batch;
+                $today     = now()->startOfDay();
+
+                return $query->newestFirst()->get()->map(function (Batch $batch) use ($currentId, $today) {
+                    $p = $batch->weekProgress();
+                    $state = $today->lt($batch->tanggal_mulai->copy()->startOfDay())
+                        ? 'belum'
+                        : ($today->gt($batch->tanggal_selesai->copy()->startOfDay()) ? 'selesai' : 'berjalan');
+
+                    return [
+                        'id_batch'        => $batch->id_batch,
+                        'nama_batch'      => $batch->nama_batch,
+                        'tahun_batch'     => $batch->tahun_batch,
+                        'tanggal_mulai'   => $batch->tanggal_mulai->toDateString(),
+                        'tanggal_selesai' => $batch->tanggal_selesai->toDateString(),
+                        'currentWeek'     => $p['current'],
+                        'totalWeeks'      => $p['total'],
+                        'state'           => $state,
+                        'is_current'      => $batch->id_batch === $currentId,
+                    ];
+                })->values();
             },
             'inbox' => function () use ($request) {
                 $user = $request->user();
