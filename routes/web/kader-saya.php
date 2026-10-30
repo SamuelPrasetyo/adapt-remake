@@ -3,6 +3,7 @@
 use App\Http\Controllers\KaderSaya\DokumenLainnyaController;
 use App\Http\Controllers\KaderSaya\KaderSayaController;
 use App\Http\Controllers\KaderSaya\KaderStatusController;
+use App\Http\Controllers\KaderSaya\KaderTestAnswerController;
 use App\Http\Controllers\KaderSaya\KandidatExportController;
 use App\Http\Controllers\KaderSaya\PenilaianOjtController;
 use App\Http\Controllers\KaderSaya\PerjanjianKerjaController;
@@ -13,6 +14,8 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['can:isAdmin021'])->group(function () {
     Route::post('/kader-saya/{kader_id}/nonaktifkan', [KaderStatusController::class, 'deactivate'])->name('kader.saya.deactivate');
     Route::post('/kader-saya/{kader_id}/aktifkan', [KaderStatusController::class, 'reactivate'])->name('kader.saya.reactivate');
+    // Detail jawaban Pre/Post-Test kader beserta kunci jawaban (JSON, tab Overview).
+    Route::get('/kader-saya/{kader_id}/modul/{modul_id}/answers/{type}', [KaderTestAnswerController::class, 'show'])->name('kader.saya.testAnswers');
 });
 
 // Kader Saya, Perjanjian Kerja & Penilaian OJT — Admin MAI + Mentor

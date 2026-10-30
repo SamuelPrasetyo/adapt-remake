@@ -141,6 +141,7 @@ export default function KaderSayaDetail({
     mentorUnassigned = false,
     isNonaktif = false,
     canDeactivate = false,
+    canViewTestAnswers = false,
 }) {
     const [statusModal, setStatusModal] = useState(false);
     const [statusBusy, setStatusBusy] = useState(false);
@@ -411,7 +412,8 @@ export default function KaderSayaDetail({
 
             {/* Tab content */}
             {tab === "learning" && (
-                <LearningGrowthTab faseGroups={faseGroups} allFases={allFases} />
+                <LearningGrowthTab faseGroups={faseGroups} allFases={allFases}
+                    kaderId={kader.id} canViewTestAnswers={canViewTestAnswers} />
             )}
             {tab === "kandidat" && canViewKandidat && (
                 <KandidatTab kandidat={kandidat} nikKtp={nikKtp} kandidatError={kandidatError} kaderId={kader.id} />

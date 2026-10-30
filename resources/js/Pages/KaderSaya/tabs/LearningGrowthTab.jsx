@@ -1,5 +1,7 @@
 import { getFaseLabel, getFaseNum } from "@/constants/fase";
+import { useState } from "react";
 import { scoreTone } from "@/Components/Report/reportUi";
+import TestAnswerModal from "./TestAnswerModal";
 
 export const FASE_PALETTE = [
     { bg: "bg-purple-50", border: "border-purple-200", text: "text-purple-700", bar: "bg-purple-500", badge: "bg-purple-100 text-purple-700" },
@@ -19,7 +21,29 @@ export const scoreColor = (score) => scoreTone(score).text;
 const faseNum = getFaseNum;
 const faseLabel = getFaseLabel;
 
-export default function LearningGrowthTab({ faseGroups, allFases = [] }) {
+/** Kartu skor Pre/Post Test; jadi tombol (buka detail jawaban) bila onClick diberikan. */
+function TestScoreCard({ label, score, cls, labelCls, onClick }) {
+    const body = (
+        <>
+            <span className={`text-[10px] font-medium leading-none ${labelCls}`}>{label}</span>
+            <span className={`text-sm font-bold leading-none ${scoreColor(score)}`}>
+                {score != null ? score : '—'}
+            </span>
+        </>
+    );
+    const base = `flex-1 flex flex-col items-center justify-center rounded-lg border py-2 gap-1 ${cls}`;
+    if (!onClick) return <div className={base}>{body}</div>;
+    return (
+        <button type="button" onClick={onClick} title={`Lihat detail jawaban ${label}`}
+            className={`${base} cursor-pointer transition hover:shadow-sm hover:brightness-95`}>
+            {body}
+        </button>
+    );
+}
+
+export default function LearningGrowthTab({ faseGroups, allFases = [], kaderId = null, canViewTestAnswers = false }) {
+    // { modul, type } — modal detail jawaban Pre/Post Test (Admin MAI 021).
+    const [answerModal, setAnswerModal] = useState(null);
     const displayFases = allFases.length > 0 ? allFases : faseGroups.map((fg) => fg.fase);
     const fgByFase = (fase) => faseGroups.find((g) => faseNum(g.fase) === faseNum(fase));
 
@@ -141,20 +165,14 @@ export default function LearningGrowthTab({ faseGroups, allFases = [] }) {
                                         {(m.need_pre || m.has_test || m.has_post_activity) && (
                                             <div className="flex items-stretch gap-2">
                                                 {m.need_pre && (
-                                                    <div className="flex-1 flex flex-col items-center justify-center rounded-lg bg-blue-50 border border-blue-200 py-2 gap-1">
-                                                        <span className="text-[10px] font-medium text-blue-600 leading-none">Pre Test</span>
-                                                        <span className={`text-sm font-bold leading-none ${scoreColor(m.pre_score)}`}>
-                                                            {m.pre_score != null ? m.pre_score : '—'}
-                                                        </span>
-                                                    </div>
+                                                    <TestScoreCard label="Pre Test" score={m.pre_score}
+                                                        cls="bg-blue-50 border-blue-200" labelCls="text-blue-600"
+                                                        onClick={canViewTestAnswers && m.pre_score != null ? () => setAnswerModal({ modul: m, type: "pre" }) : null} />
                                                 )}
                                                 {m.has_test && (
-                                                    <div className="flex-1 flex flex-col items-center justify-center rounded-lg bg-amber-50 border border-amber-200 py-2 gap-1">
-                                                        <span className="text-[10px] font-medium text-amber-600 leading-none">Post Test</span>
-                                                        <span className={`text-sm font-bold leading-none ${scoreColor(m.post_score)}`}>
-                                                            {m.post_score != null ? m.post_score : '—'}
-                                                        </span>
-                                                    </div>
+                                                    <TestScoreCard label="Post Test" score={m.post_score}
+                                                        cls="bg-amber-50 border-amber-200" labelCls="text-amber-600"
+                                                        onClick={canViewTestAnswers && m.post_score != null ? () => setAnswerModal({ modul: m, type: "post" }) : null} />
                                                 )}
                                                 {m.has_post_activity && (
                                                     <div className="flex-1 flex flex-col items-center justify-center rounded-lg bg-rose-50 border border-rose-200 py-2 gap-1">
@@ -173,6 +191,11 @@ export default function LearningGrowthTab({ faseGroups, allFases = [] }) {
                     );
                 })}
             </div>
+
+            {canViewTestAnswers && (
+                <TestAnswerModal open={answerModal !== null} onClose={() => setAnswerModal(null)}
+                    kaderId={kaderId} modul={answerModal?.modul} initialType={answerModal?.type ?? "pre"} />
+            )}
         </div>
     );
 }

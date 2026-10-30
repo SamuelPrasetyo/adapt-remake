@@ -422,6 +422,8 @@ class KaderSayaController extends Controller
             // Status Non Aktif + tombol Nonaktifkan/Aktifkan (hanya Admin MAI 021).
             'isNonaktif'         => $kader->deactivated_at !== null,
             'canDeactivate'      => $isAdmin021 && $kader->deleted_at === null,
+            // Kartu Pre/Post Test di tab Overview bisa diklik → detail jawaban + kunci (Admin MAI 021).
+            'canViewTestAnswers' => $isAdmin021,
             // Banner peringatan kader tanpa mentor aktif (Admin/Mentor saja).
             'mentorUnassigned'   => $mentorUnassigned,
             'allFases'           => $isArsipBatch ? $arsipDetail['allFases'] : $report['allFases'],
