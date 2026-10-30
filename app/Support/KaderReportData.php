@@ -81,15 +81,30 @@ class KaderReportData
                 ->whereIn('dokumen.modul_id', $allModulIds)
                 ->where('dokumen.jenis', 'POST_ACTIVITY')
                 ->leftJoin('penilaian_post_activity', 'dokumen.id', '=', 'penilaian_post_activity.dokumen_id')
-                ->select('dokumen.modul_id', 'penilaian_post_activity.nilai as pa_score', 'penilaian_post_activity.dinilai_at as pa_time')
+                ->select(
+                    'dokumen.modul_id', 'dokumen.nama_file', 'dokumen.path_file', 'dokumen.status',
+                    'dokumen.rejection_reason', 'dokumen.created_at',
+                    'penilaian_post_activity.nilai as pa_score', 'penilaian_post_activity.dinilai_at as pa_time'
+                )
+                ->orderBy('dokumen.created_at')
                 ->get()
             : collect();
 
         $docIds     = [];
         $paScoreMap = [];
         $paTimeMap  = [];
+        $paFilesMap = [];
         foreach ($paData as $d) {
             $docIds[$d->modul_id] = true;
+            // File Post Activity yang diupload kader — ditampilkan saat kartu Post Activity diklik.
+            $paFilesMap[$d->modul_id][] = [
+                'nama_file'        => $d->nama_file,
+                'path_file'        => $d->path_file,
+                'status'           => $d->status,
+                'rejection_reason' => $d->rejection_reason,
+                'nilai'            => $d->pa_score !== null ? (float) $d->pa_score : null,
+                'uploaded_at'      => $d->created_at ? Carbon::parse($d->created_at)->toIso8601String() : null,
+            ];
             if ($d->pa_score !== null) {
                 $paScoreMap[$d->modul_id] = (float) $d->pa_score;
                 $paTimeMap[$d->modul_id]  = $d->pa_time;
@@ -152,6 +167,7 @@ class KaderReportData
                 'pre_score'         => isset($testMap[$modul->id]['pre'])  ? (int) round($testMap[$modul->id]['pre'])  : null,
                 'post_score'        => isset($testMap[$modul->id]['post']) ? (int) round($testMap[$modul->id]['post']) : null,
                 'pa_score'          => isset($paScoreMap[$modul->id])      ? (int) round($paScoreMap[$modul->id])      : null,
+                'pa_files'          => $paFilesMap[$modul->id] ?? [],
                 'done'              => $done,
                 'required'          => $required,
                 'score'             => $modulScore,

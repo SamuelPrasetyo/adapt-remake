@@ -1,7 +1,9 @@
 import { getFaseLabel, getFaseNum } from "@/constants/fase";
 import { useState } from "react";
 import { scoreTone } from "@/Components/Report/reportUi";
+import Toast from "@/Components/Toast";
 import TestAnswerModal from "./TestAnswerModal";
+import PostActivityFilesModal from "./PostActivityFilesModal";
 
 export const FASE_PALETTE = [
     { bg: "bg-purple-50", border: "border-purple-200", text: "text-purple-700", bar: "bg-purple-500", badge: "bg-purple-100 text-purple-700" },
@@ -22,7 +24,7 @@ const faseNum = getFaseNum;
 const faseLabel = getFaseLabel;
 
 /** Kartu skor Pre/Post Test; jadi tombol (buka detail jawaban) bila onClick diberikan. */
-function TestScoreCard({ label, score, cls, labelCls, onClick }) {
+function TestScoreCard({ label, score, cls, labelCls, onClick, title }) {
     const body = (
         <>
             <span className={`text-[10px] font-medium leading-none ${labelCls}`}>{label}</span>
@@ -34,7 +36,7 @@ function TestScoreCard({ label, score, cls, labelCls, onClick }) {
     const base = `flex-1 flex flex-col items-center justify-center rounded-lg border py-2 gap-1 ${cls}`;
     if (!onClick) return <div className={base}>{body}</div>;
     return (
-        <button type="button" onClick={onClick} title={`Lihat detail jawaban ${label}`}
+        <button type="button" onClick={onClick} title={title ?? `Lihat detail jawaban ${label}`}
             className={`${base} cursor-pointer transition hover:shadow-sm hover:brightness-95`}>
             {body}
         </button>
@@ -44,6 +46,14 @@ function TestScoreCard({ label, score, cls, labelCls, onClick }) {
 export default function LearningGrowthTab({ faseGroups, allFases = [], kaderId = null, canViewTestAnswers = false }) {
     // { modul, type } — modal detail jawaban Pre/Post Test (Admin MAI 021).
     const [answerModal, setAnswerModal] = useState(null);
+    // Modul yang file Post Activity-nya sedang dibuka.
+    const [paModul, setPaModul] = useState(null);
+    const [toast, setToast] = useState({ open: false, message: "", key: 0 });
+
+    const openPostActivity = (m) => {
+        if (m.pa_files.length > 0) { setPaModul(m); return; }
+        setToast((t) => ({ open: true, message: `File Post Activity "${m.nama}" belum diupload oleh Kader.`, key: t.key + 1 }));
+    };
     const displayFases = allFases.length > 0 ? allFases : faseGroups.map((fg) => fg.fase);
     const fgByFase = (fase) => faseGroups.find((g) => faseNum(g.fase) === faseNum(fase));
 
@@ -175,12 +185,10 @@ export default function LearningGrowthTab({ faseGroups, allFases = [], kaderId =
                                                         onClick={canViewTestAnswers && m.post_score != null ? () => setAnswerModal({ modul: m, type: "post" }) : null} />
                                                 )}
                                                 {m.has_post_activity && (
-                                                    <div className="flex-1 flex flex-col items-center justify-center rounded-lg bg-rose-50 border border-rose-200 py-2 gap-1">
-                                                        <span className="text-[10px] font-medium text-rose-600 leading-none">Post Activity</span>
-                                                        <span className={`text-sm font-bold leading-none ${scoreColor(m.pa_score)}`}>
-                                                            {m.pa_score != null ? m.pa_score : '—'}
-                                                        </span>
-                                                    </div>
+                                                    <TestScoreCard label="Post Activity" score={m.pa_score}
+                                                        cls="bg-rose-50 border-rose-200" labelCls="text-rose-600"
+                                                        title="Lihat file Post Activity"
+                                                        onClick={canViewTestAnswers && Array.isArray(m.pa_files) ? () => openPostActivity(m) : null} />
                                                 )}
                                             </div>
                                         )}
@@ -195,6 +203,13 @@ export default function LearningGrowthTab({ faseGroups, allFases = [], kaderId =
             {canViewTestAnswers && (
                 <TestAnswerModal open={answerModal !== null} onClose={() => setAnswerModal(null)}
                     kaderId={kaderId} modul={answerModal?.modul} initialType={answerModal?.type ?? "pre"} />
+            )}
+            {canViewTestAnswers && (
+                <>
+                    <PostActivityFilesModal open={paModul !== null} onClose={() => setPaModul(null)} modul={paModul} />
+                    <Toast key={toast.key} open={toast.open} type="warning" message={toast.message}
+                        onClose={() => setToast((t) => ({ ...t, open: false }))} />
+                </>
             )}
         </div>
     );

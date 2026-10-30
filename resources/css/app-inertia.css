@@ -70,3 +70,8 @@ input[type="password"]::-ms-clear { display: none; }
 }
 .toast-enter { animation: toast-slide-in 0.35s cubic-bezier(0.21, 1.02, 0.73, 1) forwards; }
 .toast-bar   { animation: toast-progress var(--toast-duration, 5s) linear forwards; }
+
+/* Penampil XLSX (Components/FilePreviewModal) — tabel hasil SheetJS sheet_to_html. */
+.xlsx-preview table { border-collapse: collapse; font-size: 13px; }
+.xlsx-preview td, .xlsx-preview th { border: 1px solid #e2e8f0; padding: 4px 8px; white-space: nowrap; color: #334155; }
+.xlsx-preview tr:first-child td { background: #f8fafc; font-weight: 600; }
