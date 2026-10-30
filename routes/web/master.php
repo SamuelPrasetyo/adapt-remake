@@ -9,6 +9,7 @@ use App\Http\Controllers\Master\PertanyaanController;
 use App\Http\Controllers\Master\UserController;
 use App\Http\Controllers\Master\WeekController;
 use App\Http\Controllers\Modul\DokumenController;
+use App\Http\Controllers\Modul\DokumenPsikotestController;
 use App\Http\Controllers\Modul\JawabanController;
 use App\Http\Controllers\Modul\ModulController;
 use App\Http\Controllers\Modul\SoalModulController;
@@ -138,4 +139,13 @@ Route::middleware(['can:isAdmin&Mentor'])->controller(DokumenController::class)-
     Route::post('/dokumen/store', 'store')->name('dokumen.store');
     Route::put('/dokumen/update/{id}', 'update')->name('dokumen.update');
     Route::delete('/dokumen/delete/{id}', 'destroy')->name('dokumen.destroy');
+});
+
+// Upload Dokumen Psikotest — daftar kader per batch, upload hasil psikotest per baris.
+// Khusus Admin MAI (021).
+Route::middleware(['can:isAdmin021'])->controller(DokumenPsikotestController::class)->group(function () {
+    Route::get('/dokumen-psikotest', 'index')->name('psikotest.index');
+    Route::post('/dokumen-psikotest/{kader_id}', 'store')->name('psikotest.store');
+    Route::get('/dokumen-psikotest/file/{id}', 'file')->name('psikotest.file');
+    Route::delete('/dokumen-psikotest/file/{id}', 'destroy')->name('psikotest.destroy');
 });

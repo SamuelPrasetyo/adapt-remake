@@ -200,6 +200,12 @@ export const ADMIN_NAV = [
                 requires: "mentor_or_admin021",
             },
             {
+                label: "Dokumen Psikotest",
+                href: "/dokumen-psikotest",
+                match: "/dokumen-psikotest",
+                requires: "admin021",
+            },
+            {
                 label: "Template",
                 href: "/template",
                 match: "/template",
