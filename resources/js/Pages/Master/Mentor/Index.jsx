@@ -1,13 +1,25 @@
 import { useState, useMemo, useRef } from 'react';
 import { useForm, router } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
-import DataTable from '@/Components/DataTable';
+import DataTable, { LocalPagination } from '@/Components/DataTable';
 import Modal from '@/Components/Modal';
+import FilePreviewModal from '@/Components/FilePreviewModal';
 
 const inputCls = "w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 bg-white";
 
 // Batas maksimum mentor per kader — selaras dgn KaderPerMentorController::MAX_MENTORS_PER_KADER.
 const MAX_MENTORS_PER_KADER = 5;
+const RIWAYAT_PER_PAGE = 10;
+
+// Dokumen pendukung pergantian mentor — selaras dgn KaderPerMentorController::PERGANTIAN_MAX_KB.
+const PERGANTIAN_MAX_BYTES = 2 * 1024 * 1024;
+const pergantianDocUrl = (id) => `/mentor/pergantian-dokumen/${id}?inline=1`;
+
+const formatTanggal = (v) => {
+    if (!v) return '—';
+    const d = new Date(String(v).replace(' ', 'T'));
+    return isNaN(d) ? v : d.toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+};
 
 const COLS = [
     { key: '_no',     label: 'No',      width: '60px', render: (_, __, i) => i + 1 },
@@ -53,7 +65,7 @@ function ActionBtn({ onClick, color, title, children }) {
     );
 }
 
-export default function MentorIndex({ mentors, companys, kaders = [], assignments = [], mentorUsers = [] }) {
+export default function MentorIndex({ mentors, companys, kaders = [], assignments = [], mentorUsers = [], pergantianMentor = [] }) {
     const [tambahOpen, setTambahOpen] = useState(false);
     const [editOpen, setEditOpen]     = useState(false);
     const [editRow, setEditRow]       = useState(null);
@@ -63,6 +75,18 @@ export default function MentorIndex({ mentors, companys, kaders = [], assignment
     const [assignKaderIds, setAssignKaderIds] = useState([]);
     const [assignProcessing, setAssignProcessing] = useState(false);
     const [showOtherBU, setShowOtherBU] = useState(false);
+    const [assignFile, setAssignFile]     = useState(null);
+    const [assignAlasan, setAssignAlasan] = useState('');
+    const [assignErrors, setAssignErrors] = useState({});
+    const [showRiwayat, setShowRiwayat]   = useState(false);
+    const [previewDoc, setPreviewDoc]     = useState(null);
+    const [riwayatOpen, setRiwayatOpen]     = useState(false);
+    const [riwayatSearch, setRiwayatSearch] = useState('');
+    const [riwayatPage, setRiwayatPage]     = useState(1);
+    // Mobile: upload dokumen pergantian dipisah ke langkah kedua ('dokumen').
+    // Layar lebar (lg+) menampilkan keduanya berdampingan sehingga langkah ini diabaikan.
+    const [assignStep, setAssignStep]     = useState('pilih');
+    const assignFileRef = useRef(null);
 
     const [addPhotoPreview, setAddPhotoPreview]   = useState(null);
     const [editPhotoPreview, setEditPhotoPreview] = useState(null);
@@ -137,6 +161,12 @@ export default function MentorIndex({ mentors, companys, kaders = [], assignment
         setAssignKaderIds(alreadyAssigned);
         setAssignSearch('');
         setShowOtherBU(false);
+        setAssignFile(null);
+        setAssignAlasan('');
+        setAssignErrors({});
+        setShowRiwayat(false);
+        setAssignStep('pilih');
+        if (assignFileRef.current) assignFileRef.current.value = '';
         setAssignOpen(true);
     };
 
@@ -191,13 +221,110 @@ export default function MentorIndex({ mentors, companys, kaders = [], assignment
         );
     };
 
+    const kaderById = useMemo(
+        () => Object.fromEntries(kaders.map((k) => [k.id, k])),
+        [kaders]
+    );
+
+    // Kader yang berubah (ditambah / dilepas) di batch yang sudah berjalan → wajib
+    // dokumen pendukung + alasan. Server tetap menegakkan aturan yang sama.
+    const terdampak = useMemo(() => {
+        const added   = assignKaderIds.filter((id) => !assignedHere.includes(id));
+        const removed = assignedHere.filter((id) => !assignKaderIds.includes(id));
+        return [...added, ...removed]
+            .map((id) => kaderById[id])
+            .filter((k) => k?.batch_started);
+    }, [assignKaderIds, assignedHere, kaderById]);
+    const needsDoc = terdampak.length > 0;
+    const step = needsDoc ? assignStep : 'pilih';
+    const docIncomplete = needsDoc && (!assignFile || !assignAlasan.trim());
+
+    const riwayatMentor = useMemo(
+        () => pergantianMentor.filter((r) => r.mentor_id === assignMentor?.id),
+        [pergantianMentor, assignMentor]
+    );
+
+    // Riwayat semua mentor, dikelompokkan per submit: satu submit = satu dokumen + alasan
+    // untuk beberapa kader. Baris dari submit yang sama berbagi mentor_id & created_at.
+    const riwayatSemua = useMemo(() => {
+        const groups = new Map();
+        for (const r of pergantianMentor) {
+            const key = `${r.mentor_id}|${r.created_at}`;
+            if (!groups.has(key)) {
+                groups.set(key, {
+                    key,
+                    docId:           r.id,
+                    nama_file:       r.nama_file,
+                    mentor_nama:     r.mentor_nama,
+                    alasan:          r.alasan,
+                    created_at:      r.created_at,
+                    created_by_name: r.created_by_name,
+                    tambah: [],
+                    lepas:  [],
+                });
+            }
+            groups.get(key)[r.aksi === 'ASSIGN' ? 'tambah' : 'lepas'].push(r.kader_nama || '—');
+        }
+        return [...groups.values()];
+    }, [pergantianMentor]);
+
+    const riwayatFiltered = useMemo(() => {
+        const q = riwayatSearch.trim().toLowerCase();
+        if (!q) return riwayatSemua;
+        return riwayatSemua.filter((g) =>
+            [g.mentor_nama, g.alasan, g.created_by_name, ...g.tambah, ...g.lepas]
+                .some((v) => v?.toLowerCase().includes(q))
+        );
+    }, [riwayatSemua, riwayatSearch]);
+
+    const riwayatTotalPages = Math.max(1, Math.ceil(riwayatFiltered.length / RIWAYAT_PER_PAGE));
+    // Jaga halaman tetap valid bila hasil pencarian menyusut.
+    const riwayatCurrentPage = Math.min(riwayatPage, riwayatTotalPages);
+    const riwayatPageRows = riwayatFiltered.slice(
+        (riwayatCurrentPage - 1) * RIWAYAT_PER_PAGE,
+        riwayatCurrentPage * RIWAYAT_PER_PAGE
+    );
+
+    const onPickDokumen = (e) => {
+        const file = e.target.files?.[0] ?? null;
+        setAssignErrors((prev) => ({ ...prev, dokumen: null }));
+        if (!file) { setAssignFile(null); return; }
+
+        const ext = file.name.split('.').pop().toLowerCase();
+        let err = null;
+        if (ext !== 'pdf') err = 'Format dokumen harus PDF.';
+        else if (file.size > PERGANTIAN_MAX_BYTES) err = 'Ukuran dokumen maksimal 2 MB.';
+
+        if (err) {
+            setAssignErrors((prev) => ({ ...prev, dokumen: err }));
+            setAssignFile(null);
+            e.target.value = '';
+            return;
+        }
+        setAssignFile(file);
+    };
+
     const submitAssign = (e) => {
         e.preventDefault();
+        if (docIncomplete) {
+            // Mobile: bawa ke langkah dokumen supaya pesan error-nya terlihat.
+            setAssignStep('dokumen');
+            setAssignErrors({
+                dokumen: !assignFile ? 'Wajib upload dokumen pendukung pergantian mentor (PDF, maks. 2 MB).' : null,
+                alasan:  !assignAlasan.trim() ? 'Wajib mengisi alasan pergantian mentor.' : null,
+            });
+            return;
+        }
+
         setAssignProcessing(true);
+        setAssignErrors({});
         router.post('/mentor/assign-kader', {
             mentor_id: assignMentor.id,
             kader_ids: assignKaderIds,
+            ...(needsDoc ? { dokumen: assignFile, alasan: assignAlasan } : {}),
         }, {
+            forceFormData: true,
+            onError: setAssignErrors,
             onFinish: () => setAssignProcessing(false),
             onSuccess: () => setAssignOpen(false),
         });
@@ -228,15 +355,31 @@ export default function MentorIndex({ mentors, companys, kaders = [], assignment
                     </div>
                 )}
                 headerActions={
-                    <button
-                        onClick={() => setTambahOpen(true)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition"
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                        Tambah Mentor
-                    </button>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <button
+                            onClick={() => setTambahOpen(true)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            Tambah Mentor
+                        </button>
+                        <button
+                            onClick={() => { setRiwayatSearch(''); setRiwayatPage(1); setRiwayatOpen(true); }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 rounded-lg transition"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Riwayat Pergantian
+                            {riwayatSemua.length > 0 && (
+                                <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-amber-200 text-amber-800">
+                                    {riwayatSemua.length}
+                                </span>
+                            )}
+                        </button>
+                    </div>
                 }
             />
 
@@ -408,22 +551,43 @@ export default function MentorIndex({ mentors, companys, kaders = [], assignment
             <Modal
                 open={assignOpen}
                 onClose={() => setAssignOpen(false)}
-                title={assignMentor ? `Assign Kader ke ${assignMentor.nama}` : 'Assign Kader'}
-                size="lg"
+                title={step === 'dokumen'
+                    ? 'Dokumen Pergantian Mentor'
+                    : assignMentor ? `Assign Kader ke ${assignMentor.nama}` : 'Assign Kader'}
+                // Ada kader batch berjalan yang berubah → lebarkan agar panel dokumen muat di kanan.
+                size={needsDoc ? '2xl' : 'lg'}
                 footer={
                     <>
-                        <button type="button" onClick={() => setAssignOpen(false)}
-                            className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition">
-                            Batal
-                        </button>
-                        <button type="submit" form="mentor-assign-form" disabled={assignProcessing}
-                            className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition">
+                        {step === 'dokumen' ? (
+                            <button type="button" onClick={() => setAssignStep('pilih')}
+                                className="lg:hidden px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition">
+                                Kembali
+                            </button>
+                        ) : (
+                            <button type="button" onClick={() => setAssignOpen(false)}
+                                className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition">
+                                Batal
+                            </button>
+                        )}
+                        {/* Mobile: belum di langkah dokumen → tombol lanjut, bukan submit. */}
+                        {needsDoc && step === 'pilih' && (
+                            <button type="button" onClick={() => setAssignStep('dokumen')}
+                                className="lg:hidden px-4 py-2 text-sm font-medium text-white bg-amber-500 rounded-lg hover:bg-amber-600 transition">
+                                Lanjut: Upload Dokumen
+                            </button>
+                        )}
+                        <button type="submit" form="mentor-assign-form"
+                            disabled={assignProcessing || docIncomplete}
+                            className={`${needsDoc && step === 'pilih' ? 'hidden lg:inline-flex' : 'inline-flex'} px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition`}>
                             {assignProcessing ? 'Memproses...' : `Assign ${assignKaderIds.length} Kader`}
                         </button>
                     </>
                 }
             >
-                <form id="mentor-assign-form" onSubmit={submitAssign}>
+                <form id="mentor-assign-form" onSubmit={submitAssign}
+                    className={needsDoc ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-5' : ''}>
+                    {/* Kolom kiri: daftar kader (disembunyikan di mobile saat langkah dokumen). */}
+                    <div className={step === 'dokumen' ? 'hidden lg:block min-w-0' : 'min-w-0'}>
                     <div className="mb-3">
                         <input type="text" placeholder="Cari kader (Nama / NIK)"
                             value={assignSearch}
@@ -493,6 +657,12 @@ export default function MentorIndex({ mentors, companys, kaders = [], assignment
                                                     Lintas BU
                                                 </span>
                                             )}
+                                            {!!k.batch_started && (
+                                                <span title="Perubahan mentor wajib disertai dokumen pendukung"
+                                                    className="inline-flex items-center shrink-0 px-1.5 py-0.5 rounded-full text-[10px] font-semibold ring-1 ring-inset bg-sky-50 text-sky-700 ring-sky-200">
+                                                    Batch berjalan
+                                                </span>
+                                            )}
                                         </div>
                                         <div className={`text-xs truncate ${crossBU ? 'text-amber-700' : 'text-slate-500'}`}>
                                             {k.nik} · {k.bu || k.company_code} {k.divisi_name ? `· ${k.divisi_name}` : ''}
@@ -519,8 +689,179 @@ export default function MentorIndex({ mentors, companys, kaders = [], assignment
                             </button>
                         </div>
                     )}
+
+                    {/* Data batch di halaman bisa usang (mis. batch baru mulai hari ini) —
+                        tetap tampilkan penolakan server agar admin tahu harus memuat ulang. */}
+                    {!needsDoc && (assignErrors.dokumen || assignErrors.alasan) && (
+                        <div className="mt-3 text-xs text-red-600">
+                            {assignErrors.dokumen || assignErrors.alasan} Muat ulang halaman lalu coba lagi.
+                        </div>
+                    )}
+
+                    {riwayatMentor.length > 0 && (
+                        <div className="mt-3">
+                            <button type="button" onClick={() => setShowRiwayat((v) => !v)}
+                                className="text-xs font-medium text-slate-600 hover:text-slate-800">
+                                {showRiwayat ? '▾' : '▸'} Riwayat Pergantian ({riwayatMentor.length})
+                            </button>
+                            {showRiwayat && (
+                                <div className="mt-2 max-h-56 overflow-y-auto border border-slate-200 rounded-lg">
+                                    <table className="w-full text-xs">
+                                        <thead className="bg-slate-50 text-slate-500 sticky top-0">
+                                            <tr>
+                                                <th className="px-2 py-1.5 text-left font-medium">Tanggal</th>
+                                                <th className="px-2 py-1.5 text-left font-medium">Kader</th>
+                                                <th className="px-2 py-1.5 text-left font-medium">Aksi</th>
+                                                <th className="px-2 py-1.5 text-left font-medium">Alasan</th>
+                                                <th className="px-2 py-1.5" />
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {riwayatMentor.map((r) => (
+                                                <tr key={r.id}>
+                                                    <td className="px-2 py-1.5 whitespace-nowrap text-slate-600">
+                                                        {formatTanggal(r.created_at)}
+                                                        {r.created_by_name && <div className="text-[10px] text-slate-400">{r.created_by_name}</div>}
+                                                    </td>
+                                                    <td className="px-2 py-1.5 text-slate-700">{r.kader_nama || '—'}</td>
+                                                    <td className="px-2 py-1.5">
+                                                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                                                            r.aksi === 'ASSIGN' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-600'
+                                                        }`}>
+                                                            {r.aksi === 'ASSIGN' ? 'Tambah' : 'Lepas'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-2 py-1.5 text-slate-600">{r.alasan || '—'}</td>
+                                                    <td className="px-2 py-1.5 text-right">
+                                                        <button type="button"
+                                                            onClick={() => setPreviewDoc({ nama_file: r.nama_file, url: pergantianDocUrl(r.id) })}
+                                                            className="font-medium text-blue-600 hover:text-blue-700">
+                                                            Lihat
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    </div>
+
+                    {/* Kolom kanan (lg+) / langkah kedua (mobile): pergantian mentor saat batch
+                        sudah berjalan wajib dokumen pendukung + alasan. Selalu ter-mount selama
+                        needsDoc supaya file yang dipilih tidak hilang saat pindah langkah. */}
+                    {needsDoc && (
+                        <div className={step === 'dokumen' ? 'block' : 'hidden lg:block'}>
+                            <div className="p-3 rounded-lg border border-amber-300 bg-amber-50 lg:sticky lg:top-0">
+                                <div className="text-sm font-semibold text-amber-800">
+                                    Batch sudah berjalan — pergantian mentor wajib disertai dokumen pendukung
+                                </div>
+                                <div className="text-xs text-amber-700 mt-0.5 mb-2">
+                                    Kader terdampak: {terdampak.map((k) => k.nama).join(', ')}
+                                </div>
+                                <FormField label="Dokumen Pendukung (PDF, maks. 2 MB)" error={assignErrors.dokumen}>
+                                    <input ref={assignFileRef} type="file" accept="application/pdf,.pdf"
+                                        onChange={onPickDokumen}
+                                        className="block w-full text-sm text-slate-600 file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-amber-100 file:text-amber-800 hover:file:bg-amber-200" />
+                                </FormField>
+                                <FormField label="Alasan Pergantian" error={assignErrors.alasan}>
+                                    <textarea rows={4} maxLength={500} value={assignAlasan}
+                                        onChange={(e) => setAssignAlasan(e.target.value)}
+                                        placeholder="Mis. mentor mutasi / resign, penyesuaian penempatan, ..."
+                                        className={inputCls} />
+                                    <div className="text-[11px] text-slate-400 text-right">{assignAlasan.length}/500</div>
+                                </FormField>
+                            </div>
+                        </div>
+                    )}
                 </form>
             </Modal>
+
+            {/* Riwayat Pergantian Mentor — semua mentor, satu baris per submit berdokumen. */}
+            <Modal
+                open={riwayatOpen}
+                onClose={() => setRiwayatOpen(false)}
+                title="Riwayat Pergantian Mentor"
+                size="3xl"
+            >
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                    <p className="text-xs text-slate-500">
+                        Perubahan mentor saat batch sudah berjalan, beserta dokumen pendukung & alasannya.
+                    </p>
+                    <input type="text" placeholder="Cari mentor / kader / alasan"
+                        value={riwayatSearch}
+                        onChange={(e) => { setRiwayatSearch(e.target.value); setRiwayatPage(1); }}
+                        className={`${inputCls} sm:max-w-xs`} />
+                </div>
+
+                {riwayatFiltered.length === 0 ? (
+                    <div className="text-center py-10 text-sm text-slate-400">
+                        {riwayatSemua.length === 0 ? 'Belum ada riwayat pergantian mentor.' : 'Tidak ada riwayat yang cocok.'}
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                        <table className="w-full min-w-[720px] text-sm">
+                            <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
+                                <tr>
+                                    <th className="px-3 py-2 text-left font-semibold">Tanggal</th>
+                                    <th className="px-3 py-2 text-left font-semibold">Mentor</th>
+                                    <th className="px-3 py-2 text-left font-semibold">Perubahan Kader</th>
+                                    <th className="px-3 py-2 text-left font-semibold">Alasan</th>
+                                    <th className="px-3 py-2 text-right font-semibold">Dokumen</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {riwayatPageRows.map((g) => (
+                                    <tr key={g.key} className="align-top">
+                                        <td className="px-3 py-2.5 whitespace-nowrap text-slate-600">
+                                            {formatTanggal(g.created_at)}
+                                            {g.created_by_name && (
+                                                <div className="text-[11px] text-slate-400">oleh {g.created_by_name}</div>
+                                            )}
+                                        </td>
+                                        <td className="px-3 py-2.5 font-medium text-slate-800">{g.mentor_nama || '—'}</td>
+                                        <td className="px-3 py-2.5 space-y-1">
+                                            {g.tambah.length > 0 && (
+                                                <div className="text-xs">
+                                                    <span className="mr-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700">Tambah</span>
+                                                    <span className="text-slate-700">{g.tambah.join(', ')}</span>
+                                                </div>
+                                            )}
+                                            {g.lepas.length > 0 && (
+                                                <div className="text-xs">
+                                                    <span className="mr-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-600">Lepas</span>
+                                                    <span className="text-slate-700">{g.lepas.join(', ')}</span>
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td className="px-3 py-2.5 text-slate-600 whitespace-pre-line max-w-xs">{g.alasan || '—'}</td>
+                                        <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                                            <button type="button"
+                                                onClick={() => setPreviewDoc({ nama_file: g.nama_file, url: pergantianDocUrl(g.docId) })}
+                                                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition">
+                                                Lihat PDF
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+                {riwayatFiltered.length > RIWAYAT_PER_PAGE && (
+                    <LocalPagination
+                        page={riwayatCurrentPage}
+                        totalPages={riwayatTotalPages}
+                        total={riwayatFiltered.length}
+                        perPage={RIWAYAT_PER_PAGE}
+                        onPageChange={setRiwayatPage}
+                    />
+                )}
+            </Modal>
+
+            <FilePreviewModal open={!!previewDoc} onClose={() => setPreviewDoc(null)} file={previewDoc} />
         </AppLayout>
     );
 }

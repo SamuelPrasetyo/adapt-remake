@@ -8,6 +8,7 @@ use App\Models\Company;
 use App\Models\Kader;
 use App\Models\ListKaderPerMentor;
 use App\Models\Mentor;
+use App\Models\RiwayatPergantianMentor;
 use App\Models\User;
 use App\Support\UploadName;
 use Illuminate\Http\Request;
@@ -53,13 +54,21 @@ class MentorController extends Controller
                 'kader.nama',
                 'kader.company_code',
                 'company.company_shortname as bu',
-                'divisis.nama as divisi_name'
+                'divisis.nama as divisi_name',
+                // Batch sudah berjalan → perubahan mentor wajib dokumen pendukung
+                // (aturan sebenarnya ditegakkan di KaderPerMentorController::assignKader).
+                DB::raw('(batch.tanggal_mulai IS NOT NULL AND batch.tanggal_mulai <= CURDATE()) as batch_started')
             )
             ->leftJoin('company', 'kader.company_code', '=', 'company.company_code')
             ->leftJoin('divisis', 'kader.id_divisi', '=', 'divisis.id')
+            ->leftJoin('batch', 'kader.id_batch', '=', 'batch.id_batch')
             ->aktif()
             ->orderBy('kader.nama', 'asc')
-            ->get();
+            ->get()
+            // Pakai blok, bukan arrow fn: each() berhenti begitu callback mengembalikan false.
+            ->each(function ($k) {
+                $k->batch_started = (bool) $k->batch_started;
+            });
 
         // Assignment aktif + nama mentor, dipakai UI untuk menampilkan kader ini
         // sudah dibina mentor siapa saja & badge jumlah mentornya.
@@ -77,12 +86,34 @@ class MentorController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'nik', 'company_code']);
 
+        // Riwayat pergantian mentor yang disertai dokumen pendukung (batch sudah berjalan).
+        $pergantianMentor = RiwayatPergantianMentor::select(
+                'riwayat_pergantian_mentor.id',
+                'riwayat_pergantian_mentor.mentor_id',
+                'riwayat_pergantian_mentor.aksi',
+                'riwayat_pergantian_mentor.alasan',
+                'riwayat_pergantian_mentor.nama_file',
+                'riwayat_pergantian_mentor.created_at',
+                'kader.nama as kader_nama',
+                'kader.nik as kader_nik',
+                'mentor.nama as mentor_nama',
+                'users.name as created_by_name'
+            )
+            ->leftJoin('mentor', 'riwayat_pergantian_mentor.mentor_id', '=', 'mentor.id')
+            ->leftJoin('kader', fn($j) => $j->on('riwayat_pergantian_mentor.kader_id', '=', 'kader.id')
+                ->whereNull('kader.deleted_at'))
+            ->leftJoin('users', 'riwayat_pergantian_mentor.created_by', '=', 'users.id')
+            ->whereNotNull('riwayat_pergantian_mentor.path_file')
+            ->orderByDesc('riwayat_pergantian_mentor.created_at')
+            ->get();
+
         return Inertia::render('Master/Mentor/Index', [
-            'mentors'     => $mentors,
-            'companys'    => $companys,
-            'kaders'      => $kaders,
-            'assignments' => $assignments,
-            'mentorUsers' => $mentorUsers,
+            'mentors'          => $mentors,
+            'companys'         => $companys,
+            'kaders'           => $kaders,
+            'assignments'      => $assignments,
+            'mentorUsers'      => $mentorUsers,
+            'pergantianMentor' => $pergantianMentor,
         ]);
     }
 

@@ -14,12 +14,16 @@ use App\Models\ModulAssignment;
 use App\Models\ModulReadingProgress;
 use App\Models\ModulTestResult;
 use App\Models\ReportArsip;
+use App\Models\RiwayatPergantianMentor;
 use App\Models\User;
 use App\Support\ArsipKaderDetail;
 use App\Support\HasilTrainingMt;
 use App\Support\KandidatData;
 use App\Support\ModulScore;
+use App\Support\UploadName;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -29,6 +33,9 @@ class KaderPerMentorController extends Controller
 {
     /** Batas maksimum mentor aktif yang boleh dimiliki satu kader. */
     public const MAX_MENTORS_PER_KADER = 5;
+
+    /** Batas ukuran dokumen pendukung pergantian mentor (KB). */
+    private const PERGANTIAN_MAX_KB = 2048;
 
     public function __construct()
     {
@@ -53,14 +60,17 @@ class KaderPerMentorController extends Controller
 
         $selectedIds = collect($request->kader_ids ?? []);
 
-        // Unassign kader yang tidak dipilih lagi (khusus mentor ini)
-        $unassigned = ListKaderPerMentor::where('mentor_id', $mentor->id)
+        // Kader yang tidak dipilih lagi (khusus mentor ini) — baru dihitung di sini,
+        // di-unassign setelah syarat dokumen pergantian lolos validasi.
+        $toUnassign = ListKaderPerMentor::where('mentor_id', $mentor->id)
             ->whereNull('deleted_at')
             // Kader Non Aktif tidak muncul di daftar pilihan, jadi tidak pernah ada di
             // $selectedIds — jangan ikut di-unassign, riwayat mentornya harus tetap utuh.
             ->whereNotIn('kader_id', Kader::withoutGlobalScopes()->whereNotNull('deactivated_at')->select('id'))
             ->when($selectedIds->isNotEmpty(), fn($q) => $q->whereNotIn('kader_id', $selectedIds->all()))
-            ->update(['deleted_at' => now()]);
+            ->pluck('kader_id')
+            ->unique()
+            ->values();
 
         // Jumlah mentor LAIN yang sudah aktif per kader — untuk enforce batas maksimum.
         $otherMentorCount = $selectedIds->isEmpty()
@@ -77,7 +87,8 @@ class KaderPerMentorController extends Controller
         // ActivityLog karena bukan pola normal.
         $kaders = Kader::aktif()->whereIn('id', $selectedIds->all())->get();
 
-        $inserted = 0;
+        // [kader, existing row|null] yang benar-benar akan di-assign/restore.
+        $toAssign = [];
         $skipped  = [];
         $crossBu  = [];
         foreach ($kaders as $kader) {
@@ -95,31 +106,118 @@ class KaderPerMentorController extends Controller
                 continue;
             }
 
-            if ($existing) {
-                // Restore soft-deleted record
-                $existing->update(['deleted_at' => null]);
-            } else {
-                ListKaderPerMentor::insert([
-                    'id'            => Str::uuid(),
-                    'kader_id'      => $kader->id,
-                    'mentor_id'     => $mentor->id,
-                    'company_code'  => $kader->company_code,
-                    'id_batch'      => $kader->id_batch,
-                    'id_divisi'     => $kader->id_divisi,
-                    'id_department' => $kader->id_departemen,
-                    'created_by'    => Auth::user()->id,
-                    'created_at'    => now(),
-                ]);
-            }
-            $inserted++;
+            $toAssign[] = [$kader, $existing];
 
             if ($kader->company_code !== $mentor->company_code) {
                 $crossBu[] = "{$kader->nama} ({$kader->company_code})";
             }
         }
 
+        // Pergantian mentor saat batch kader sudah berjalan (sejak hari ke-1) wajib
+        // disertai dokumen pendukung + alasan. Sebelum batch mulai, perubahan bebas.
+        $assignIds = collect($toAssign)->map(fn($p) => $p[0]->id);
+        $changedIds = $toUnassign->merge($assignIds)->unique()->values();
+        $startedNames = $this->kadersInStartedBatch($changedIds->all());
+        $needsDoc = $startedNames->isNotEmpty();
+
+        $wajibMsg = 'Batch kader ' . $startedNames->implode(', ') . ' sudah berjalan';
+        $request->validate([
+            'dokumen' => [Rule::requiredIf($needsDoc), 'nullable', 'file', 'mimes:pdf', 'max:' . self::PERGANTIAN_MAX_KB],
+            'alasan'  => [Rule::requiredIf($needsDoc), 'nullable', 'string', 'max:500'],
+        ], [
+            'dokumen.required' => "{$wajibMsg}, wajib upload dokumen pendukung pergantian mentor.",
+            'dokumen.mimes'    => 'Format dokumen harus PDF.',
+            'dokumen.max'      => 'Ukuran dokumen maksimal 2 MB.',
+            'alasan.required'  => "{$wajibMsg}, wajib mengisi alasan pergantian mentor.",
+            'alasan.max'       => 'Alasan maksimal 500 karakter.',
+        ]);
+
+        $namaFile = null;
+        $pathFile = null;
+        $fullPath = null;
+        if ($request->hasFile('dokumen') && $changedIds->isNotEmpty()) {
+            $nameParts  = [$mentor->id, 'pergantian_mentor', $mentor->nama];
+            $storedName = UploadName::stored($nameParts, 'pdf');
+            $dir        = public_path('uploads/pergantian_mentor/' . $mentor->id);
+
+            if (!is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
+
+            $request->file('dokumen')->move($dir, $storedName);
+
+            $namaFile = UploadName::display($nameParts, 'pdf');
+            $pathFile = 'uploads/pergantian_mentor/' . $mentor->id . '/' . $storedName;
+            $fullPath = $dir . DIRECTORY_SEPARATOR . $storedName;
+        }
+
+        $userId = Auth::user()->id;
+        $alasan = $request->filled('alasan') ? trim($request->alasan) : null;
+        $now    = now();
+
+        try {
+            DB::transaction(function () use ($mentor, $toUnassign, $toAssign, $changedIds, $userId, $alasan, $namaFile, $pathFile, $now) {
+                if ($toUnassign->isNotEmpty()) {
+                    ListKaderPerMentor::where('mentor_id', $mentor->id)
+                        ->whereNull('deleted_at')
+                        ->whereIn('kader_id', $toUnassign->all())
+                        ->update(['deleted_at' => $now]);
+                }
+
+                foreach ($toAssign as [$kader, $existing]) {
+                    if ($existing) {
+                        // Restore soft-deleted record
+                        $existing->update(['deleted_at' => null]);
+                    } else {
+                        ListKaderPerMentor::insert([
+                            'id'            => Str::uuid(),
+                            'kader_id'      => $kader->id,
+                            'mentor_id'     => $mentor->id,
+                            'company_code'  => $kader->company_code,
+                            'id_batch'      => $kader->id_batch,
+                            'id_divisi'     => $kader->id_divisi,
+                            'id_department' => $kader->id_departemen,
+                            'created_by'    => $userId,
+                            'created_at'    => $now,
+                        ]);
+                    }
+                }
+
+                if ($changedIds->isEmpty()) {
+                    return;
+                }
+
+                // Riwayat — semua perubahan dicatat, termasuk sebelum batch mulai (tanpa file).
+                $batchByKader = Kader::withoutGlobalScopes()
+                    ->whereIn('id', $changedIds->all())
+                    ->pluck('id_batch', 'id');
+                $assignSet = collect($toAssign)->map(fn($p) => $p[0]->id)->flip();
+
+                RiwayatPergantianMentor::insert($changedIds->map(fn($kaderId) => [
+                    'id'         => (string) Str::uuid(),
+                    'mentor_id'  => $mentor->id,
+                    'kader_id'   => $kaderId,
+                    'id_batch'   => $batchByKader[$kaderId] ?? null,
+                    'aksi'       => $assignSet->has($kaderId) ? 'ASSIGN' : 'UNASSIGN',
+                    'alasan'     => $alasan,
+                    'nama_file'  => $namaFile,
+                    'path_file'  => $pathFile,
+                    'created_by' => $userId,
+                    'created_at' => $now,
+                ])->all());
+            });
+        } catch (\Throwable $e) {
+            if ($fullPath) {
+                @unlink($fullPath);
+            }
+            throw $e;
+        }
+
+        $inserted   = count($toAssign);
+        $unassigned = $toUnassign->count();
         $skipNote = count($skipped) ? ", skip " . count($skipped) : "";
-        ActivityLog::activity_log("Sync assign Mentor {$mentor->nama}: +{$inserted} kader, -{$unassigned} unassign{$skipNote}.");
+        $docNote  = $pathFile ? " +dok" : "";
+        ActivityLog::activity_log("Sync assign Mentor {$mentor->nama}: +{$inserted} kader, -{$unassigned} unassign{$skipNote}{$docNote}.");
 
         if (!empty($crossBu)) {
             ActivityLog::activity_log(
@@ -134,6 +232,42 @@ class KaderPerMentorController extends Controller
         }
 
         return back()->with('success', 'Assign berhasil diperbarui.');
+    }
+
+    /**
+     * Kader (id => nama) yang batch-nya sudah berjalan: tanggal_mulai <= hari ini.
+     * Batch tanpa tanggal_mulai dianggap belum terjadwal → tidak wajib dokumen.
+     */
+    private function kadersInStartedBatch(array $kaderIds): Collection
+    {
+        if (empty($kaderIds)) {
+            return collect();
+        }
+
+        return Kader::withoutGlobalScopes()
+            ->join('batch', 'kader.id_batch', '=', 'batch.id_batch')
+            ->whereIn('kader.id', $kaderIds)
+            ->whereNotNull('batch.tanggal_mulai')
+            ->whereDate('batch.tanggal_mulai', '<=', now()->toDateString())
+            ->orderBy('kader.nama')
+            ->pluck('kader.nama', 'kader.id');
+    }
+
+    /**
+     * Dokumen pendukung pergantian mentor. ?inline=1 menampilkan di browser; tanpa itu mengunduh.
+     */
+    public function pergantianDokumen(Request $request, $id)
+    {
+        $row = RiwayatPergantianMentor::where('id', $id)->whereNotNull('path_file')->firstOrFail();
+        $path = public_path($row->path_file);
+
+        if (!is_file($path)) {
+            abort(404, 'File tidak ditemukan.');
+        }
+
+        $disposition = $request->boolean('inline') ? 'inline' : 'attachment';
+
+        return response()->download($path, $row->nama_file, [], $disposition);
     }
 
     public function listByMentor($mentor_id)

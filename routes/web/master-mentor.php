@@ -22,6 +22,7 @@ Route::middleware(['can:isAdmin021'])->group(function () {
 
     // Assign Kader ke Mentor
     Route::post('/mentor/assign-kader', [KaderPerMentorController::class, 'assignKader'])->name('mentor.assignKader');
+    Route::get('/mentor/pergantian-dokumen/{id}', [KaderPerMentorController::class, 'pergantianDokumen'])->name('mentor.pergantianDokumen');
 
     // Arsip Dokumen — baca semua dokumen, read-only
     Route::get('/arsip-dokumen', [ArsipDokumenController::class, 'index'])->name('arsip-dokumen.index');
