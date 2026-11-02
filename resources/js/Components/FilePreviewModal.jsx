@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 
 // Penampil file di dalam web (tanpa unduh) untuk PDF, DOCX, dan XLSX.
 // Props: { open, onClose, file: { nama_file, path_file } }
+//   atau file: { nama_file, url } — untuk file yang disajikan lewat route (dicek role),
+//   bukan dari folder public; jenisnya diambil dari ekstensi nama_file.
 //  - PDF  → viewer bawaan browser (iframe).
 //  - DOCX → docx-preview, dirender ke HTML di browser.
 //  - XLSX → SheetJS, tiap sheet ditampilkan sebagai tabel.
@@ -16,8 +18,8 @@ export default function FilePreviewModal({ open, onClose, file }) {
     const [sheets, setSheets]   = useState([]); // [{ name, html }]
     const [sheetIdx, setSheetIdx] = useState(0);
 
-    const url = file?.path_file ? encodeURI(`/${file.path_file}`) : null;
-    const ext = extOf(file?.path_file || file?.nama_file);
+    const url = file?.url ?? (file?.path_file ? encodeURI(`/${file.path_file}`) : null);
+    const ext = extOf(file?.url ? file.nama_file : (file?.path_file || file?.nama_file));
 
     useEffect(() => {
         if (!open) return;

@@ -28,10 +28,12 @@ use App\Support\KaderDevelopmentReport;
 use App\Support\KaderReportData;
 use App\Support\KandidatData;
 use App\Support\ModulScore;
+use App\Support\UploadName;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
 
@@ -148,15 +150,9 @@ class KaderSayaController extends Controller
         // Overview, Feedback, Penilaian OJT, Perjanjian Kerja, dan Report.
         $isArsipBatch = $kader->batch_name !== null && (int) $kader->batch_name <= 2;
 
-        // Semua mentor aktif kader ini (bisa lebih dari satu).
-        $assignedMentors = ListKaderPerMentor::join('mentor', 'list_kader_per_mentor.mentor_id', '=', 'mentor.id')
-            ->where('list_kader_per_mentor.kader_id', $kader->id)
-            ->whereNull('list_kader_per_mentor.deleted_at')
-            ->whereNull('mentor.deleted_at')
-            ->orderBy('mentor.nama', 'asc')
-            ->pluck('mentor.nama')
-            ->unique()
-            ->values();
+        // Semua mentor aktif kader ini (bisa lebih dari satu). Juga menjadi pilihan
+        // "Nama Mentor" di form Weekly Feedback.
+        $assignedMentors = $this->assignedMentorNames($kader->id);
         $kader->mentor_id   = null;
         $kader->mentor_name = $assignedMentors->isNotEmpty() ? $assignedMentors->implode(', ') : null;
         $kader->mentors     = $assignedMentors;
@@ -479,20 +475,36 @@ class KaderSayaController extends Controller
 
         // Semua kategori penilaian wajib — dulu field kosong hanya di-skip diam-diam saat insert
         // sehingga feedback bisa tersimpan sebagian (nilai tampil "—" di riwayat).
+        // Akun Mentor dipakai bersama per BU, jadi nama mentor yang benar-benar mengisi
+        // dipilih dari mentor yang membina kader ini (wajib) — bukan nama akun login.
+        $mentorOptions = $this->assignedMentorNames($kader->id)->all();
+
         $request->validate([
-            'id_week' => 'required',
+            'id_week'     => 'required',
+            'nama_mentor' => ['required', 'string', Rule::in($mentorOptions)],
+            // Dokumen pendukung weekly feedback — wajib, PDF saja.
+            'file'        => 'required|file|mimes:pdf|max:2048',
             'p1'      => 'required|integer|between:1,10',
             'p2'      => 'required|integer|between:1,10',
             'p3'      => 'required|integer|between:1,10',
             'p4'      => 'required|integer|between:1,10',
             'p5'      => 'required|in:Sangat Kurang,Kurang,Cukup,Baik,Sangat Baik',
-            'p6'      => 'nullable|string',
-        ], [], [
+            'p6'      => 'required|string',
+        ], [
+            'nama_mentor.required' => 'Pilih nama mentor yang mengisi feedback.',
+            'nama_mentor.in'       => empty($mentorOptions)
+                ? 'Kader belum di-assign ke mentor mana pun.'
+                : 'Nama mentor harus salah satu mentor pembina kader ini.',
+            'file.required'        => 'Upload dokumen pendukung weekly feedback (PDF).',
+            'file.mimes'           => 'Dokumen pendukung harus berformat PDF.',
+            'file.max'             => 'Ukuran dokumen pendukung maksimal 2 MB.',
+        ], [
             'p1' => 'Routine Job',
             'p2' => 'Assignment',
             'p3' => 'Pemahaman SOP',
-            'p4' => 'Project',
+            'p4' => 'Project (EDP)',
             'p5' => 'Motivasi & Keterlibatan',
+            'p6' => 'Area yang Perlu Ditingkatkan',
         ]);
 
         // Anti-fraud: week harus milik batch kader, sudah berjalan, & belum terisi.
@@ -510,7 +522,7 @@ class KaderSayaController extends Controller
             'kader_id'  => $kader_id,
             'kader_nik' => $kader->nik,
             'mentor'    => $user->name,
-            'request'   => $request->only(['id_week','p1','p2','p3','p4','p5','p6']),
+            'request'   => $request->only(['id_week','nama_mentor','p1','p2','p3','p4','p5','p6']),
         ]);
 
         $motivasiScore = [
@@ -523,7 +535,7 @@ class KaderSayaController extends Controller
 
         $base = [
             'id_week'     => $request->id_week,
-            'nama_mentor' => $user->name,
+            'nama_mentor' => $request->nama_mentor,
             'nik_kader'   => $kader->nik,
             'created_at'  => now(),
             'updated_at'  => now(),
@@ -539,16 +551,60 @@ class KaderSayaController extends Controller
             6 => $request->p6,
         ];
 
+        // File dipindah dulu; bila penyimpanan DB gagal, file dibuang lagi agar tidak yatim.
+        $nameParts  = [$kader->id, 'feedback_mentor', $kader->nama, 'week' . $request->id_week];
+        $storedName = UploadName::stored($nameParts, 'pdf');
+        $dir        = public_path('uploads/feedback_mentor/' . $kader->id);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+        $request->file('file')->move($dir, $storedName);
+
         $inserted = 0;
-        foreach ($answers as $pertanyaan => $jawaban) {
-            if ($jawaban === null || $jawaban === '') continue;
-            Jawaban::create(array_merge($base, ['id_pertanyaan' => $pertanyaan, 'jawaban' => $jawaban]));
-            $inserted++;
+        try {
+            DB::transaction(function () use ($answers, $base, $kader, $user, $request, $nameParts, $storedName, &$inserted) {
+                foreach ($answers as $pertanyaan => $jawaban) {
+                    if ($jawaban === null || $jawaban === '') continue;
+                    Jawaban::create(array_merge($base, ['id_pertanyaan' => $pertanyaan, 'jawaban' => $jawaban]));
+                    $inserted++;
+                }
+
+                Dokumen::create([
+                    'kader_id'  => $kader->id,
+                    'mentor_id' => $user->id,
+                    'id_batch'  => $kader->id_batch,
+                    'id_week'   => $request->id_week,
+                    'nama_file' => UploadName::display($nameParts, 'pdf'),
+                    'path_file' => 'uploads/feedback_mentor/' . $kader->id . '/' . $storedName,
+                    'tipe'      => 'mentor',
+                    // Lampiran feedback, bukan bagian alur approval.
+                    'status'    => null,
+                    'jenis'     => 'FEEDBACK_MENTOR',
+                ]);
+            });
+        } catch (\Throwable $e) {
+            @unlink($dir . '/' . $storedName);
+            throw $e;
         }
 
         Log::info("[KaderSaya::storeFeedback] done — {$inserted} rows inserted");
 
         return back()->with('feedbackSuccess', true);
+    }
+
+    /**
+     * Nama mentor aktif yang membina kader ini (bisa lebih dari satu), urut abjad.
+     */
+    private function assignedMentorNames($kaderId)
+    {
+        return ListKaderPerMentor::join('mentor', 'list_kader_per_mentor.mentor_id', '=', 'mentor.id')
+            ->where('list_kader_per_mentor.kader_id', $kaderId)
+            ->whereNull('list_kader_per_mentor.deleted_at')
+            ->whereNull('mentor.deleted_at')
+            ->orderBy('mentor.nama', 'asc')
+            ->pluck('mentor.nama')
+            ->unique()
+            ->values();
     }
 
     /**
@@ -613,12 +669,13 @@ class KaderSayaController extends Controller
             'p3' => 'nullable|integer|between:1,10',
             'p4' => 'nullable|integer|between:1,10',
             'p5' => 'nullable|in:Sangat Kurang,Kurang,Cukup,Baik,Sangat Baik',
-            'p6' => 'nullable|string',
+            // Area wajib sejak form baru; bila dikirim saat edit, tidak boleh kosong.
+            'p6' => 'sometimes|required|string',
         ], [], [
             'p1' => 'Routine Job',
             'p2' => 'Assignment',
             'p3' => 'Pemahaman SOP',
-            'p4' => 'Project',
+            'p4' => 'Project (EDP)',
             'p5' => 'Motivasi & Keterlibatan',
             'p6' => 'Area yang Perlu Ditingkatkan',
         ]);
@@ -893,12 +950,21 @@ class KaderSayaController extends Controller
             ->mapWithKeys(fn ($k) => [$k => is_string($request->$k) ? trim($request->$k) : $request->$k])
             ->all());
 
+        // Sama seperti Weekly: nama mentor pengisi dipilih dari mentor pembina kader (wajib).
+        $mentorOptions = $this->assignedMentorNames($kader->id)->all();
+
         $request->validate([
-            'id_week' => 'required',
-            'm1'      => 'required|string|min:3',
-            'm2'      => 'required|string|min:3',
-            'm3'      => 'required|string|min:3',
-        ], [], [
+            'id_week'     => 'required',
+            'nama_mentor' => ['required', 'string', Rule::in($mentorOptions)],
+            'm1'          => 'required|string|min:3',
+            'm2'          => 'required|string|min:3',
+            'm3'          => 'required|string|min:3',
+        ], [
+            'nama_mentor.required' => 'Pilih nama mentor yang mengisi feedback.',
+            'nama_mentor.in'       => empty($mentorOptions)
+                ? 'Kader belum di-assign ke mentor mana pun.'
+                : 'Nama mentor harus salah satu mentor pembina kader ini.',
+        ], [
             'm1' => 'Pertanyaan 1 (gambaran mentee)',
             'm2' => 'Pertanyaan 2 (sikap kerja & etika)',
             'm3' => 'Pertanyaan 3 (kesiapan kader)',
@@ -926,7 +992,7 @@ class KaderSayaController extends Controller
 
         $base = [
             'id_week'     => $week->id_week,
-            'nama_mentor' => $user->name,
+            'nama_mentor' => $request->nama_mentor,
             'nik_kader'   => $kader->nik,
             'created_at'  => now(),
             'updated_at'  => now(),

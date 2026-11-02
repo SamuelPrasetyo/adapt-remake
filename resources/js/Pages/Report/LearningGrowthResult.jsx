@@ -69,7 +69,7 @@ export default function LearningGrowthResult({ title, reports, avg, week, learni
                         <div className="shrink-0 w-60">
                             <p className="text-sm font-medium text-center mb-2">Aspek Penilaian:</p>
                             <div className="flex gap-2">
-                                {[['Routine Job', 'Assignment'], ['SOP', 'Project']].map(([top, bot]) => (
+                                {[['Routine Job', 'Assignment'], ['SOP', 'Project (EDP)']].map(([top, bot]) => (
                                     <div key={top} className="flex-1 bg-blue-700 rounded text-white text-xs text-center">
                                         <div className="py-1">{top}</div>
                                         <hr className="border-white/30" />

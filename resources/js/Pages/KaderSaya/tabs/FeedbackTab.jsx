@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { router, useForm, usePage } from "@inertiajs/react";
 import FilterableTable from "@/Components/FilterableTable";
 import Toast from "@/Components/Toast";
+import FilePreviewModal from "@/Components/FilePreviewModal";
 
 
 export const BULAN_ID = ["","Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
@@ -10,9 +11,17 @@ const MOTIVASI_OPTIONS = ["Sangat Kurang","Kurang","Cukup","Baik","Sangat Baik"]
 const SCORE_OPTIONS    = Array.from({ length: 10 }, (_, i) => i + 1);
 
 // Kategori slider Penilaian Kinerja — semua wajib diisi (lihat KirimFeedbackForm).
-const SCORE_FIELDS = [['p1','Routine Job'],['p2','Assignment'],['p3','Pemahaman SOP'],['p4','Project']];
-const EMPTY_FEEDBACK_FORM = { id_week: '', p1: '', p2: '', p3: '', p4: '', p5: '', p6: '' };
-const EMPTY_MONTHLY_FORM  = { id_week: '', m1: '', m2: '', m3: '' };
+const SCORE_FIELDS = [['p1','Routine Job'],['p2','Assignment'],['p3','Pemahaman SOP'],['p4','Project (EDP)']];
+const EMPTY_FEEDBACK_FORM = { id_week: '', nama_mentor: '', file: null, p1: '', p2: '', p3: '', p4: '', p5: '', p6: '' };
+
+// Dokumen pendukung weekly feedback — samakan dengan validasi storeFeedback (PDF, maks 2 MB).
+const FEEDBACK_DOC_MAX_BYTES = 2 * 1024 * 1024;
+const feedbackDocUrl = (id) => `/feedback-mentor-dokumen/${id}?inline=1`;
+const EMPTY_MONTHLY_FORM  = { id_week: '', nama_mentor: '', m1: '', m2: '', m3: '' };
+
+// Akun Mentor dipakai bersama per BU — nama mentor pengisi (Weekly & Monthly) dipilih
+// dari mentor pembina kader. Bila hanya satu mentor, langsung terpilih.
+const defaultMentor = (options) => (options.length === 1 ? options[0] : '');
 
 // Monthly Feedback mentor — pertanyaan kualitatif sebulan sekali (id_pertanyaan 13-15 di backend).
 export const MONTHLY_QUESTIONS = [
@@ -61,6 +70,34 @@ function WeekStatusBadge({ status }) {
         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 ${cfg.badge}`}>
             {cfg.label}
         </span>
+    );
+}
+
+function MentorNameSelect({ options, value, onChange, invalid = false, error = null, accent = 'blue', hint }) {
+    return (
+        <div>
+            <label className="text-xs font-semibold text-slate-600 block mb-1.5">
+                Nama Mentor <span className="text-rose-500">*</span>
+            </label>
+            <select value={value} onChange={e => onChange(e.target.value)} disabled={options.length === 0}
+                className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 bg-white disabled:bg-slate-50 disabled:text-slate-400 ${
+                    invalid || error
+                        ? 'border-rose-400 focus:ring-rose-500/30 focus:border-rose-500'
+                        : `border-slate-300 ${SELECT_ACCENT[accent] ?? SELECT_ACCENT.blue}`
+                }`}>
+                <option value="">{options.length === 0 ? '--Kader belum punya mentor--' : '--Pilih Nama Mentor--'}</option>
+                {options.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+            {error ? (
+                <p className="text-xs text-rose-600 mt-1">{error}</p>
+            ) : options.length === 0 ? (
+                <p className="text-xs text-amber-600 mt-1">Kader belum di-assign ke mentor mana pun, sehingga feedback belum bisa dikirim.</p>
+            ) : invalid ? (
+                <p className="text-[11px] text-rose-600 mt-1">Pilih nama mentor yang mengisi feedback.</p>
+            ) : (
+                <p className="text-[11px] text-slate-400 mt-1">{hint}</p>
+            )}
+        </div>
     );
 }
 
@@ -288,7 +325,7 @@ const FEEDBACK_TILES = [
     ['routine_job',   'Routine Job', 'p1', 'Routine'],
     ['assignment',    'Assignment',  'p2', 'Assign.'],
     ['pemahaman_sop', 'SOP',         'p3', 'SOP'],
-    ['project',       'Project',     'p4', 'Project'],
+    ['project',       'Project (EDP)', 'p4', 'Project (EDP)'],
 ];
 
 const isBlank = (v) => v === null || v === undefined || v === '';
@@ -380,8 +417,10 @@ function NoteBubbleButton({ text, label = 'Area yang Perlu Ditingkatkan' }) {
  * satu grup bulan. Skor diperkecil supaya beberapa kartu muat berdampingan; edit tetap
  * berlaku untuk seluruh nilai (bukan hanya yang kosong) selama `canEdit` true.
  */
-function CompactFeedbackCard({ fb, canEdit = false, kaderId = null }) {
+function CompactFeedbackCard({ fb, canEdit = false, kaderId = null, showDoc = false }) {
     const [editing, setEditing] = useState(false);
+    const [previewOpen, setPreviewOpen] = useState(false);
+    const closePreview = useCallback(() => setPreviewOpen(false), []);
     const [draft, setDraft]     = useState({});
     const [saving, setSaving]   = useState(false);
 
@@ -437,13 +476,38 @@ function CompactFeedbackCard({ fb, canEdit = false, kaderId = null }) {
                 </div>
             </div>
 
+            {(fb.nama_mentor || (showDoc && fb.dokumen)) && (
+                <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="flex items-center gap-1 min-w-0 text-[10.5px] text-slate-500">
+                        <svg className="w-3 h-3 shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        <span className="truncate" title={fb.nama_mentor}>{fb.nama_mentor ?? '—'}</span>
+                    </span>
+                    {showDoc && fb.dokumen && (
+                        <button type="button" onClick={() => setPreviewOpen(true)} title={`Lihat dokumen pendukung — ${fb.dokumen.nama_file}`}
+                            className="inline-flex items-center gap-1 shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 hover:bg-rose-100 transition">
+                            <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            PDF
+                        </button>
+                    )}
+                </div>
+            )}
+            {showDoc && fb.dokumen && (
+                <FilePreviewModal open={previewOpen} onClose={closePreview}
+                    file={{ nama_file: fb.dokumen.nama_file, url: feedbackDocUrl(fb.dokumen.id) }} />
+            )}
+
             <div className="grid grid-cols-4 gap-1 mb-2">
                 {FEEDBACK_TILES.map(([key, , field, compactLabel]) => {
                     const val   = fb[key];
                     const blank = isBlank(val);
                     return (
                         <div key={field} className="bg-white rounded-md border border-slate-100 py-1.5 px-1 text-center">
-                            <p className="text-[7px] font-semibold uppercase tracking-wide text-slate-400 leading-tight h-4 flex items-center justify-center">
+                            <p className="text-[7px] font-semibold uppercase tracking-wide text-slate-400 leading-tight h-5 flex items-center justify-center">
                                 {compactLabel}
                             </p>
                             {editing ? (
@@ -479,8 +543,8 @@ function CompactFeedbackCard({ fb, canEdit = false, kaderId = null }) {
 
             {editing ? (
                 <textarea rows={2} value={draft.p6 ?? ''} onChange={e => setDraft(d => ({ ...d, p6: e.target.value }))}
-                    placeholder="Area yang perlu ditingkatkan..."
-                    className="w-full px-2 py-1 text-[10.5px] border border-blue-300 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-blue-500/40 resize-none" />
+                    placeholder="Area yang perlu ditingkatkan (wajib)..."
+                    className={`w-full px-2 py-1 text-[10.5px] border rounded-md ${(draft.p6 ?? '').trim() ? 'border-blue-300' : 'border-rose-400'} bg-white focus:outline-none focus:ring-1 focus:ring-blue-500/40 resize-none`} />
             ) : fb.area ? (
                 <div className="flex items-start gap-1.5 border-l-2 border-blue-300 pl-2">
                     <p className="flex-1 min-w-0 text-[10.5px] text-slate-600 leading-snug"
@@ -493,7 +557,8 @@ function CompactFeedbackCard({ fb, canEdit = false, kaderId = null }) {
 
             {editing && (
                 <div className="flex items-center gap-1.5 mt-2">
-                    <button type="button" onClick={saveEdit} disabled={saving}
+                    <button type="button" onClick={saveEdit} disabled={saving || !(draft.p6 ?? '').trim()}
+                        title={!(draft.p6 ?? '').trim() ? 'Area yang perlu ditingkatkan wajib diisi' : undefined}
                         className="flex-1 px-2 py-1.5 text-[10.5px] font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-60 transition">
                         {saving ? 'Menyimpan...' : 'Simpan'}
                     </button>
@@ -519,15 +584,17 @@ function groupFeedbackByMonth(list) {
     list.forEach((fb) => {
         const key = `${fb.tahun}-${fb.bulan}`;
         if (!byKey[key]) {
-            byKey[key] = { key, bulan: fb.bulan, tahun: fb.tahun, nama_mentor: fb.nama_mentor, items: [] };
+            byKey[key] = { key, bulan: fb.bulan, tahun: fb.tahun, mentors: [], items: [] };
             groups.push(byKey[key]);
         }
         byKey[key].items.push(fb);
+        // Satu bulan bisa diisi beberapa mentor (kader dibina lebih dari satu mentor).
+        if (fb.nama_mentor && !byKey[key].mentors.includes(fb.nama_mentor)) byKey[key].mentors.push(fb.nama_mentor);
     });
     return groups;
 }
 
-function FeedbackMonthGroup({ group, defaultOpen = false, canEdit = false, kaderId = null, wide = false }) {
+function FeedbackMonthGroup({ group, defaultOpen = false, canEdit = false, kaderId = null, wide = false, showDoc = false }) {
     const [open, setOpen] = useState(defaultOpen);
 
     const totalGaps = canEdit
@@ -558,7 +625,7 @@ function FeedbackMonthGroup({ group, defaultOpen = false, canEdit = false, kader
                     </div>
                     <p className="text-xs text-slate-400 mt-0.5">
                         {group.items.length} feedback
-                        {group.nama_mentor ? ` • Mentor: ${group.nama_mentor}` : ''}
+                        {group.mentors.length > 0 ? ` • Mentor: ${group.mentors.join(', ')}` : ''}
                     </p>
                 </div>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 shrink-0">
@@ -572,7 +639,7 @@ function FeedbackMonthGroup({ group, defaultOpen = false, canEdit = false, kader
             {open && (
                 <div className={`border-t border-slate-100 px-3 py-3 ${monthCardGrid(wide)}`}>
                     {group.items.map((fb) => (
-                        <CompactFeedbackCard key={fb.week_id} fb={fb} canEdit={canEdit} kaderId={kaderId} />
+                        <CompactFeedbackCard key={fb.week_id} fb={fb} canEdit={canEdit} kaderId={kaderId} showDoc={showDoc} />
                     ))}
                 </div>
             )}
@@ -580,22 +647,31 @@ function FeedbackMonthGroup({ group, defaultOpen = false, canEdit = false, kader
     );
 }
 
-function RiwayatAccordion({ mentorFeedbackList, canEdit = false, kaderId = null, wide = false }) {
+function RiwayatAccordion({ mentorFeedbackList, canEdit = false, kaderId = null, wide = false, showDoc = false }) {
     if (mentorFeedbackList.length === 0) return <p className="text-sm text-slate-400 text-center py-8">Belum ada feedback yang dikirim.</p>;
     const groups = useMemo(() => groupFeedbackByMonth(mentorFeedbackList), [mentorFeedbackList]);
     return (
         <div className="space-y-2">
             {groups.map((g, i) => (
-                <FeedbackMonthGroup key={g.key} group={g} defaultOpen={i === 0} canEdit={canEdit} kaderId={kaderId} wide={wide} />
+                <FeedbackMonthGroup key={g.key} group={g} defaultOpen={i === 0} canEdit={canEdit} kaderId={kaderId} wide={wide} showDoc={showDoc} />
             ))}
         </div>
     );
 }
 
 function KirimFeedbackForm({ kader, weeks, mentorName, kaderId }) {
-    const [form, setForm]         = useState(EMPTY_FEEDBACK_FORM);
+    const mentorOptions = kader?.mentors ?? [];
+    const emptyForm = useMemo(
+        () => ({ ...EMPTY_FEEDBACK_FORM, nama_mentor: defaultMentor(mentorOptions) }),
+        [mentorOptions.join('|')],
+    );
+    const [form, setForm]         = useState(emptyForm);
     const [submitting, setSubmitting] = useState(false);
     const [attempted, setAttempted]   = useState(false);
+    const [serverErrors, setServerErrors] = useState({});
+    const [fileError, setFileError]   = useState(null);
+    // Mengganti key mengosongkan <input type="file"> setelah submit berhasil.
+    const [fileKey, setFileKey]       = useState(0);
     const [toast, setToast]       = useState(false);
     const closeToast              = useCallback(() => setToast(false), []);
 
@@ -612,6 +688,25 @@ function KirimFeedbackForm({ kader, weeks, mentorName, kaderId }) {
 
     const handleChange = (field, val) => setForm(f => ({ ...f, [field]: val }));
 
+    const handleFile = (e) => {
+        const f = e.target.files?.[0] ?? null;
+        setServerErrors(er => ({ ...er, file: undefined }));
+        if (f && !/\.pdf$/i.test(f.name)) {
+            setFileError('Dokumen pendukung harus berformat PDF.');
+            handleChange('file', null);
+            e.target.value = '';
+            return;
+        }
+        if (f && f.size > FEEDBACK_DOC_MAX_BYTES) {
+            setFileError('Ukuran dokumen pendukung maksimal 2 MB.');
+            handleChange('file', null);
+            e.target.value = '';
+            return;
+        }
+        setFileError(null);
+        handleChange('file', f);
+    };
+
     // Slider bernilai kosong tetap menampilkan thumb di posisi 1. Kalau mentor menggeser/klik
     // tepat di angka 1, onChange tidak pernah jalan (nilai DOM tidak berubah) sehingga field
     // diam-diam tetap kosong — inilah yang dulu membuat nilai lolos jadi "—". Commit manual
@@ -620,17 +715,20 @@ function KirimFeedbackForm({ kader, weeks, mentorName, kaderId }) {
         if (!form[field]) handleChange(field, e.currentTarget.value || '1');
     };
 
-    // Semua kategori penilaian wajib; area improvement (p6) tetap opsional.
+    // Semua isian wajib, termasuk Area yang Perlu Ditingkatkan (p6).
     // Week ikut dicek di sini karena WeekSelect bukan <select> native (tanpa `required`).
     const missing = useMemo(() => {
         const list = [];
+        if (!form.nama_mentor) list.push('Nama Mentor');
         if (!form.id_week) list.push('Week');
         SCORE_FIELDS.forEach(([f, label]) => { if (!form[f]) list.push(label); });
         if (!form.p5) list.push('Motivasi & Keterlibatan');
+        if (!form.p6.trim()) list.push('Area yang Perlu Ditingkatkan');
+        if (!form.file) list.push('Dokumen Pendukung (PDF)');
         return list;
     }, [form]);
 
-    const isMissing = (field) => attempted && !form[field];
+    const isMissing = (field) => attempted && !(typeof form[field] === 'string' ? form[field].trim() : form[field]);
 
     const resetScores = () => setForm(f => ({ ...f, p1: '', p2: '', p3: '', p4: '', p5: '' }));
 
@@ -639,9 +737,17 @@ function KirimFeedbackForm({ kader, weeks, mentorName, kaderId }) {
         setAttempted(true);
         if (missing.length > 0) return;
         setSubmitting(true);
+        setServerErrors({});
         router.post(`/kader-saya/${kaderId}/feedback`, form, {
+            forceFormData: true,
             preserveScroll: true,
-            onSuccess: () => { setToast(true); setForm(EMPTY_FEEDBACK_FORM); setAttempted(false); },
+            onSuccess: () => {
+                setToast(true);
+                setForm(emptyForm);
+                setAttempted(false);
+                setFileKey(k => k + 1);
+            },
+            onError:   (errs) => setServerErrors(errs),
             onFinish:  () => setSubmitting(false),
         });
     };
@@ -664,7 +770,10 @@ function KirimFeedbackForm({ kader, weeks, mentorName, kaderId }) {
             <div className="flex items-center gap-3 mb-5 p-3 bg-slate-50 rounded-lg border border-slate-100">
                 <div className="flex-1 min-w-0">
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-0.5">Mentor</p>
-                    <p className="text-sm font-semibold text-slate-800 truncate">{mentorName}</p>
+                    <p className={`text-sm font-semibold truncate ${form.nama_mentor ? 'text-slate-800' : 'text-slate-400'}`}>
+                        {form.nama_mentor || 'Pilih nama mentor'}
+                    </p>
+                    <p className="text-[10px] text-slate-400 truncate">Akun: {mentorName}</p>
                 </div>
                 <svg className="w-4 h-4 text-slate-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
@@ -676,6 +785,15 @@ function KirimFeedbackForm({ kader, weeks, mentorName, kaderId }) {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
+                <MentorNameSelect
+                    options={mentorOptions}
+                    value={form.nama_mentor}
+                    onChange={val => handleChange('nama_mentor', val)}
+                    invalid={isMissing('nama_mentor')}
+                    error={serverErrors.nama_mentor}
+                    hint="Mentor pembina yang memberikan feedback minggu ini."
+                />
+
                 <div>
                     <label className="text-xs font-semibold text-slate-600 block mb-1.5">
                         Week <span className="text-rose-500">*</span>
@@ -780,10 +898,32 @@ function KirimFeedbackForm({ kader, weeks, mentorName, kaderId }) {
                 </div>
 
                 <div>
-                    <label className="text-xs font-semibold text-slate-600 block mb-1.5">Area yang Perlu Ditingkatkan</label>
+                    <label className="text-xs font-semibold text-slate-600 block mb-1.5">
+                        Area yang Perlu Ditingkatkan <span className="text-rose-500">*</span>
+                    </label>
                     <textarea rows={4} value={form.p6} onChange={e => handleChange('p6', e.target.value)}
                         placeholder="Tuliskan area yang perlu ditingkatkan minggu depan..."
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 bg-white resize-none" />
+                        className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 bg-white resize-none ${
+                            isMissing('p6') || serverErrors.p6
+                                ? 'border-rose-400 focus:ring-rose-500/30 focus:border-rose-500'
+                                : 'border-slate-300 focus:ring-blue-500/30 focus:border-blue-500'
+                        }`} />
+                    {serverErrors.p6 && <p className="text-xs text-rose-600 mt-1">{serverErrors.p6}</p>}
+                </div>
+
+                <div>
+                    <label className="text-xs font-semibold text-slate-600 block mb-1.5">
+                        Dokumen Pendukung <span className="text-rose-500">*</span>
+                    </label>
+                    <input key={fileKey} type="file" accept="application/pdf,.pdf" onChange={handleFile}
+                        className={`w-full text-sm text-slate-500 border rounded-lg bg-white file:mr-3 file:py-2 file:px-3 file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 ${
+                            isMissing('file') || fileError || serverErrors.file ? 'border-rose-400' : 'border-slate-300'
+                        }`} />
+                    {fileError || serverErrors.file ? (
+                        <p className="text-xs text-rose-600 mt-1">{fileError || serverErrors.file}</p>
+                    ) : (
+                        <p className="text-[11px] text-slate-400 mt-1">Format PDF, maksimal 2 MB.</p>
+                    )}
                 </div>
 
                 {attempted && missing.length > 0 && (
@@ -801,7 +941,7 @@ function KirimFeedbackForm({ kader, weeks, mentorName, kaderId }) {
                     </div>
                 )}
 
-                <button type="submit" disabled={submitting}
+                <button type="submit" disabled={submitting || mentorOptions.length === 0}
                     className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-60 transition">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -1122,9 +1262,15 @@ function WeeklyFeedbackUpload({ data }) {
 }
 
 function MonthlyFeedbackForm({ kader, kaderId, periods }) {
-    const [form, setForm]             = useState(EMPTY_MONTHLY_FORM);
+    const mentorOptions = kader?.mentors ?? [];
+    const emptyForm = useMemo(
+        () => ({ ...EMPTY_MONTHLY_FORM, nama_mentor: defaultMentor(mentorOptions) }),
+        [mentorOptions.join('|')],
+    );
+    const [form, setForm]             = useState(emptyForm);
     const [submitting, setSubmitting] = useState(false);
     const [attempted, setAttempted]   = useState(false);
+    const [serverErrors, setServerErrors] = useState({});
     const [toast, setToast]           = useState(false);
     const closeToast                  = useCallback(() => setToast(false), []);
 
@@ -1146,16 +1292,18 @@ function MonthlyFeedbackForm({ kader, kaderId, periods }) {
     );
 
     const isMissing = (field) => attempted && !(form[field] ?? '').trim();
-    const incomplete = !form.id_week || missing.length > 0;
+    const incomplete = !form.nama_mentor || !form.id_week || missing.length > 0;
 
     const handleSubmit = (e) => {
         e.preventDefault();
         setAttempted(true);
         if (incomplete) return;
         setSubmitting(true);
+        setServerErrors({});
         router.post(`/kader-saya/${kaderId}/monthly-feedback`, form, {
             preserveScroll: true,
-            onSuccess: () => { setToast(true); setForm(EMPTY_MONTHLY_FORM); setAttempted(false); },
+            onSuccess: () => { setToast(true); setForm(emptyForm); setAttempted(false); },
+            onError:   (errs) => setServerErrors(errs),
             onFinish:  () => setSubmitting(false),
         });
     };
@@ -1176,6 +1324,16 @@ function MonthlyFeedbackForm({ kader, kaderId, periods }) {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
+                <MentorNameSelect
+                    options={mentorOptions}
+                    value={form.nama_mentor}
+                    onChange={val => handleChange('nama_mentor', val)}
+                    invalid={attempted && !form.nama_mentor}
+                    error={serverErrors.nama_mentor}
+                    accent="amber"
+                    hint="Mentor pembina yang memberikan feedback bulan ini."
+                />
+
                 <div>
                     <label className="text-xs font-semibold text-slate-600 block mb-1.5">
                         Bulan Tahun <span className="text-rose-500">*</span>
@@ -1233,6 +1391,7 @@ function MonthlyFeedbackForm({ kader, kaderId, periods }) {
                         </svg>
                         <div className="text-xs text-rose-700 leading-relaxed">
                             <p className="font-semibold">Isian belum lengkap</p>
+                            {!form.nama_mentor && <p className="mt-0.5">Pilih <strong>Nama Mentor</strong> yang mengisi feedback.</p>}
                             {!form.id_week && <p className="mt-0.5">Pilih <strong>Bulan Tahun</strong> terlebih dahulu.</p>}
                             {missing.length > 0 && (
                                 <p className="mt-0.5">
@@ -1243,7 +1402,7 @@ function MonthlyFeedbackForm({ kader, kaderId, periods }) {
                     </div>
                 )}
 
-                <button type="submit" disabled={submitting}
+                <button type="submit" disabled={submitting || mentorOptions.length === 0}
                     className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-600 text-white text-sm font-semibold rounded-lg hover:bg-amber-700 disabled:opacity-60 transition">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -1575,7 +1734,7 @@ function WeeklyFolder({ kader, weeks, weeksKader = [], refleksi, mentorFeedbackL
                     title="Feedback Dikirim"
                     count={mentorFeedbackList.length}
                 >
-                    <RiwayatAccordion mentorFeedbackList={mentorFeedbackList} canEdit={canEdit} kaderId={kaderId} wide={wide} />
+                    <RiwayatAccordion mentorFeedbackList={mentorFeedbackList} canEdit={canEdit} kaderId={kaderId} wide={wide} showDoc={!kaderView} />
                 </AccordionSection>
             </div>
         </div>

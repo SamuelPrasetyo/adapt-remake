@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\KaderSaya\DokumenLainnyaController;
+use App\Http\Controllers\KaderSaya\FeedbackMentorDokumenController;
 use App\Http\Controllers\KaderSaya\KaderSayaController;
 use App\Http\Controllers\KaderSaya\KaderStatusController;
 use App\Http\Controllers\KaderSaya\KaderTestAnswerController;
@@ -33,6 +34,8 @@ Route::middleware(['can:canMentorDashboard'])->group(function () {
     Route::post('/kader-saya/{kader_id}/feedback', [KaderSayaController::class, 'storeFeedback'])->name('kader.saya.storeFeedback');
     // Ubah feedback yang sudah terkirim — ditolak otomatis setelah batch berakhir.
     Route::post('/kader-saya/{kader_id}/feedback/{id_week}/update', [KaderSayaController::class, 'updateFeedback'])->name('kader.saya.updateFeedback');
+    // Dokumen pendukung Weekly Feedback mentor (PDF) — preview/unduh.
+    Route::get('/feedback-mentor-dokumen/{id}', [FeedbackMentorDokumenController::class, 'show'])->name('feedbackMentorDokumen.show');
     Route::post('/kader-saya/{kader_id}/monthly-feedback', [KaderSayaController::class, 'storeMonthlyFeedback'])->name('kader.saya.storeMonthlyFeedback');
     Route::post('/kader-saya/{kader_id}/monthly-feedback/update', [KaderSayaController::class, 'updateMonthlyFeedback'])->name('kader.saya.updateMonthlyFeedback');
     // Summary Monthly Feedback — hanya Admin MAI (dicek di controller)

@@ -42,7 +42,7 @@ class BackfillArsipDevAspek extends Command
         1 => ['col' => 'dev_job_routine', 'label' => 'Routine Job'],
         2 => ['col' => 'dev_assignment',  'label' => 'Assignment'],
         3 => ['col' => 'dev_sop',         'label' => 'SOP'],
-        4 => ['col' => 'dev_project',     'label' => 'Project'],
+        4 => ['col' => 'dev_project',     'label' => 'Project (EDP)'],
     ];
 
     public function handle(): int

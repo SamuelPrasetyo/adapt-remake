@@ -259,6 +259,21 @@ class KaderReportData
             elseif ($idP2 === 5)  $feedbackByWeek[$wk]['motivasi']      = $motivasiLabel[(int)$val] ?? $val;
             elseif ($idP2 === 6)  $feedbackByWeek[$wk]['area']          = $val;
         }
+        // Dokumen pendukung (PDF) tiap minggu. path_file tidak diteruskan ke frontend —
+        // dibuka lewat route feedbackMentorDokumen.show yang memeriksa role.
+        if ($feedbackByWeek) {
+            $docs = Dokumen::where('jenis', 'FEEDBACK_MENTOR')
+                ->where('kader_id', $kader->id)
+                ->whereIn('id_week', array_keys($feedbackByWeek))
+                ->orderBy('created_at')
+                ->get(['id', 'id_week', 'nama_file'])
+                ->keyBy('id_week');
+            foreach ($feedbackByWeek as $wk => &$fb) {
+                $doc = $docs->get($wk);
+                $fb['dokumen'] = $doc ? ['id' => $doc->id, 'nama_file' => $doc->nama_file] : null;
+            }
+            unset($fb);
+        }
         $mentorFeedbackList = array_values($feedbackByWeek);
 
         $allFases = Modul::distinct()

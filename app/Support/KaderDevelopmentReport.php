@@ -28,7 +28,7 @@ class KaderDevelopmentReport
     ];
 
     /** Aspek feedback mingguan mentor (jawaban.id_pertanyaan) → label Development Progress. */
-    private const ASPEK = [1 => 'Routine Job', 2 => 'Assignment', 3 => 'SOP Understanding', 4 => 'Project Execution'];
+    private const ASPEK = [1 => 'Routine Job', 2 => 'Assignment', 3 => 'SOP Understanding', 4 => 'Project Execution (EDP)'];
 
     /** Urutan tampil aspek pada section B (sesuai mockup report). */
     private const ASPEK_URUT = [1, 3, 2, 4];
@@ -98,7 +98,7 @@ class KaderDevelopmentReport
                     ['label' => 'Job Routine',      'score' => $arsip->dev_job_routine],
                     ['label' => 'Assignment',       'score' => $arsip->dev_assignment],
                     ['label' => 'SOP Understanding','score' => $arsip->dev_sop],
-                    ['label' => 'Project Execution','score' => $arsip->dev_project],
+                    ['label' => 'Project Execution (EDP)','score' => $arsip->dev_project],
                 ],
                 'status'   => $arsip->status,
                 'batch_no' => $arsip->batch_no,
