@@ -34,23 +34,33 @@ function batchLabel(b) {
     return `Batch ${b.nama_batch}${b.tahun_batch ? ` (${b.tahun_batch})` : ""}`;
 }
 
-function ActionBtn({ onClick, href, color, title, disabled, children }) {
+// Tombol ikon yang memunculkan teks aksinya di dalam tombol saat di-hover/fokus
+// (melebar dari ikon, gaya pil seperti tombol "Ganti"), bukan tooltip melayang.
+function ActionBtn({ onClick, href, color, label, disabled, children }) {
     const colors = {
-        slate: "text-slate-600 hover:bg-slate-100",
-        blue:  "text-blue-600 hover:bg-blue-50",
-        red:   "text-red-600 hover:bg-red-50",
+        slate: "text-slate-600 hover:bg-slate-100 focus-visible:bg-slate-100",
+        blue:  "text-blue-600 hover:bg-blue-50 focus-visible:bg-blue-50",
+        red:   "text-red-600 hover:bg-red-50 focus-visible:bg-red-50",
     };
-    const cls = `p-1.5 rounded-lg transition ${colors[color]} disabled:opacity-30 disabled:cursor-not-allowed`;
+    const cls = `group inline-flex items-center p-1.5 rounded-lg transition disabled:opacity-30 disabled:cursor-not-allowed ${colors[color]}`;
+    const content = (
+        <>
+            {children}
+            <span className="max-w-0 ml-0 overflow-hidden whitespace-nowrap text-xs font-medium opacity-0 transition-all duration-200 group-hover:max-w-20 group-hover:ml-1.5 group-hover:opacity-100 group-focus-visible:max-w-20 group-focus-visible:ml-1.5 group-focus-visible:opacity-100">
+                {label}
+            </span>
+        </>
+    );
     if (href) {
         return (
-            <a href={href} target="_blank" rel="noreferrer" title={title} className={cls}>
-                {children}
+            <a href={href} target="_blank" rel="noreferrer" aria-label={label} className={cls}>
+                {content}
             </a>
         );
     }
     return (
-        <button type="button" onClick={onClick} title={title} disabled={disabled} className={cls}>
-            {children}
+        <button type="button" onClick={onClick} aria-label={label} disabled={disabled} className={cls}>
+            {content}
         </button>
     );
 }
@@ -326,36 +336,26 @@ export default function DokumenPsikotestIndex({ kaders = [], batches = [], batch
             <div className="flex items-center justify-end gap-1">
                 {doc && (
                     <>
-                        <ActionBtn onClick={() => setPreview(doc)} color="slate" title="Lihat">
+                        <ActionBtn onClick={() => setPreview(doc)} color="slate" label="Lihat">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                             </svg>
                         </ActionBtn>
-                        <ActionBtn href={fileUrl(doc.id)} color="slate" title="Unduh">
+                        <ActionBtn href={fileUrl(doc.id)} color="slate" label="Unduh">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" />
                             </svg>
                         </ActionBtn>
                     </>
                 )}
-                <button
-                    type="button"
-                    onClick={() => requestUpload(r)}
-                    disabled={uploading !== null}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed ${
-                        doc
-                            ? "text-blue-700 bg-blue-50 hover:bg-blue-100"
-                            : "text-white bg-blue-600 hover:bg-blue-700"
-                    }`}
-                >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <ActionBtn onClick={() => requestUpload(r)} color="blue" label={doc ? "Ganti" : "Upload"} disabled={uploading !== null}>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M17 8l-5-5-5 5M12 3v12" />
                     </svg>
-                    {doc ? "Ganti" : "Upload"}
-                </button>
+                </ActionBtn>
                 {doc && (
-                    <ActionBtn onClick={() => setConfirm({ type: "delete", row: r })} color="red" title="Hapus" disabled={uploading !== null}>
+                    <ActionBtn onClick={() => setConfirm({ type: "delete", row: r })} color="red" label="Hapus" disabled={uploading !== null}>
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
