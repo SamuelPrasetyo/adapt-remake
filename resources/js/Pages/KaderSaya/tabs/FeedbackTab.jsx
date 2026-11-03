@@ -8,7 +8,6 @@ import FilePreviewModal from "@/Components/FilePreviewModal";
 
 export const BULAN_ID = ["","Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
 const MOTIVASI_OPTIONS = ["Sangat Kurang","Kurang","Cukup","Baik","Sangat Baik"];
-const SCORE_OPTIONS    = Array.from({ length: 10 }, (_, i) => i + 1);
 
 // Kategori slider Penilaian Kinerja — semua wajib diisi (lihat KirimFeedbackForm).
 const SCORE_FIELDS = [['p1','Routine Job'],['p2','Assignment'],['p3','Pemahaman SOP'],['p4','Project (EDP)']];
@@ -330,6 +329,154 @@ const FEEDBACK_TILES = [
 
 const isBlank = (v) => v === null || v === undefined || v === '';
 
+// Skor dari DB bisa berbentuk "10.00" / 10 — samakan ke "10" agar cocok dengan slider 1-10.
+const toScore = (v) => {
+    const n = parseInt(v, 10);
+    return Number.isFinite(n) && n >= 1 && n <= 10 ? String(n) : '';
+};
+
+/**
+ * Pop up edit nilai weekly feedback — tampilannya sama dengan form Kirim Feedback
+ * (slider 1-10 per kategori), supaya nilai tiap kategori terbaca jelas, bukan
+ * dropdown sempit di dalam kartu compact.
+ */
+function EditFeedbackModal({ fb, draft, setDraft, saving, errors = {}, onSave, onClose }) {
+    // Pilihan nama mentor = mentor pembina kader (prop halaman Detail), sama dengan form Kirim.
+    const mentorOptions = usePage().props.kader?.mentors ?? [];
+    const [fileError, setFileError] = useState(null);
+
+    const handleFile = (e) => {
+        const f = e.target.files?.[0] ?? null;
+        setFileError(null);
+        if (f && !/\.pdf$/i.test(f.name)) { setFileError('Dokumen pendukung harus berformat PDF.'); e.target.value = ''; return; }
+        if (f && f.size > FEEDBACK_DOC_MAX_BYTES) { setFileError('Ukuran dokumen pendukung maksimal 2 MB.'); e.target.value = ''; return; }
+        setDraft(d => ({ ...d, file: f }));
+    };
+
+    useEffect(() => {
+        const onKey = (e) => e.key === 'Escape' && !saving && onClose();
+        const prevOverflow = document.body.style.overflow;
+        window.addEventListener('keydown', onKey);
+        document.body.style.overflow = 'hidden';
+        return () => {
+            window.removeEventListener('keydown', onKey);
+            document.body.style.overflow = prevOverflow;
+        };
+    }, [saving, onClose]);
+
+    const set = (field, value) => setDraft(d => ({ ...d, [field]: value }));
+    const areaFilled = (draft.p6 ?? '').trim() !== '';
+
+    return createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50"
+            onClick={() => !saving && onClose()}>
+            <div onClick={e => e.stopPropagation()}
+                className="w-full max-w-lg max-h-[90vh] flex flex-col bg-white rounded-2xl shadow-2xl">
+                <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-slate-100">
+                    <div className="min-w-0">
+                        <h3 className="text-base font-semibold text-slate-800">Ubah Weekly Feedback — Week {fb.angka_week}</h3>
+                        {fb.nama_mentor && <p className="text-xs text-slate-500 mt-0.5">Mentor: {fb.nama_mentor}</p>}
+                    </div>
+                    <button type="button" onClick={onClose} disabled={saving} aria-label="Tutup"
+                        className="w-8 h-8 inline-flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 transition shrink-0">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+                    <MentorNameSelect
+                        options={mentorOptions.includes(fb.nama_mentor) || !fb.nama_mentor ? mentorOptions : [fb.nama_mentor, ...mentorOptions]}
+                        value={draft.nama_mentor ?? ''}
+                        onChange={val => set('nama_mentor', val)}
+                        error={errors.nama_mentor}
+                        hint="Mentor pembina yang memberikan feedback minggu ini."
+                    />
+
+                    <div>
+                        <p className="text-xs font-semibold text-slate-600 mb-2">Penilaian Kinerja (1-10)</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {FEEDBACK_TILES.map(([, label, field]) => (
+                                <div key={field} className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5">
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <span className="text-sm font-medium text-slate-700">{label}</span>
+                                        <span className={`text-lg font-bold leading-none ${draft[field] ? scoreColor(parseInt(draft[field]) * 10) : 'text-slate-300'}`}>
+                                            {draft[field] || '—'}
+                                        </span>
+                                    </div>
+                                    <input type="range" min="1" max="10" step="1"
+                                        value={draft[field] || 1}
+                                        onChange={e => set(field, e.target.value)}
+                                        onPointerUp={e => !draft[field] && set(field, e.currentTarget.value)}
+                                        className={`w-full h-1.5 rounded-full appearance-none cursor-pointer bg-slate-200 ${draft[field] ? 'accent-blue-600' : 'accent-slate-300'}`} />
+                                    <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
+                                        <span>1</span><span>5</span><span>10</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="text-xs font-semibold text-slate-600 block mb-1.5">Motivasi &amp; Keterlibatan</label>
+                        <select value={draft.p5 ?? ''} onChange={e => set('p5', e.target.value)}
+                            className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500">
+                            <option value="">--Pilih Nilai--</option>
+                            {MOTIVASI_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="text-xs font-semibold text-slate-600 block mb-1.5">
+                            Area yang Perlu Ditingkatkan <span className="text-rose-500">*</span>
+                        </label>
+                        <textarea rows={4} value={draft.p6 ?? ''} onChange={e => set('p6', e.target.value)}
+                            placeholder="Tuliskan area yang perlu ditingkatkan..."
+                            className={`w-full px-3 py-2 text-sm border rounded-lg bg-white resize-none focus:outline-none focus:ring-2 ${
+                                areaFilled ? 'border-slate-300 focus:ring-blue-500/30 focus:border-blue-500' : 'border-rose-400 focus:ring-rose-500/30'
+                            }`} />
+                        {!areaFilled && <p className="text-xs text-rose-600 mt-1">Wajib diisi.</p>}
+                    </div>
+
+                    <div>
+                        <label className="text-xs font-semibold text-slate-600 block mb-1.5">Dokumen Pendukung</label>
+                        {fb.dokumen && !draft.file && (
+                            <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-100 text-xs text-slate-600">
+                                <span className="shrink-0 px-1.5 py-0.5 rounded bg-rose-100 text-rose-600 text-[10px] font-bold">PDF</span>
+                                <span className="truncate" title={fb.dokumen.nama_file}>{fb.dokumen.nama_file}</span>
+                            </div>
+                        )}
+                        <input type="file" accept="application/pdf,.pdf" onChange={handleFile}
+                            className={`w-full text-sm text-slate-500 border rounded-lg bg-white file:mr-3 file:py-2 file:px-3 file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 ${
+                                fileError || errors.file ? 'border-rose-400' : 'border-slate-300'
+                            }`} />
+                        {fileError || errors.file ? (
+                            <p className="text-xs text-rose-600 mt-1">{fileError || errors.file}</p>
+                        ) : (
+                            <p className="text-[11px] text-slate-400 mt-1">
+                                {fb.dokumen ? 'Kosongkan bila tidak ingin mengganti dokumen. ' : ''}Format PDF, maksimal 2 MB.
+                            </p>
+                        )}
+                    </div>
+                </div>
+
+                <div className="flex justify-end gap-2 px-5 py-3 border-t border-slate-100">
+                    <button type="button" onClick={onClose} disabled={saving}
+                        className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition">
+                        Batal
+                    </button>
+                    <button type="button" onClick={onSave} disabled={saving || !areaFilled}
+                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition">
+                        {saving ? 'Menyimpan...' : 'Simpan'}
+                    </button>
+                </div>
+            </div>
+        </div>,
+        document.body,
+    );
+}
+
 // Di atas panjang ini, "Area yang Perlu Ditingkatkan" biasanya kepotong oleh line-clamp-2
 // pada lebar kartu compact — baru munculkan tombol "Lihat" pada kasus itu.
 const AREA_BUBBLE_THRESHOLD = 70;
@@ -423,6 +570,7 @@ function CompactFeedbackCard({ fb, canEdit = false, kaderId = null, showDoc = fa
     const closePreview = useCallback(() => setPreviewOpen(false), []);
     const [draft, setDraft]     = useState({});
     const [saving, setSaving]   = useState(false);
+    const [editErrors, setEditErrors] = useState({});
 
     const gaps = FEEDBACK_TILES.filter(([key]) => isBlank(fb[key])).map(([, , field]) => field);
     if (isBlank(fb.motivasi)) gaps.push('p5');
@@ -430,22 +578,29 @@ function CompactFeedbackCard({ fb, canEdit = false, kaderId = null, showDoc = fa
 
     const startEdit = () => {
         setDraft({
-            p1: fb.routine_job   ?? '',
-            p2: fb.assignment    ?? '',
-            p3: fb.pemahaman_sop ?? '',
-            p4: fb.project       ?? '',
+            p1: toScore(fb.routine_job),
+            p2: toScore(fb.assignment),
+            p3: toScore(fb.pemahaman_sop),
+            p4: toScore(fb.project),
             p5: fb.motivasi      ?? '',
             p6: fb.area          ?? '',
+            nama_mentor: fb.nama_mentor ?? '',
+            file: null,
         });
+        setEditErrors({});
         setEditing(true);
     };
-    const cancelEdit = () => { setEditing(false); setDraft({}); };
+    const cancelEdit = () => { setEditing(false); setDraft({}); setEditErrors({}); };
 
     const saveEdit = () => {
-        setSaving(true);
-        router.post(`/kader-saya/${kaderId}/feedback/${fb.week_id}/update`, draft, {
+        // File hanya dikirim bila dipilih — tanpa file, dokumen lama dipertahankan server.
+        const { file, ...payload } = draft;
+        router.post(`/kader-saya/${kaderId}/feedback/${fb.week_id}/update`, file ? { ...payload, file } : payload, {
+            forceFormData: true,
             preserveScroll: true,
+            onStart:   () => setSaving(true),
             onSuccess: () => cancelEdit(),
+            onError:   (errs) => setEditErrors(errs),
             onFinish:  () => setSaving(false),
         });
     };
@@ -510,42 +665,22 @@ function CompactFeedbackCard({ fb, canEdit = false, kaderId = null, showDoc = fa
                             <p className="text-[7px] font-semibold uppercase tracking-wide text-slate-400 leading-tight h-5 flex items-center justify-center">
                                 {compactLabel}
                             </p>
-                            {editing ? (
-                                <select value={draft[field] ?? ''} onChange={e => setDraft(d => ({ ...d, [field]: e.target.value }))}
-                                    className="w-full text-[11px] font-bold text-center border border-blue-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-blue-500/40">
-                                    <option value="">—</option>
-                                    {SCORE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                                </select>
-                            ) : (
-                                <p className={`text-sm font-bold leading-none ${!blank ? scoreColor(parseInt(val) * 10) : 'text-slate-300'}`}>
-                                    {blank ? '—' : val}
-                                </p>
-                            )}
+                            <p className={`text-sm font-bold leading-none ${!blank ? scoreColor(parseInt(val) * 10) : 'text-slate-300'}`}>
+                                {blank ? '—' : toScore(val) || val}
+                            </p>
                         </div>
                     );
                 })}
             </div>
 
-            {(editing || (canEdit && isBlank(fb.motivasi))) && (
+            {canEdit && isBlank(fb.motivasi) && (
                 <div className="flex items-center gap-1.5 mb-2">
                     <span className="text-[8px] font-semibold uppercase tracking-wide text-slate-400 shrink-0">Motivasi</span>
-                    {editing ? (
-                        <select value={draft.p5 ?? ''} onChange={e => setDraft(d => ({ ...d, p5: e.target.value }))}
-                            className="flex-1 text-[10px] px-1.5 py-1 border border-blue-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-blue-500/40">
-                            <option value="">--Pilih--</option>
-                            {MOTIVASI_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                        </select>
-                    ) : (
-                        <span className="text-[10px] text-slate-300 font-bold">—</span>
-                    )}
+                    <span className="text-[10px] text-slate-300 font-bold">—</span>
                 </div>
             )}
 
-            {editing ? (
-                <textarea rows={2} value={draft.p6 ?? ''} onChange={e => setDraft(d => ({ ...d, p6: e.target.value }))}
-                    placeholder="Area yang perlu ditingkatkan (wajib)..."
-                    className={`w-full px-2 py-1 text-[10.5px] border rounded-md ${(draft.p6 ?? '').trim() ? 'border-blue-300' : 'border-rose-400'} bg-white focus:outline-none focus:ring-1 focus:ring-blue-500/40 resize-none`} />
-            ) : fb.area ? (
+            {fb.area ? (
                 <div className="flex items-start gap-1.5 border-l-2 border-blue-300 pl-2">
                     <p className="flex-1 min-w-0 text-[10.5px] text-slate-600 leading-snug"
                         style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
@@ -556,17 +691,8 @@ function CompactFeedbackCard({ fb, canEdit = false, kaderId = null, showDoc = fa
             ) : null}
 
             {editing && (
-                <div className="flex items-center gap-1.5 mt-2">
-                    <button type="button" onClick={saveEdit} disabled={saving || !(draft.p6 ?? '').trim()}
-                        title={!(draft.p6 ?? '').trim() ? 'Area yang perlu ditingkatkan wajib diisi' : undefined}
-                        className="flex-1 px-2 py-1.5 text-[10.5px] font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-60 transition">
-                        {saving ? 'Menyimpan...' : 'Simpan'}
-                    </button>
-                    <button type="button" onClick={cancelEdit} disabled={saving}
-                        className="px-2 py-1.5 text-[10.5px] font-semibold text-slate-500 border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-60 transition">
-                        Batal
-                    </button>
-                </div>
+                <EditFeedbackModal fb={fb} draft={draft} setDraft={setDraft} saving={saving} errors={editErrors}
+                    onSave={saveEdit} onClose={cancelEdit} />
             )}
         </div>
     );

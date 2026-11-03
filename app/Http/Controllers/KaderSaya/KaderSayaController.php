@@ -663,7 +663,13 @@ class KaderSayaController extends Controller
         abort_if(!$this->feedbackEditable($kader), 403,
             'Batch sudah berakhir — feedback tidak dapat diubah lagi.');
 
+        $mentorOptions = $this->assignedMentorNames($kader->id)->all();
+
         $request->validate([
+            // Opsional saat edit: dikirim bila nama mentor pengisi ingin dikoreksi.
+            'nama_mentor' => ['nullable', 'string', Rule::in($mentorOptions)],
+            // Opsional saat edit: bila ada, menggantikan dokumen pendukung week ini.
+            'file' => 'nullable|file|mimes:pdf|max:2048',
             'p1' => 'nullable|integer|between:1,10',
             'p2' => 'nullable|integer|between:1,10',
             'p3' => 'nullable|integer|between:1,10',
@@ -671,7 +677,11 @@ class KaderSayaController extends Controller
             'p5' => 'nullable|in:Sangat Kurang,Kurang,Cukup,Baik,Sangat Baik',
             // Area wajib sejak form baru; bila dikirim saat edit, tidak boleh kosong.
             'p6' => 'sometimes|required|string',
-        ], [], [
+        ], [
+            'nama_mentor.in' => 'Nama mentor harus salah satu mentor pembina kader ini.',
+            'file.mimes'     => 'Dokumen pendukung harus berformat PDF.',
+            'file.max'       => 'Ukuran dokumen pendukung maksimal 2 MB.',
+        ], [
             'p1' => 'Routine Job',
             'p2' => 'Assignment',
             'p3' => 'Pemahaman SOP',
@@ -706,10 +716,24 @@ class KaderSayaController extends Controller
         if ($request->filled('p5')) $answers[5] = $motivasiScore[$request->p5] ?? null;
         if ($request->has('p6'))    $answers[6] = trim((string) $request->p6);
 
-        // Feedback tetap diatribusikan ke mentor penulis aslinya; created_by mencatat
-        // siapa yang mengubah.
+        // Nama mentor pengisi boleh dikoreksi (akun Mentor dipakai bersama per BU) —
+        // seluruh baris jawaban week ini ikut diganti supaya tetap satu atribusi.
         $namaMentor = $existing->first()->nama_mentor;
         $changed    = 0;
+        if ($request->filled('nama_mentor') && $request->nama_mentor !== $namaMentor) {
+            Jawaban::where('nik_kader', $kader->nik)
+                ->where('id_week', $id_week)
+                ->whereNotNull('nama_mentor')
+                ->whereIn('id_pertanyaan', [1, 2, 3, 4, 5, 6])
+                ->update(['nama_mentor' => $request->nama_mentor, 'updated_at' => now()]);
+            $namaMentor = $request->nama_mentor;
+            $changed++;
+        }
+
+        if ($request->hasFile('file')) {
+            $this->replaceFeedbackDokumen($kader, $id_week, $request->file('file'), $user->id);
+            $changed++;
+        }
 
         foreach ($answers as $pertanyaan => $jawaban) {
             if ($jawaban === null) continue;
@@ -745,6 +769,51 @@ class KaderSayaController extends Controller
         ]);
 
         return back()->with('feedbackSuccess', true);
+    }
+
+    /**
+     * Ganti dokumen pendukung weekly feedback (FEEDBACK_MENTOR) untuk satu week.
+     * File baru disimpan dulu; file & baris lama baru dibuang setelah baris baru tersimpan.
+     */
+    private function replaceFeedbackDokumen($kader, $id_week, $file, $userId): void
+    {
+        $nameParts  = [$kader->id, 'feedback_mentor', $kader->nama, 'week' . $id_week];
+        $storedName = UploadName::stored($nameParts, 'pdf');
+        $dir        = public_path('uploads/feedback_mentor/' . $kader->id);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+        $file->move($dir, $storedName);
+
+        $old = Dokumen::where('kader_id', $kader->id)
+            ->where('id_week', $id_week)
+            ->where('jenis', 'FEEDBACK_MENTOR')
+            ->get();
+
+        try {
+            DB::transaction(function () use ($kader, $id_week, $userId, $nameParts, $storedName, $old) {
+                Dokumen::create([
+                    'kader_id'  => $kader->id,
+                    'mentor_id' => $userId,
+                    'id_batch'  => $kader->id_batch,
+                    'id_week'   => $id_week,
+                    'nama_file' => UploadName::display($nameParts, 'pdf'),
+                    'path_file' => 'uploads/feedback_mentor/' . $kader->id . '/' . $storedName,
+                    'tipe'      => 'mentor',
+                    'status'    => null,
+                    'jenis'     => 'FEEDBACK_MENTOR',
+                ]);
+                Dokumen::whereIn('id', $old->pluck('id'))->delete();
+            });
+        } catch (\Throwable $e) {
+            @unlink($dir . '/' . $storedName);
+            throw $e;
+        }
+
+        foreach ($old as $doc) {
+            $path = public_path($doc->path_file);
+            if ($doc->path_file && is_file($path)) @unlink($path);
+        }
     }
 
     /**
