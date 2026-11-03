@@ -6,6 +6,7 @@ use App\Http\Controllers\Master\DivisiController;
 use App\Http\Controllers\Master\KaderController;
 use App\Http\Controllers\Master\NilaiController;
 use App\Http\Controllers\Master\PertanyaanController;
+use App\Http\Controllers\Master\PosisiKaderController;
 use App\Http\Controllers\Master\UserController;
 use App\Http\Controllers\Master\WeekController;
 use App\Http\Controllers\Modul\DokumenController;
@@ -148,4 +149,13 @@ Route::middleware(['can:isAdmin021'])->controller(DokumenPsikotestController::cl
     Route::post('/dokumen-psikotest/{kader_id}', 'store')->name('psikotest.store');
     Route::get('/dokumen-psikotest/file/{id}', 'file')->name('psikotest.file');
     Route::delete('/dokumen-psikotest/file/{id}', 'destroy')->name('psikotest.destroy');
+});
+
+// Posisi Kader — posisi awal & setelah graduation MT, input tabel atau import template.
+// Khusus Admin MAI (021).
+Route::middleware(['can:isAdmin021'])->controller(PosisiKaderController::class)->group(function () {
+    Route::get('/posisi-kader', 'index')->name('posisi-kader.index');
+    Route::post('/posisi-kader/bulk', 'bulkUpdate')->name('posisi-kader.bulk');
+    Route::get('/posisi-kader/template', 'template')->name('posisi-kader.template');
+    Route::post('/posisi-kader/import', 'import')->name('posisi-kader.import');
 });

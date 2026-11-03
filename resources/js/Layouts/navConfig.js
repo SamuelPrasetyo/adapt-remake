@@ -27,6 +27,14 @@ export const ADMIN_NAV = [
     },
     {
         type: "item",
+        label: "Posisi Kader",
+        icon: "briefcase",
+        href: "/posisi-kader",
+        match: "/posisi-kader",
+        requires: "admin021",
+    },
+    {
+        type: "item",
         label: "Nilai Feedback",
         icon: "star",
         href: "/kader-feedback",
